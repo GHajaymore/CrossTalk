@@ -1,0 +1,1210 @@
+<title>CrossTalk Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Schibsted+Grotesk:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<style>
+/* Layout: a radio booth. Two speakers face each other across a table; the listener's cues land on the centre line. Single deliberate dark look. */
+:root{
+  color-scheme: dark;
+  --bg:#111214; --surface:#1A1C1F; --raised:#22252A; --line:#2E3238; --line-soft:#24272c;
+  --text:#ECE8E1; --muted:#A39E96;
+  --a:#E8A55A; --a-soft:rgba(232,165,90,.12);
+  --b:#5FB8B0; --b-soft:rgba(95,184,176,.12);
+  --cue:#E9D36A; --cue-soft:rgba(233,211,106,.10);
+  --iris:#B9A4E6;
+  --air:#E5533D; --bad:#F0806E;
+  --f-say:"Source Serif 4", Georgia, "Times New Roman", serif;
+  --f-ui:"Schibsted Grotesk", "Segoe UI", system-ui, sans-serif;
+  --f-tag:"JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--bg);color:var(--text);font-family:var(--f-ui);font-size:15px;line-height:1.5;margin:0}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--cue);outline-offset:2px;border-radius:4px}
+.tag{font-family:var(--f-tag);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.wrap{max-width:1240px;margin:0 auto;padding-inline:20px}
+
+/* top bar */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:rgba(17,18,20,.94);backdrop-filter:blur(6px);border-bottom:1px solid var(--line)}
+.top .wrap{display:flex;align-items:center;gap:20px;min-height:56px;flex-wrap:wrap;padding-block:6px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:.01em;font-size:17px}
+.brand-mark{display:flex;gap:3px}
+.brand-mark i{display:block;width:9px;height:18px;border-radius:2px}
+.brand-mark i:first-child{background:var(--a)} .brand-mark i:last-child{background:var(--b)}
+nav{display:flex;gap:2px}
+nav button{background:none;border:0;padding:8px 12px;border-radius:6px;color:var(--muted);cursor:pointer;font-weight:500}
+nav button:hover{color:var(--text);background:var(--surface)}
+nav button[aria-current="page"]{color:var(--text);background:var(--raised)}
+.top-right{margin-left:auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.pill{font-family:var(--f-tag);font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:4px 9px;border-radius:999px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.pill.mock{color:var(--cue);border-color:rgba(233,211,106,.35)}
+
+main{padding-block:28px 40px}
+.btn{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--raised);padding:9px 14px;border-radius:7px;cursor:pointer;font-weight:500;white-space:nowrap}
+.btn:hover:not(:disabled){border-color:#4a5058}
+.btn:disabled{opacity:.42;cursor:not-allowed}
+.btn.primary{background:var(--text);color:#141517;border-color:var(--text);font-weight:600}
+.btn.primary:hover:not(:disabled){background:#fff}
+.btn.ghost{background:none}
+.btn.danger{color:var(--bad);border-color:rgba(240,128,110,.4);background:none}
+.btn.sm{padding:6px 10px;font-size:13.5px}
+input[type=text],textarea,select{background:var(--surface);border:1px solid var(--line);border-radius:7px;padding:10px 12px;width:100%}
+textarea{resize:vertical;min-height:72px}
+select{appearance:auto}
+label.fld{display:grid;gap:6px}
+.notice{font-size:13px;color:var(--muted);border-top:1px solid var(--line);margin-top:36px;padding-top:14px;display:flex;gap:16px;flex-wrap:wrap;justify-content:space-between}
+
+/* CREATE */
+.create{display:grid;gap:30px;max-width:980px;margin:0 auto}
+.hero h1{font-family:var(--f-say);font-weight:600;font-size:clamp(30px,4.6vw,46px);line-height:1.12;margin:6px 0 10px;text-wrap:balance;letter-spacing:-.01em}
+.hero p{color:var(--muted);margin:0;max-width:60ch}
+.topic-box{display:grid;gap:12px}
+.topic-box textarea{font-family:var(--f-say);font-size:22px;min-height:84px;padding:16px 18px;background:var(--surface)}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:none;border-radius:999px;padding:7px 13px;cursor:pointer;font-size:14px;color:var(--muted)}
+.chip:hover{color:var(--text);border-color:#4a5058}
+.chip[aria-pressed="true"]{color:var(--text);border-color:var(--cue);background:var(--cue-soft)}
+.seg{display:inline-flex;flex-wrap:wrap;max-width:100%;border:1px solid var(--line);border-radius:9px;padding:3px;gap:3px;background:var(--surface)}
+.seg button{border:0;background:none;padding:8px 16px;border-radius:6px;cursor:pointer;color:var(--muted);font-weight:500}
+.seg button[aria-pressed="true"]{background:var(--raised);color:var(--text)}
+.mode-help{color:var(--muted);font-size:14px;margin:8px 0 0}
+.facing{display:grid;grid-template-columns:1fr auto 1fr;gap:14px;align-items:stretch}
+.seat{border:1px solid var(--line);border-radius:10px;padding:18px;background:var(--surface);display:grid;gap:12px;min-width:0}
+.seat.A{border-top:3px solid var(--a)} .seat.B{border-top:3px solid var(--b)}
+.seat-head{display:flex;align-items:center;gap:10px}
+.flag{width:30px;height:30px;border-radius:6px;display:grid;place-items:center;font-family:var(--f-tag);font-weight:600;font-size:13px;color:#141517;flex:none}
+.flag.A{background:var(--a)} .flag.B{background:var(--b)}
+.seat input[type=text]{font-weight:600;font-size:17px;padding:6px 10px}
+.seat .lens{color:var(--muted);font-size:14px;margin:0}
+.model{font-family:var(--f-tag);font-size:12.5px;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:5px;padding:5px 8px;overflow-wrap:anywhere}
+.table-gap{display:grid;place-items:center;color:var(--muted)}
+.table-gap .tag{writing-mode:vertical-rl;transform:rotate(180deg)}
+.start-row{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.start-row .meta{color:var(--muted);font-size:14px}
+
+/* STUDIO */
+.studio{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:24px;align-items:start}
+.stage{min-width:0}
+.stage-head{display:grid;grid-template-columns:1fr minmax(0,1.4fr) 1fr;gap:14px;align-items:center;padding-bottom:16px;border-bottom:1px solid var(--line)}
+.who{display:flex;gap:10px;align-items:center;min-width:0}
+.who.B{justify-content:flex-end;text-align:right}
+.who .nm{font-weight:600}
+.who .md{font-family:var(--f-tag);font-size:11.5px;color:var(--muted);overflow-wrap:anywhere}
+.tally{width:10px;height:10px;border-radius:50%;background:#33373d;flex:none;box-shadow:inset 0 0 0 1px #464b52}
+.tally.on{background:var(--air);box-shadow:0 0 0 3px rgba(229,83,61,.18),0 0 14px rgba(229,83,61,.6);animation:pulse 1.6s ease-in-out infinite}
+.spk{font-size:13px;color:var(--muted);visibility:hidden}
+.spk.on{visibility:visible}
+@keyframes pulse{50%{opacity:.55}}
+.topic-title{text-align:center;min-width:0}
+.topic-title h2{font-family:var(--f-say);font-weight:600;font-size:20px;line-height:1.25;margin:2px 0 0;text-wrap:balance}
+.lineage{font-size:13px;margin-top:4px;color:var(--muted)}
+.lineage button{background:none;border:0;color:var(--cue);cursor:pointer;padding:0;text-decoration:underline;text-underline-offset:3px}
+
+.rail{display:grid;grid-template-columns:repeat(var(--n,8),minmax(0,1fr));gap:6px;margin:16px 0 8px}
+.pip{display:grid;gap:4px;justify-items:center;text-align:center;min-width:0}
+.pip .bar{height:6px;width:100%;border-radius:3px;background:var(--line-soft);border:1px solid var(--line)}
+.pip.A.done .bar{background:var(--a);border-color:var(--a)}
+.pip.B.done .bar{background:var(--b);border-color:var(--b)}
+.pip.live .bar{background:var(--air);border-color:var(--air);animation:pulse 1.2s infinite}
+.pip.fail .bar{background:none;border-color:var(--bad);border-style:dashed}
+.pip.inh .bar{opacity:.35}
+.pip .tag{font-size:10px;letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.status-line{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:13.5px;color:var(--muted);margin-bottom:6px}
+.status-line b{color:var(--text);font-weight:600}
+
+.table{position:relative;display:grid;gap:18px;padding:22px 0 28px}
+.table::before{content:"";position:absolute;left:50%;top:0;bottom:0;border-left:1px dashed rgba(233,211,106,.28)}
+.turn{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:start;width:min(68%,640px)}
+.turn.B{justify-self:end;grid-template-columns:minmax(0,1fr) auto}
+.turn.B .flag{order:2}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px 16px 12px;min-width:0;transition:border-color .2s, box-shadow .2s}
+.turn.A .card{background:linear-gradient(var(--a-soft),var(--a-soft)),var(--surface)}
+.turn.B .card{background:linear-gradient(var(--b-soft),var(--b-soft)),var(--surface)}
+.card-head{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.card-head .nm{font-weight:600;font-size:14px}
+.turn.A .nm{color:var(--a)} .turn.B .nm{color:var(--b)}
+.card-head .tag{font-size:10.5px}
+.menu-btn{margin-left:auto;background:none;border:1px solid transparent;border-radius:6px;color:var(--muted);cursor:pointer;padding:2px 8px;font-size:16px;line-height:1}
+.menu-btn:hover{border-color:var(--line);color:var(--text)}
+.say{font-family:var(--f-say);font-size:17.5px;line-height:1.62;margin:0;overflow-wrap:anywhere}
+.say .caret{display:inline-block;width:8px;height:1em;background:var(--air);vertical-align:-2px;margin-left:2px;animation:pulse 1s infinite}
+.card-foot{display:flex;justify-content:space-between;gap:10px;margin-top:8px;font-family:var(--f-tag);font-size:11px;color:var(--muted);flex-wrap:wrap}
+.turn.speaking .card{border-color:var(--text);box-shadow:0 0 0 1px var(--text)}
+.turn.inherited .card{opacity:.62}
+.turn.failed .card{border-style:dashed;border-color:var(--bad);background:var(--surface)}
+.turn.failed .say{font-family:var(--f-ui);font-size:15px;color:var(--bad)}
+.turn.cancelled .card{border-style:dashed}
+.turn.focus .card{border-color:var(--cue)}
+.menu{position:absolute;top:40px;z-index:5;background:var(--raised);border:1px solid #3c4148;border-radius:8px;padding:5px;display:grid;min-width:200px;box-shadow:0 10px 30px rgba(0,0,0,.45)}
+.turn.A .menu{right:0} .turn.B .menu{left:0}
+.menu button{background:none;border:0;text-align:left;padding:8px 10px;border-radius:5px;cursor:pointer}
+.menu button:hover:not(:disabled){background:var(--surface)}
+.menu button:disabled{opacity:.4;cursor:not-allowed}
+.menu small{display:block;color:var(--muted);font-size:12px}
+
+.cue{justify-self:center;position:relative;z-index:1;width:min(62%,460px);background:#1d1c16;border:1px solid rgba(233,211,106,.5);border-radius:6px;padding:10px 14px;text-align:center;box-shadow:0 0 0 6px var(--bg)}
+.cue .tag{color:var(--cue)}
+.cue p{margin:4px 0 0;font-size:14.5px}
+.cue.queued{border-style:dashed}
+.splice{justify-self:center;position:relative;z-index:1;background:var(--bg);padding:4px 12px;font-size:13px;color:var(--muted)}
+.splice button{background:none;border:0;color:var(--cue);cursor:pointer;text-decoration:underline;text-underline-offset:3px;padding:0}
+.empty-stage{text-align:center;color:var(--muted);padding:40px 0}
+
+.dock{position:sticky;bottom:0;z-index:6;background:rgba(17,18,20,.96);border-top:1px solid var(--line);padding:12px 0 calc(12px + env(safe-area-inset-bottom,0px));display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.dock-group{display:grid;gap:8px;min-width:0}
+.dock-group.listen{border-left:1px solid var(--line);padding-left:16px}
+.dock-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.dock .state{font-size:13px;color:var(--muted)}
+.dock .state b{color:var(--text)}
+
+.panel{position:sticky;top:76px;border:1px solid var(--line);border-radius:10px;background:var(--surface);overflow:hidden}
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);border-bottom:1px solid var(--line)}
+.tabs button{background:none;border:0;padding:12px 6px;cursor:pointer;color:var(--muted);font-weight:500;border-bottom:2px solid transparent}
+.tabs button[aria-selected="true"]{color:var(--text);border-bottom-color:var(--cue)}
+.panel-body{padding:16px;display:grid;gap:16px;max-height:calc(100vh - 170px);overflow:auto}
+.panel h3{font-size:13px;margin:0;font-weight:600}
+.hint{font-size:13px;color:var(--muted);margin:0}
+.counter{font-family:var(--f-tag);font-size:11.5px;color:var(--muted)}
+.queue-list{display:grid;gap:6px;margin:0;padding:0;list-style:none}
+.queue-list li{font-size:13px;border:1px dashed rgba(233,211,106,.5);border-radius:6px;padding:7px 9px;display:flex;justify-content:space-between;gap:8px;align-items:start}
+.queue-list li button{background:none;border:0;color:var(--muted);cursor:pointer;text-decoration:underline;padding:0;font-size:12px}
+.tree{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.tree ul{list-style:none;margin:4px 0 0 14px;padding:0 0 0 10px;border-left:1px solid var(--line);display:grid;gap:4px}
+.tree button{background:none;border:0;text-align:left;cursor:pointer;padding:6px 8px;border-radius:6px;width:100%}
+.tree button:hover{background:var(--raised)}
+.tree button[aria-current="true"]{background:var(--raised);outline:1px solid var(--line)}
+.tree small{display:block;color:var(--muted);font-size:12px}
+.voice-row{display:grid;gap:6px}
+.voice-row .lbl{display:flex;gap:8px;align-items:center;font-weight:600;font-size:14px}
+.dot{width:9px;height:9px;border-radius:2px;display:inline-block}
+.dot.A{background:var(--a)} .dot.B{background:var(--b)}
+.panel-toggle{display:none}
+
+/* LIBRARY */
+.lib{max-width:900px;margin:0 auto;display:grid;gap:18px}
+.lib h1,.settings h1{font-family:var(--f-say);font-weight:600;font-size:30px;margin:0}
+.lib-list{list-style:none;margin:0;padding:0;border-top:1px solid var(--line)}
+.lib-item{border-bottom:1px solid var(--line);padding:14px 0;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center}
+.lib-item.child{padding-left:28px;position:relative}
+.lib-item.child::before{content:"";position:absolute;left:10px;top:0;height:50%;width:12px;border-left:1px solid var(--line);border-bottom:1px solid var(--line)}
+.lib-title{font-weight:600;font-size:16px;overflow-wrap:anywhere}
+.lib-meta{display:flex;gap:10px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin-top:3px;align-items:center}
+.status{font-family:var(--f-tag);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--line);border-radius:4px;padding:1px 6px}
+.status.completed{color:var(--b);border-color:rgba(95,184,176,.4)}
+.status.generating{color:var(--air);border-color:rgba(229,83,61,.5)}
+.status.paused,.status.idle{color:var(--cue);border-color:rgba(233,211,106,.4)}
+.status.failed,.status.cancelled{color:var(--bad);border-color:rgba(240,128,110,.4)}
+.lib-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.confirm{grid-column:1/-1;display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:rgba(240,128,110,.08);border:1px solid rgba(240,128,110,.35);border-radius:7px;padding:10px 12px;font-size:14px}
+
+/* SETTINGS */
+.settings{max-width:820px;margin:0 auto;display:grid;gap:22px}
+.sec{border:1px solid var(--line);border-radius:10px;padding:18px;background:var(--surface);display:grid;gap:14px}
+.sec h2{font-size:16px;margin:0}
+.kv{display:grid;grid-template-columns:minmax(150px,auto) minmax(0,1fr);gap:6px 16px;font-size:14px;margin:0}
+.kv dt{font-family:var(--f-tag);font-size:12px;color:var(--muted);padding-top:2px}
+.kv dd{margin:0;font-family:var(--f-tag);font-size:12.5px;overflow-wrap:anywhere}
+.toggle{display:flex;gap:10px;align-items:center;font-size:14px;cursor:pointer}
+.toggle input{width:18px;height:18px;accent-color:var(--cue)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+
+/* dialogs */
+.modal-back{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:40;display:grid;place-items:center;padding:16px}
+.modal{background:var(--surface);border:1px solid #3c4148;border-radius:12px;width:min(640px,100%);max-height:calc(100% - 32px);overflow:auto;padding:20px;display:grid;gap:14px}
+.modal h2{margin:0;font-size:18px}
+.modal textarea.out{font-family:var(--f-tag);font-size:12px;min-height:260px}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.toast{position:fixed;left:50%;bottom:calc(90px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--text);color:#141517;padding:9px 14px;border-radius:8px;font-weight:600;font-size:14px;z-index:50}
+
+/* DIALS */
+.dials{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.heat{display:inline-flex;gap:2px;vertical-align:middle;margin-left:4px}
+.heat i{width:5px;height:11px;border-radius:1px;background:var(--line)}
+.heat i.on.h1{background:var(--b)} .heat i.on.h2{background:var(--cue)} .heat i.on.h3{background:var(--air)}
+
+/* TODAY TRAY */
+.today{display:grid;gap:12px}
+.today-head{display:flex;justify-content:space-between;align-items:end;gap:12px;flex-wrap:wrap}
+.today-head h2{font-family:var(--f-say);font-weight:600;font-size:22px;margin:2px 0 0}
+.tray{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
+.topic-card{border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:14px;display:grid;gap:10px;align-content:start;min-width:0}
+.topic-card.sel{border-color:var(--cue);background:linear-gradient(var(--cue-soft),var(--cue-soft)),var(--surface)}
+.topic-card h3{font-family:var(--f-say);font-weight:600;font-size:17px;line-height:1.3;margin:0;text-wrap:balance}
+.split{display:grid;gap:5px}
+.sbar{display:flex;height:6px;border-radius:3px;overflow:hidden;background:var(--b)}
+.sbar i{display:block;background:var(--a)}
+.srcs{display:flex;gap:5px;flex-wrap:wrap}
+.src{font-family:var(--f-tag);font-size:10.5px;border:1px solid var(--line);border-radius:4px;padding:1px 6px;color:var(--muted)}
+details.brief summary{cursor:pointer;font-size:13px;color:var(--muted)}
+details.brief ul{margin:8px 0 0;padding-left:18px;font-size:13.5px;display:grid;gap:4px}
+.switch{display:flex;gap:10px;align-items:center;cursor:pointer;font-weight:600}
+.switch input{appearance:none;width:38px;height:22px;border-radius:11px;background:var(--line);position:relative;cursor:pointer;margin:0;transition:background .2s}
+.switch input::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:var(--text);transition:left .2s}
+.switch input:checked{background:var(--cue)}
+.switch input:checked::after{left:19px;background:#141517}
+.brief-box{border:1px dashed rgba(233,211,106,.45);border-radius:8px;padding:10px 12px;font-size:14px;display:grid;gap:6px}
+.brief-box ul{margin:0;padding-left:18px;display:grid;gap:3px}
+.stage-brief{margin:12px auto 0;max-width:640px;text-align:left}
+
+/* ARTIST */
+.artist{margin-top:8px;border:1px solid var(--line);border-radius:12px;background:var(--surface);overflow:hidden}
+.artist-head{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.flag.C{background:var(--iris)}
+.artist-head .nm{font-weight:600;color:var(--iris)}
+.artist-head .tag{margin-left:auto}
+.artist-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:0}
+.art{margin:0;background:#0f1013;border-right:1px solid var(--line);display:grid;align-content:center}
+.art figcaption{font-family:var(--f-tag);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:8px 14px 12px}
+.sketch{display:block;width:100%;height:auto}
+.persp{margin:0;font-family:var(--f-say);font-size:17px;line-height:1.6;max-width:62ch}
+.artist-body{padding:18px 20px 20px;display:grid;gap:12px;align-content:start;min-width:0}
+.artist-body h3{font-family:var(--f-say);font-weight:600;font-size:26px;line-height:1.2;margin:0;text-wrap:balance}
+.artist-body .recap{margin:0;color:var(--text);max-width:65ch}
+.moment{margin:0;border-left:2px solid var(--iris);padding:4px 0 4px 14px;font-family:var(--f-say);font-size:17px;font-style:italic;max-width:62ch}
+.moment cite{display:block;font-style:normal;font-family:var(--f-tag);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-top:4px}
+.listening{padding:26px 20px;display:flex;gap:12px;align-items:center;color:var(--muted)}
+.listening .bars{display:flex;gap:3px;align-items:end;height:22px}
+.listening .bars i{width:3px;background:var(--iris);border-radius:2px;animation:lv 1s ease-in-out infinite}
+.listening .bars i:nth-child(2){animation-delay:.15s}.listening .bars i:nth-child(3){animation-delay:.3s}.listening .bars i:nth-child(4){animation-delay:.45s}
+@keyframes lv{0%,100%{height:5px}50%{height:22px}}
+.booth-note{display:flex;gap:12px;align-items:center;border:1px dashed var(--line);border-radius:10px;padding:12px 14px;color:var(--muted);font-size:14px}
+.booth-note b{color:var(--iris)}
+.thumb{width:132px;border-radius:6px;border:1px solid var(--line);display:block}
+.lib-row{display:flex;gap:14px;align-items:center;min-width:0}
+
+@media (max-width: 920px){
+  .studio{grid-template-columns:minmax(0,1fr)}
+  .panel{position:fixed;left:0;right:0;bottom:0;top:auto;z-index:30;border-radius:14px 14px 0 0;max-height:78%;display:none;box-shadow:0 -10px 40px rgba(0,0,0,.6)}
+  .panel.open{display:block}
+  .panel-body{max-height:calc(78vh - 50px);padding-bottom:calc(16px + env(safe-area-inset-bottom,0px))}
+  .panel-toggle{display:inline-flex}
+}
+@media (max-width: 680px){
+  .dials{grid-template-columns:1fr}
+  .artist-grid{grid-template-columns:1fr}
+  .art{border-right:0;border-bottom:1px solid var(--line)}
+  .wrap{padding-inline:16px}
+  nav button{padding:7px 9px}
+  .facing{grid-template-columns:1fr}
+  .table-gap{display:none}
+  .stage-head{grid-template-columns:1fr 1fr}
+  .topic-title{grid-column:1/-1;order:-1}
+  .table::before{left:14px}
+  .turn,.turn.B{width:auto;justify-self:stretch}
+  .turn.A{margin-right:28px}
+  .turn.B{margin-left:28px}
+  .cue{width:auto;justify-self:stretch;margin-inline:0}
+  .rail .tag{display:none}
+  .dock{grid-template-columns:1fr}
+  .dock-group.listen{border-left:0;border-top:1px solid var(--line);padding:10px 0 0}
+  .grid2{grid-template-columns:1fr}
+  .kv{grid-template-columns:1fr}
+  .lib-item{grid-template-columns:1fr}
+  .lib-actions{justify-content:flex-start}
+  .say{font-size:16.5px}
+}
+@media (prefers-reduced-motion: reduce){
+  *{animation:none!important;transition:none!important}
+}
+</style>
+
+<header class="top">
+  <div class="wrap">
+    <div class="brand"><span class="brand-mark" aria-hidden="true"><i></i><i></i></span>CrossTalk</div>
+    <nav aria-label="Main">
+      <button data-route="create">Create</button>
+      <button data-route="studio">Studio</button>
+      <button data-route="library">Library</button>
+      <button data-route="settings">Settings</button>
+    </nav>
+    <div class="top-right">
+      <span class="pill mock" title="Scripted sample text. No model is called.">Mock mode</span>
+      <span class="pill" id="budget" title="App-side safety limit, not a billing guarantee">App limit 0 / 40 today</span>
+    </div>
+  </div>
+</header>
+<main class="wrap" id="app" aria-live="off"></main>
+<div id="layer"></div>
+
+<script>
+(() => {
+'use strict';
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid = () => Math.random().toString(36).slice(2, 10);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const store = {
+  get(k, d){ try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
+  set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+};
+
+/* ---------- constants ---------- */
+const PRESETS = [
+  'Will AI help independent businesses?',
+  'Should cities prioritize cars or pedestrians?',
+  'Is a four-day workweek practical?',
+  'What would an ideal future restaurant look like?',
+  'Can technology improve golf without changing its character?'
+];
+const JOBS = ['Frame','Challenge','Example','Test','Implication','Limits','Common ground','Close'];
+const BRANCH_JOBS = ['New direction','Pressure test','Example','Close'];
+const MAX_TURNS = 8, BRANCH_TURNS = 4, CUE_LIMIT = 3, DAILY_LIMIT = 40;
+const MODES = {
+  explore: { label: 'Explore', help: 'They build on each other: one frames, the other widens, and both work through examples and trade-offs.' },
+  debate:  { label: 'Friendly Debate', help: 'They start from contrasting lenses and can concede or revise. No winner is declared.' }
+};
+
+const AUD = {
+  kids:    { label: 'Kids', help: 'Simple words, short turns, ages about 8 to 12. No frightening or grown-up themes, no politics.' },
+  teens:   { label: 'Teens', help: 'Ages about 13 to 17. Real topics, relatable examples, nothing explicit. Political topics stay balanced.' },
+  general: { label: 'General', help: 'Everyday listeners. Clear and friendly.' },
+  mature:  { label: 'Mature', help: 'Grown-up themes discussed frankly: money, work, loss, relationships. Never explicit or graphic.' },
+  expert:  { label: 'Expert', help: 'Listeners who know the field. Technical terms, deeper trade-offs, no hand-holding.' }
+};
+const TEMP = {
+  calm:   { label: 'Calm', lvl: 1, help: 'Sober and measured. They concede easily and weigh things carefully.' },
+  lively: { label: 'Lively', lvl: 2, help: 'Real back-and-forth. They push back and have some fun with it.' },
+  heated: { label: 'Heated', lvl: 3, help: 'Blunt and passionate. They hold their ground longer, but never insult each other.' }
+};
+const TEMP_ORDER = ['calm', 'lively', 'heated'];
+const maxTemp = aud => aud === 'kids' ? 'lively' : 'heated';
+const heatMeter = t => `<span class="heat" title="Temperature: ${TEMP[t].label}" aria-hidden="true">${[1,2,3].map(i => `<i class="${i <= TEMP[t].lvl ? 'on h' + TEMP[t].lvl : ''}"></i>`).join('')}</span>`;
+const HEAT_LEADS = {
+  calm:   { A: "That's a fair concern, and it's worth taking slowly. ", B: "That's reasonable, and I'd add one careful point. " },
+  lively: { A: '', B: '' },
+  heated: { A: "I'm not giving that up so easily. ", B: "No, I don't buy that, and here's why. " }
+};
+
+/* ---------- mock scripts ---------- */
+const SCRIPT_4DAY = [
+ "Let's frame this as a question about output, not hours. A four-day week works when a team's results come from focused work that can be compressed, and it struggles where value depends on someone simply being available. So the practical question for an employer isn't whether it's good in general. It's which of our jobs are measured by outcomes and which are measured by coverage. That split, I think, predicts most of the success stories and most of the quiet reversals.",
+ "I like the outcomes-versus-coverage split, but I'd push on how clean it is. Most roles are a blend. A software engineer ships features, yet also answers incidents at 4 p.m. on a Friday. A nurse is almost pure coverage. The risk is that a four-day policy quietly becomes four long days plus an unofficial fifth on call. I'm unsure how often that happens, but it's the failure I'd look for first.",
+ "Here's a concrete version. Picture a twelve-person accounting firm outside tax season. They close Fridays but rotate one person each week to handle client calls, and that person takes Monday off instead. Output is tracked by files closed, not hours logged. The rotation answers your Friday-incident worry without pretending coverage disappears. It works because the firm can name its coverage needs precisely, a skill many teams have never had to practise.",
+ "That example works partly because it's small and seasonal, so let me test the assumptions. It assumes work expands to fill time, so compressing the week mostly removes slack. Sometimes true. But if the team is already at capacity, the same work now needs longer days, and fatigue can erase the gains. Then there's the customer side: if competitors answer on Fridays, does the firm lose clients? I don't know the size of that effect.",
+ "The strongest implication, I think, is that a four-day week forces an audit most organisations avoid: what does each meeting, report and approval actually produce? Teams that try it tend to cut recurring meetings first, because that's where time is easiest to recover. Even if a company returns to five days, that audit can be the lasting benefit. The schedule becomes a forcing function for deciding what work is worth doing at all.",
+ "What's being overlooked is who absorbs the friction. Salaried knowledge workers may gain a day. Hourly staff might lose pay if hours are cut, or gain exhausting ten-hour shifts. Managers often cover gaps informally. And small businesses with thin margins have less room to run a trial and recover from a bad one. So 'practical' depends heavily on whether the business can afford to be wrong for a quarter.",
+ "So here's where we agree: a four-day week is a design problem, not a perk. It needs explicit coverage plans, output measures people trust, and a time-boxed trial with a real exit. Where we're still uncertain: how much of the gain comes from the extra day itself versus the cleanup it forces, and whether results from early adopters, who chose to try it, carry over to firms that would adopt it reluctantly.",
+ "I'll close with the questions I'd want answered before trying it. Which roles are coverage roles, and who covers them? What single output measure would we watch, and what number would make us stop? How do hourly staff come out financially? The practical takeaway: run it as a three-month experiment on one team, measure before and after, and treat going back to five days as an acceptable result, not a failure."
+];
+const genericScript = topic => [
+ `Let me open with a framing. "${topic}" sounds like a yes-or-no question, but I think it's really about trade-offs between what people gain right away and what changes slowly underneath. I'd start by naming who benefits first, who pays first, and what would have to be true for the benefits to last. That gives us something firmer than general enthusiasm or general worry.`,
+ "That framing is useful, but I want to offer a different starting point. Instead of benefits and costs, I'd ask what the current situation is quietly doing well, because changes often break things nobody measured. If we can't describe what works today, we can't tell whether a new approach is an improvement or just a change. I'm not certain which framing serves us better, so let's test both.",
+ "Then let me make it concrete with a small example. Imagine one place and one group of people trying the change for a single season. In the first week they'd notice the novelty and the friction. By the second month, routines settle and the real effects show up: some tasks get easier, and some get pushed onto someone else. Small trials like that are where honest evidence usually comes from.",
+ "I'd test the assumption in that example, though. A small trial attracts people who already want it to work, so early results tend to look better than a wider rollout would. I'd also ask what happens at the edges: the person with less money, less time, or less say in the decision. If the change only works for the motivated middle, that's worth knowing before scaling it.",
+ "Fair. Here's the strongest implication I see: the most valuable outcome may not be the change itself but what it forces people to clarify. To decide well, everyone involved has to say what they value and what they'd give up. Even if the answer is to keep things mostly as they are, that conversation leaves people with clearer priorities than they had before.",
+ "The limitation we haven't covered is time. Many effects arrive slowly, after habits, prices or expectations adjust, and short trials miss them. There's also the cost of being wrong: some decisions are easy to reverse, others aren't. I'd treat anything that's hard to undo with far more caution than something you can quietly roll back after a few months.",
+ "So here's our common ground: the question deserves a trial mindset rather than a verdict, and we should name who bears the costs. What remains uncertain is how well small, voluntary experiments predict wider adoption, and which effects only appear over years. I'm comfortable saying the answer differs by context. I'm less comfortable claiming we know where the line falls.",
+ "I'll close with the open questions. What would a fair test look like, and who would design it? What result would change our minds? Who isn't in the room when the decision gets made? Practically: start small, measure something specific before and after, protect the people at the edges, and prefer choices you can reverse while the evidence is still thin."
+];
+const branchScript = (dir, n, other) => [
+ `Let's follow the new direction: ${dir}. Starting from what ${other} said in turn ${n}, the first thing that changes is who the decision affects most. I'd want to know what those people would need to see before they trusted it, because that tells us where to look first.`,
+ `I'd be careful here. Shifting toward "${dir}" raises different risks from the ones we were weighing, mostly about who carries the cost if it goes wrong. Before we get excited, what evidence would we accept, and what would make us drop the idea?`,
+ `A concrete case helps. If someone tried "${dir}" in one small setting for a few months, I'd expect early friction, then a clearer picture of what's worth keeping. The useful part is that it's small enough to stop without much damage.`,
+ `To close this branch: "${dir}" is worth exploring, but it leaves open questions about scale and fairness. The practical step is a small, reversible trial with one measure agreed in advance, and an honest look at who was left out of the test.`
+];
+const cuePrefix = (cue, conv) => {
+  if (cue.kind === 'temp') return '';
+  if (cue.kind === 'challenge') return `The listener pushes back: "${cue.text}" That's a fair objection, so let me take it head on before going further. `;
+  const t = conv.turns.find(x => x.seq === cue.targetSeq);
+  const nm = t ? conv.speakers[t.speaker].name : 'the other speaker';
+  return `Let me go deeper on ${nm}'s point from turn ${cue.targetSeq} instead of moving on, because it holds more than we took from it. `;
+};
+
+/* ---------- Topic Scout (sample data; the real Scout fills this daily) ---------- */
+const SCOUT = [
+  { id: 's1', q: 'Should downtowns go car-free on weekends?', split: 54, sources: ['r/urbanplanning', 'Hacker News'],
+    bullets: ['A mid-sized city is trialling weekend closures of its main street to cars.', 'Shop owners are split between more foot traffic and lost parking.', 'The trial ends after one summer, followed by a council vote.'] },
+  { id: 's2', q: 'Is a mandatory service fee better than tipping?', split: 49, sources: ['r/KitchenConfidential', 'RSS: food news'],
+    bullets: ['Several restaurants replaced tipping with a fixed service charge on every bill.', 'Some diners say prices now feel hidden; some staff say pay is steadier.', 'Rules on how the fee must be shown differ by city.'] },
+  { id: 's3', q: 'Do AI coding tools make junior developers better or worse?', split: 57, sources: ['Hacker News', 'r/programming'],
+    bullets: ['A widely shared post argued new developers learn less when tools write code for them.', 'Replies cite faster onboarding and fewer blocked days.', 'Few studies so far separate short-term output from long-term skill.'] },
+  { id: 's4', q: 'Should pro golf limit how far the ball flies?', split: 61, sources: ['Wikipedia most-read', 'r/golf'],
+    bullets: ['Drive distances at the top level keep rising, and some classic courses feel too short.', 'Supporters say limits protect course design; critics say amateurs lose out.', 'Any change would take years to phase in.'] }
+];
+const splitLabel = s => Math.abs(s - 50) <= 6 ? 'Sharply divided' : Math.abs(s - 50) <= 12 ? 'Divided' : 'Leaning one way';
+
+/* ---------- the Artist ---------- */
+const ARTIST = { name: 'Iris', role: 'the Artist', model: 'mock/iris-v1' };
+const firstSentence = s => { const m = s.match(/^.*?[.?!](\s|$)/); let f = (m ? m[0] : s).trim(); const w = f.split(' '); return w.length > 22 ? w.slice(0, 20).join(' ') + '…' : f; };
+function pickMoment(conv) {
+  const own = conv.turns.filter(t => t.status === 'completed' && !t.inherited);
+  const cued = conv.cues.find(c => c.status === 'applied' && c.kind === 'challenge') || conv.cues.find(c => c.status === 'applied');
+  if (cued) return cued.appliedSeq;
+  if (conv.parentId) return (own[1] || own[0]).seq;
+  return 6;
+}
+function mockArtist(conv) {
+  const seq = pickMoment(conv), t = conv.turns.find(x => x.seq === seq), sp = conv.speakers;
+  const who = sp[t.speaker].name;
+  const is4 = scriptFor(conv) === SCRIPT_4DAY;
+  const cue = conv.cues.find(c => c.status === 'applied' && c.appliedSeq === seq);
+  let perspective;
+  if (conv.parentId) {
+    perspective = `Moving the talk toward ${conv.direction.toLowerCase()} made it more concrete, and I liked that ${sp.B.name} slowed things down by asking what evidence would count. I wanted one voice from someone who actually works there, not only the owner's view. I drew the moment the idea met the ground. My question for you: if you ran this for one month, what is the single number you would watch?`;
+  } else if (is4) {
+    perspective = `What stayed with me was ${who}'s question about who absorbs the friction. ${sp.A.name} kept the idea hopeful, but the talk only got honest once hourly workers came into it${cue ? ', and that happened because you pushed' : ''}. I wish they had spent a turn on the customers who call on Fridays; nobody spoke for them. I drew the empty Friday, because that is the whole bet. My question for you: in your own work, which hours are output and which are just being there?`;
+  } else {
+    perspective = `What stayed with me was how quickly ${sp.A.name} and ${sp.B.name} moved from yes-or-no to trade-offs.${cue ? ` Your cue before turn ${seq} made it sharper.` : ''} The moment I kept replaying was turn ${seq}, where ${who} named something neither had said before. I wish they had heard from someone who would lose out if this went wrong. I drew that turn the way I pictured it. My question for you: what would change your mind?`;
+  }
+  let said = t.text;
+  conv.cues.filter(c => c.status === 'applied' && c.appliedSeq === seq).forEach(c => { const p = cuePrefix(c, conv); if (said.startsWith(p)) said = said.slice(p.length); });
+  return { state: 'done', perspective, momentSeq: seq, caption: firstSentence(said), scene: sceneFor(conv), imagePrompt: `Editorial illustration of: ${firstSentence(said)}`, model: ARTIST.model, v: (conv.artist?.v || 0) + 1 };
+}
+async function runArtist(conv) {
+  if (conv.artist?.state === 'listening') return;
+  const v = conv.artist?.v || 0;
+  conv.artist = { state: 'listening', v }; render();
+  await sleep(S.sim.fast ? 300 : 1600);
+  if (!byId(conv.id)) return;
+  S.requests++; updateBudget();
+  conv.artist = mockArtist(conv); render();
+}
+
+/* Iris's sketches. In the app the Artist model returns SVG that the server checks; here they are hand-drawn stand-ins. */
+function sceneFor(conv) {
+  const s = `${conv.direction || ''} ${conv.topic}`.toLowerCase();
+  if (/golf/.test(s)) return 'golf';
+  if (/restaurant|tip|service fee|food|retail/.test(s)) return 'food';
+  if (/work ?week|four-day|workday/.test(s)) return 'week';
+  if (/car|pedestrian|downtown|street|cit(y|ies)/.test(s)) return 'city';
+  if (/business|shop|store/.test(s)) return 'shop';
+  if (/\bai\b|coding|developer|software/.test(s)) return 'code';
+  return 'table';
+}
+const ink = c => `style="stroke:var(--${c})"`;
+const SCENES = {
+  week: () => `
+    <rect x="120" y="70" width="360" height="230" rx="10" ${ink('text')} opacity=".7"/>
+    <line x1="120" y1="110" x2="480" y2="110" ${ink('text')} opacity=".5"/>
+    <circle cx="160" cy="58" r="6" ${ink('text')}/><circle cx="440" cy="58" r="6" ${ink('text')}/>
+    ${[0,1,2,3].map(i => `<rect x="${136 + i * 66}" y="128" width="54" height="152" rx="6" ${ink(i % 2 ? 'b' : 'a')} opacity=".85"/>${[0,1,2,3,4].map(j => `<line x1="${146 + i * 66}" y1="${150 + j * 24}" x2="${180 + i * 66 - (j % 2) * 10}" y2="${150 + j * 24}" ${ink(i % 2 ? 'b' : 'a')} opacity=".6"/>`).join('')}`).join('')}
+    <rect x="400" y="128" width="64" height="152" rx="6" ${ink('cue')} stroke-dasharray="5 6"/>
+    <circle cx="432" cy="190" r="16" ${ink('cue')}/>
+    ${[0,45,90,135,180,225,270,315].map(a => `<line x1="${432 + Math.cos(a * Math.PI / 180) * 22}" y1="${190 + Math.sin(a * Math.PI / 180) * 22}" x2="${432 + Math.cos(a * Math.PI / 180) * 30}" y2="${190 + Math.sin(a * Math.PI / 180) * 30}" ${ink('cue')}/>`).join('')}
+    <path d="M414 244 q18 14 36 0" ${ink('iris')}/>`,
+  golf: () => `
+    <path d="M40 300 C160 230 300 250 380 270 S520 300 560 290" ${ink('b')}/>
+    <path d="M60 318 C200 280 380 300 560 312" ${ink('b')} opacity=".5"/>
+    <line x1="430" y1="272" x2="430" y2="120" ${ink('text')}/>
+    <path d="M430 120 L486 138 L430 156" ${ink('a')}/>
+    <ellipse cx="430" cy="276" rx="14" ry="4" ${ink('text')} opacity=".6"/>
+    <path d="M110 286 Q260 40 520 160" ${ink('cue')} stroke-dasharray="3 9"/>
+    <circle cx="110" cy="280" r="7" ${ink('text')}/>
+    <path d="M520 160 l18 -6 M520 160 l12 14" ${ink('iris')}/>`,
+  city: () => `
+    <path d="M300 90 L80 320 M300 90 L520 320" ${ink('text')} opacity=".6"/>
+    <path d="M300 120 L300 150 M300 180 L300 220 M300 250 L300 300" ${ink('cue')} stroke-dasharray="1 0"/>
+    <rect x="190" y="230" width="70" height="38" rx="10" ${ink('a')} opacity=".55"/>
+    <circle cx="205" cy="270" r="7" ${ink('a')} opacity=".55"/><circle cx="246" cy="270" r="7" ${ink('a')} opacity=".55"/>
+    ${[[360,210],[392,240],[426,200]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="8" ${ink('b')}/><path d="M${x} ${y + 8} v26 m0 -16 l-12 8 m12 -8 l12 8 m-12 16 l-10 18 m10 -18 l10 18" ${ink('b')}/>`).join('')}
+    <path d="M60 140 q20 -40 40 0 z M80 140 v40 M500 130 q22 -44 44 0 z M522 130 v44" ${ink('iris')}/>`,
+  food: () => `
+    <ellipse cx="300" cy="240" rx="230" ry="46" ${ink('text')} opacity=".5"/>
+    <ellipse cx="260" cy="214" rx="86" ry="26" ${ink('text')}/>
+    <ellipse cx="260" cy="210" rx="52" ry="14" ${ink('a')}/>
+    <path d="M150 196 v40 M142 196 v14 q8 8 16 0 v-14 M370 196 v40 M370 196 q14 10 0 24" ${ink('text')} opacity=".8"/>
+    <rect x="410" y="120" width="70" height="100" rx="4" ${ink('b')}/>
+    ${[0,1,2,3].map(j => `<line x1="422" y1="${140 + j * 16}" x2="${466 - (j % 2) * 14}" y2="${140 + j * 16}" ${ink('b')} opacity=".7"/>`).join('')}
+    <path d="M422 204 h44" ${ink('cue')}/><circle cx="476" cy="96" r="12" ${ink('cue')}/><path d="M476 90 v12 M470 96 h12" ${ink('cue')}/>`,
+  shop: () => `
+    <rect x="140" y="130" width="320" height="170" ${ink('text')} opacity=".7"/>
+    <path d="M130 130 L470 130 L450 90 L150 90 Z" ${ink('a')}/>
+    ${[0,1,2,3,4,5,6].map(i => `<line x1="${170 + i * 44}" y1="90" x2="${165 + i * 44}" y2="130" ${ink('a')} opacity=".6"/>`).join('')}
+    <rect x="180" y="170" width="120" height="80" ${ink('b')}/><rect x="340" y="170" width="70" height="130" ${ink('text')} opacity=".7"/>
+    <circle cx="398" cy="238" r="4" ${ink('text')}/>
+    <path d="M200 230 l20 -24 l18 16 l26 -34" ${ink('cue')}/>
+    <path d="M480 70 l8 16 l16 4 l-16 4 l-8 16 l-8 -16 l-16 -4 l16 -4 z" ${ink('iris')}/>`,
+  code: () => `
+    <rect x="150" y="80" width="300" height="180" rx="10" ${ink('text')} opacity=".75"/>
+    <path d="M110 280 h380 l-30 -20 h-320 z" ${ink('text')} opacity=".6"/>
+    ${[0,1,2,3,4,5].map(j => `<line x1="${176 + (j % 3) * 16}" y1="${108 + j * 24}" x2="${300 + (j * 37) % 110}" y2="${108 + j * 24}" ${ink(j % 2 ? 'b' : 'a')}/>`).join('')}
+    <circle cx="520" cy="150" r="14" ${ink('iris')}/><path d="M520 164 v44 m0 -30 l-18 12 m18 -12 l18 12 m-18 18 l-14 26 m14 -26 l14 26" ${ink('iris')}/>
+    <path d="M470 100 l6 12 l12 4 l-12 4 l-6 12 l-6 -12 l-12 -4 l12 -4 z" ${ink('cue')}/>`,
+  table: () => `
+    <ellipse cx="300" cy="230" rx="150" ry="34" ${ink('text')} opacity=".7"/>
+    <path d="M300 264 v50 M260 318 h80" ${ink('text')} opacity=".6"/>
+    <path d="M100 150 v130 M100 210 h60 v70" ${ink('a')}/><path d="M500 150 v130 M500 210 h-60 v70" ${ink('b')}/>
+    <path d="M150 140 q40 -40 90 -20" ${ink('a')}/><path d="M450 140 q-40 -40 -90 -20" ${ink('b')}/>
+    <path d="M300 120 l7 14 l14 4 l-14 4 l-7 14 l-7 -14 l-14 -4 l14 -4 z" ${ink('cue')}/>`
+};
+function sketch(conv, cls = 'sketch') {
+  const sc = conv.artist?.scene || sceneFor(conv);
+  return `<svg class="${cls}" viewBox="0 0 600 360" role="img" aria-label="Iris's sketch for this discussion"><rect width="600" height="360" style="fill:#0f1013"/><g fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">${SCENES[sc]()}</g></svg>`;
+}
+function artistCard(conv) {
+  const a = conv.artist;
+  const head = `<div class="artist-head"><span class="flag C" aria-hidden="true">I</span><span class="nm">${ARTIST.name}, ${ARTIST.role}</span><span class="tag">${ARTIST.model} · 1 request</span></div>`;
+  if (a.state === 'listening') return `<section class="artist" aria-live="polite">${head}<div class="listening"><span class="bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span>${ARTIST.name} is listening back and sketching…</div></section>`;
+  const sp = conv.speakers[speakerFor(a.momentSeq)];
+  return `<section class="artist" aria-label="Iris's perspective">${head}
+    <div class="artist-grid">
+      <figure class="art">${sketch(conv)}<figcaption>Sketch of turn ${a.momentSeq} · free, drawn as line art</figcaption></figure>
+      <div class="artist-body">
+        <span class="tag">As a listener</span>
+        <p class="persp">${esc(a.perspective)}</p>
+        <blockquote class="moment">“${esc(a.caption)}”<cite>The moment she drew · ${esc(sp.name)}, turn ${a.momentSeq}</cite></blockquote>
+        <div class="dock-row">
+          <button class="btn sm" data-jump="${a.momentSeq}">Go to turn ${a.momentSeq}</button>
+          <button class="btn sm ghost" data-reartist="1">Ask ${ARTIST.name} again</button>
+        </div>
+        <p class="hint">Her sketch and perspective come from one free model call. Painted images are on the later list.</p>
+      </div>
+    </div></section>`;
+}
+
+/* ---------- state ---------- */
+const defaultSpeakers = () => ({
+  A: { name: 'Wren', lens: 'Imaginative, practical, looks for opportunities', model: 'mock/wren-v1' },
+  B: { name: 'Hale', lens: 'Analytical, skeptical, watches for constraints', model: 'mock/hale-v1' }
+});
+const S = {
+  route: 'create',
+  convs: [],
+  currentId: null,
+  draft: { topic: PRESETS[2], mode: 'explore', speakers: defaultSpeakers(), brief: null, audience: 'general', temp: 'lively' },
+  autopilot: false, briefOpen: false,
+  tab: 'cue',
+  panelOpen: false,
+  openMenu: null,
+  confirmDelete: null,
+  renaming: null,
+  activeRun: null,
+  audio: { state: 'idle', seq: null, token: 0 },
+  prefs: Object.assign({ voiceA: '', voiceB: '', rate: 1 }, store.get('ct.prefs', {})),
+  sim: { fail: false, fast: false },
+  requests: 0
+};
+const cur = () => S.convs.find(c => c.id === S.currentId) || null;
+const byId = id => S.convs.find(c => c.id === id);
+const scriptFor = conv => conv.topic.trim().toLowerCase() === PRESETS[2].toLowerCase() ? SCRIPT_4DAY : genericScript(conv.topic.trim());
+const finalSeq = conv => conv.parentId ? conv.branchSeq + BRANCH_TURNS : MAX_TURNS;
+const lastSeq = conv => conv.turns.filter(t => t.status === 'completed').reduce((m, t) => Math.max(m, t.seq), 0);
+const speakerFor = seq => seq % 2 === 1 ? 'A' : 'B';
+const jobFor = (conv, seq) => conv.parentId && seq > conv.branchSeq ? BRANCH_JOBS[seq - conv.branchSeq - 1] : JOBS[seq - 1] || 'Continue';
+const children = conv => S.convs.filter(c => c.parentId === conv.id);
+const rootOf = conv => { let c = conv; while (c.parentId && byId(c.parentId)) c = byId(c.parentId); return c; };
+
+function newConv({ topic, mode, speakers, parent = null, branchSeq = null, direction = null, brief = null, audience = 'general', temp = 'lively' }) {
+  const now = Date.now();
+  return {
+    id: uid(), title: parent ? `${parent.title.replace(/[?.!]+$/, '')}: ${direction}` : topic, topic, mode,
+    createdAt: now, updatedAt: now,
+    parentId: parent ? parent.id : null, branchSeq, direction,
+    speakers: JSON.parse(JSON.stringify(speakers)),
+    turns: parent ? parent.turns.filter(t => t.seq <= branchSeq && t.status === 'completed').map(t => ({ ...t, inherited: true })) : [],
+    cues: [], artist: null, brief: parent ? parent.brief : brief,
+    audience: parent ? parent.audience : audience, temp: parent ? parent.temp : temp,
+    run: { state: parent ? 'paused' : 'idle', reason: parent ? 'ready' : null, pauseReq: false, token: 0 }
+  };
+}
+function textFor(conv, seq, applied) {
+  let base;
+  if (conv.parentId && seq > conv.branchSeq) {
+    const i = seq - conv.branchSeq - 1;
+    const bt = conv.turns.find(t => t.seq === conv.branchSeq);
+    const other = bt ? conv.speakers[bt.speaker].name : 'the other speaker';
+    base = branchScript(conv.direction, conv.branchSeq, other)[i];
+  } else base = scriptFor(conv)[seq - 1];
+  return applied.map(c => cuePrefix(c, conv)).join('') + (seq > 1 ? HEAT_LEADS[conv.temp][speakerFor(seq)] : '') + base;
+}
+const save = () => store.set('ct.prefs', S.prefs);
+
+/* ---------- run engine (mirrors the server controller) ---------- */
+const ALLOWED = {
+  idle: ['generating'], generating: ['paused','completed','cancelled','failed'],
+  paused: ['generating','cancelled'], failed: ['generating','cancelled'], completed: [], cancelled: []
+};
+function setState(conv, next, reason = null) {
+  if (!ALLOWED[conv.run.state].includes(next)) { console.warn('blocked', conv.run.state, '→', next); return false; }
+  conv.run.state = next; conv.run.reason = reason; conv.updatedAt = Date.now();
+  if (next !== 'generating' && S.activeRun === conv.id) S.activeRun = null;
+  return true;
+}
+async function start(conv) {
+  if (S.activeRun && S.activeRun !== conv.id) { toast('Another discussion is generating. Pause or stop it first.'); return; }
+  if (S.requests >= DAILY_LIMIT) { toast('Daily request limit reached.'); return; }
+  if (!setState(conv, 'generating')) return;
+  S.activeRun = conv.id; conv.run.pauseReq = false; render();
+  const token = ++conv.run.token;
+  while (conv.run.state === 'generating' && conv.run.token === token) {
+    const seq = lastSeq(conv) + 1;
+    if (seq > finalSeq(conv)) { setState(conv, 'completed'); render(); runArtist(conv); return; }
+    if (conv.run.pauseReq) { conv.run.pauseReq = false; setState(conv, 'paused', 'by you'); break; }
+    const ok = await genTurn(conv, seq, token);
+    if (!ok) break;
+  }
+  render();
+}
+async function genTurn(conv, seq, token) {
+  const applied = conv.cues.filter(c => c.status === 'queued');
+  applied.forEach(c => { c.status = 'applied'; c.appliedSeq = seq; if (c.kind === 'temp') conv.temp = c.to; });
+  conv.turns = conv.turns.filter(t => !(t.seq === seq && t.status !== 'completed'));
+  const t = { id: uid(), seq, speaker: speakerFor(seq), model: conv.speakers[speakerFor(seq)].model, job: jobFor(conv, seq), text: '', status: 'streaming', cueIds: applied.map(c => c.id), createdAt: Date.now() };
+  conv.turns.push(t); conv.turns.sort((a, b) => a.seq - b.seq);
+  render(); scrollToTurn(seq);
+  const fast = S.sim.fast;
+  await sleep(fast ? 150 : 650);
+  if (conv.run.token !== token) return false;
+  S.requests++; updateBudget();
+  const words = textFor(conv, seq, applied).split(' ');
+  const failHere = S.sim.fail && !conv.failedOnce && seq === Math.min(5, finalSeq(conv));
+  for (let i = 0; i < words.length; i++) {
+    if (conv.run.token !== token) { conv.turns = conv.turns.filter(x => x !== t); applied.forEach(c => { c.status = 'queued'; delete c.appliedSeq; if (c.kind === 'temp') conv.temp = c.from; }); render(); return false; }
+    if (failHere && i === Math.floor(words.length / 2)) {
+      conv.failedOnce = true; S.requests++; updateBudget();
+      t.status = 'failed'; t.text = '';
+      t.error = 'Provider timed out after 1 retry (simulated). Earlier turns are saved.';
+      applied.forEach(c => { c.status = 'queued'; delete c.appliedSeq; if (c.kind === 'temp') conv.temp = c.from; });
+      setState(conv, 'failed', 'turn ' + seq); render(); return false;
+    }
+    t.text += (i ? ' ' : '') + words[i];
+    const el = document.getElementById('say-' + t.id);
+    if (el) el.innerHTML = esc(t.text) + '<span class="caret" aria-hidden="true"></span>';
+    await sleep(fast ? 8 : 26 + Math.random() * 40);
+  }
+  t.status = 'completed'; conv.updatedAt = Date.now();
+  render();
+  return true;
+}
+function pause(conv) { conv.run.pauseReq = true; render(); }
+function stop(conv) {
+  conv.run.token++;
+  conv.turns = conv.turns.filter(t => t.status === 'completed');
+  setState(conv, 'cancelled', 'by you'); render();
+}
+function retry(conv) {
+  conv.turns = conv.turns.filter(t => t.status === 'completed');
+  start(conv);
+}
+
+/* ---------- interventions & branches ---------- */
+const cueCount = conv => conv.cues.filter(c => c.status !== 'cancelled').length;
+function queueCue(conv, cue) {
+  if (cueCount(conv) >= CUE_LIMIT) { toast(`You've used all ${CUE_LIMIT} cues for this run.`); return false; }
+  const busy = conv.turns.some(t => t.status === 'streaming');
+  cue.id = uid(); cue.status = 'queued'; cue.landsBefore = lastSeq(conv) + 1 + (busy ? 1 : 0);
+  if (cue.landsBefore > finalSeq(conv)) { toast('No turns left to take this cue.'); return false; }
+  conv.cues.push(cue); render();
+  toast(`Cue queued. It lands before turn ${cue.landsBefore}.`);
+  return true;
+}
+function branch(conv, seq, direction) {
+  const child = newConv({ topic: conv.topic, mode: conv.mode, speakers: conv.speakers, parent: conv, branchSeq: seq, direction });
+  S.convs.push(child); stopAudio(); S.currentId = child.id; S.openMenu = null; render();
+  toast('Branch created. The original is unchanged.');
+}
+
+/* ---------- speech (browser only) ---------- */
+const synth = 'speechSynthesis' in window ? window.speechSynthesis : null;
+let voices = [];
+function loadVoices() { if (!synth) return; voices = synth.getVoices(); if (S.route === 'studio' || S.route === 'settings') render(); }
+if (synth) { loadVoices(); synth.onvoiceschanged = loadVoices; }
+function voiceFor(sp) {
+  const name = sp === 'A' ? S.prefs.voiceA : S.prefs.voiceB;
+  const en = voices.filter(v => /^en/i.test(v.lang));
+  return voices.find(v => v.name === name) || (sp === 'A' ? en[0] : en[1] || en[0]) || voices[0] || null;
+}
+function speak(text, sp, onend) {
+  const u = new SpeechSynthesisUtterance(text);
+  const v = voiceFor(sp); if (v) u.voice = v;
+  u.rate = S.prefs.rate; u.onend = onend; u.onerror = onend; synth.speak(u);
+}
+function playFrom(conv, seq) {
+  if (!synth) { toast('Speech is not available in this browser. The transcript stays readable.'); return; }
+  synth.cancel(); const token = ++S.audio.token;
+  const list = conv.turns.filter(t => t.status === 'completed' && t.seq >= seq);
+  const next = i => {
+    if (token !== S.audio.token) return;
+    if (i >= list.length) { S.audio.state = 'idle'; S.audio.seq = null; render(); return; }
+    S.audio.state = 'speaking'; S.audio.seq = list[i].seq; S.audio.conv = conv.id; render();
+    speak(list[i].text, list[i].speaker, () => next(i + 1));
+  };
+  next(0);
+}
+function pauseAudio() { if (synth) { synth.pause(); S.audio.state = 'paused'; render(); } }
+function resumeAudio() { if (synth) { synth.resume(); S.audio.state = 'speaking'; render(); } }
+function stopAudio() { S.audio.token++; if (synth) synth.cancel(); S.audio.state = 'idle'; S.audio.seq = null; }
+
+/* ---------- export ---------- */
+function exportJSON(conv) {
+  return JSON.stringify({
+    schemaVersion: 1, exportedAt: new Date().toISOString(),
+    conversation: { id: conv.id, title: conv.title, topic: conv.topic, mode: conv.mode, audience: conv.audience, temperature: conv.temp, createdAt: new Date(conv.createdAt).toISOString(), status: conv.run.state,
+      parentId: conv.parentId, branchPointSeq: conv.branchSeq, branchDirection: conv.direction },
+    speakers: conv.speakers,
+    brief: conv.brief ? { points: conv.brief.bullets, sources: conv.brief.sources, madeByAutopilot: !!conv.autopilot } : null,
+    turns: conv.turns.filter(t => t.status === 'completed').map(t => ({ seq: t.seq, speaker: t.speaker, modelId: t.model, objective: t.job, text: t.text, inheritedFromParent: !!t.inherited })),
+    interventions: conv.cues.map(c => ({ kind: c.kind, text: c.text || null, targetSeq: c.targetSeq || null, appliedBeforeSeq: c.appliedSeq || null, status: c.status })),
+    artistNotes: conv.artist?.state === 'done' ? { modelId: conv.artist.model, perspective: conv.artist.perspective, momentSeq: conv.artist.momentSeq, caption: conv.artist.caption, sketch: conv.artist.scene, imagePrompt: conv.artist.imagePrompt, renderedImage: null } : null,
+    notice: 'AI-generated; not independently verified. Mock mode: scripted text.'
+  }, null, 2);
+}
+function exportMD(conv) {
+  const sp = conv.speakers;
+  let md = `# ${conv.title}\n\n**Topic:** ${conv.topic}  \n**Mode:** ${MODES[conv.mode].label} · ${AUD[conv.audience].label} · ${TEMP[conv.temp].label}  \n**Speakers:** ${sp.A.name} (${sp.A.model}) and ${sp.B.name} (${sp.B.model})  \n`;
+  if (conv.parentId) md += `**Branch:** from turn ${conv.branchSeq} of "${byId(conv.parentId)?.title || 'deleted conversation'}". Direction: ${conv.direction}  \n`;
+  md += `\n> AI-generated; not independently verified.\n\n`;
+  conv.turns.filter(t => t.status === 'completed').forEach(t => {
+    conv.cues.filter(c => c.appliedSeq === t.seq).forEach(c => md += `> **Listener cue (${c.kind === 'challenge' ? 'Challenge' : 'Go deeper on turn ' + c.targetSeq}):** ${c.text || ''}\n\n`);
+    md += `### Turn ${t.seq} · ${sp[t.speaker].name} · ${t.job}\n\n${t.text}\n\n`;
+  });
+  const a = conv.artist;
+  if (a?.state === 'done') md += `---\n\n## ${ARTIST.name}'s perspective (${a.model})\n\n${a.perspective}\n\n> “${a.caption}” (turn ${a.momentSeq}, the moment she drew)\n`;
+  return md;
+}
+
+/* ---------- views ---------- */
+function render() {
+  document.querySelectorAll('nav button').forEach(b => b.setAttribute('aria-current', b.dataset.route === S.route ? 'page' : 'false'));
+  updateBudget();
+  const app = $('#app');
+  app.innerHTML = { create: viewCreate, studio: viewStudio, library: viewLibrary, settings: viewSettings }[S.route]();
+}
+function updateBudget() { $('#budget').textContent = `App limit ${S.requests} / ${DAILY_LIMIT} today`; }
+
+function viewCreate() {
+  const d = S.draft;
+  const busy = S.activeRun && byId(S.activeRun);
+  const seat = (k) => `
+    <section class="seat ${k}" aria-label="Speaker ${k}">
+      <div class="seat-head"><span class="flag ${k}" aria-hidden="true">${k}</span><span class="tag">Speaker ${k} · ${k === 'A' ? 'left seat' : 'right seat'}</span></div>
+      <label class="fld"><span class="tag">Name</span><input type="text" id="name-${k}" maxlength="20" value="${esc(d.speakers[k].name)}"></label>
+      <p class="lens">${esc(d.speakers[k].lens)}</p>
+      <div><div class="tag" style="margin-bottom:5px">Model</div><div class="model">${esc(d.speakers[k].model)}</div></div>
+    </section>`;
+  return `
+  <div class="create">
+    <div class="hero">
+      <div class="tag">New discussion · 8 turns</div>
+      <h1>Choose a topic. Hear two AI minds explore it.</h1>
+      <p>Then challenge their ideas, ask them to go deeper, or branch the conversation from any turn.</p>
+    </div>
+    ${todayTray()}
+    <div class="topic-box">
+      <label class="tag" for="topic">Topic</label>
+      <textarea id="topic" maxlength="200" placeholder="Ask a question worth two perspectives">${esc(d.topic)}</textarea>
+      ${d.brief ? briefBox(d.brief) : ''}
+      <div class="chips" role="group" aria-label="Preset topics">
+        ${PRESETS.map((p, i) => `<button class="chip" data-preset="${i}" aria-pressed="${d.topic === p}">${esc(p)}</button>`).join('')}
+      </div>
+    </div>
+    <div>
+      <div class="tag" style="margin-bottom:8px">Mode</div>
+      <div class="seg" role="group" aria-label="Mode">
+        ${Object.entries(MODES).map(([k, m]) => `<button data-mode="${k}" aria-pressed="${d.mode === k}">${m.label}</button>`).join('')}
+      </div>
+      <p class="mode-help">${MODES[d.mode].help}</p>
+    </div>
+    <div class="dials">
+      <div>
+        <div class="tag" style="margin-bottom:8px">Audience</div>
+        <div class="seg" role="group" aria-label="Audience">${Object.entries(AUD).map(([k, a]) => `<button data-aud="${k}" aria-pressed="${d.audience === k}">${a.label}</button>`).join('')}</div>
+        <p class="mode-help">${AUD[d.audience].help}</p>
+      </div>
+      <div>
+        <div class="tag" style="margin-bottom:8px">Temperature ${heatMeter(d.temp)}</div>
+        <div class="seg" role="group" aria-label="Temperature">${TEMP_ORDER.map(k => `<button data-temp="${k}" aria-pressed="${d.temp === k}" ${TEMP_ORDER.indexOf(k) > TEMP_ORDER.indexOf(maxTemp(d.audience)) ? 'disabled title="Not available for Kids"' : ''}>${TEMP[k].label}</button>`).join('')}</div>
+        <p class="mode-help">${TEMP[d.temp].help} You can turn it up or down mid-discussion.</p>
+      </div>
+    </div>
+    <p class="hint">Political topics are fine when you choose them: both speakers must represent each side fairly and never tell you what to believe. The Scout never picks them for you. In mock mode the scripted text only hints at these settings; real models follow them fully.</p>
+    <div>
+      <div class="tag" style="margin-bottom:8px">At the table</div>
+      <div class="facing">${seat('A')}<div class="table-gap" aria-hidden="true"><span class="tag">across the table</span></div>${seat('B')}</div>
+    </div>
+    <div class="booth-note"><span class="flag C" aria-hidden="true">I</span><span><b>${ARTIST.name}, ${ARTIST.role},</b> listens from the booth. When the discussion ends, she shares her perspective as a listener and sketches the moment that stayed with her.</span></div>
+    <div class="start-row">
+      <button class="btn primary" id="startBtn" ${d.topic.trim() && !busy ? '' : 'disabled'}>Start discussion</button>
+      <span class="meta">${busy ? `"${esc(busy.title)}" is still generating. Pause or stop it first.` : 'Uses up to 9 requests in real mode (8 turns + the Artist).'}</span>
+    </div>
+    ${footer()}
+  </div>`;
+}
+
+function todayTray() {
+  const picks = [...SCOUT].sort((a, b) => Math.abs(a.split - 50) - Math.abs(b.split - 50));
+  return `<section class="today" aria-label="Today's topics">
+    <div class="today-head">
+      <div><span class="tag">Today · from the Scout · sample topics</span><h2>What people are arguing about</h2></div>
+      <label class="switch"><input type="checkbox" id="autopilot" ${S.autopilot ? 'checked' : ''}> Autopilot</label>
+    </div>
+    <p class="hint">Ranked by how divided people are. Next Scout run: tomorrow at 7:00 AM. ${S.autopilot ? 'Autopilot will run the top pick in Friendly Debate, with Iris, using about 11 requests.' : 'Turn on Autopilot to have the top pick ready as an episode each morning.'}</p>
+    <div class="tray">${picks.map(t => `
+      <article class="topic-card ${S.draft.brief?.id === t.id ? 'sel' : ''}">
+        <div class="split"><span class="sbar" aria-hidden="true"><i style="width:${t.split}%"></i></span><span class="tag">${splitLabel(t.split)} · ${t.split}–${100 - t.split}</span></div>
+        <h3>${esc(t.q)}</h3>
+        <div class="srcs">${t.sources.map(s => `<span class="src">${esc(s)}</span>`).join('')}</div>
+        <details class="brief"><summary>Brief · ${t.bullets.length} points</summary><ul>${t.bullets.map(b => `<li>${esc(b)}</li>`).join('')}</ul></details>
+        <button class="btn sm" data-scout="${t.id}">${S.draft.brief?.id === t.id ? 'Selected' : 'Discuss this'}</button>
+      </article>`).join('')}</div>
+    ${S.autopilot ? `<div class="dock-row"><button class="btn sm" data-act="autorun" ${S.activeRun ? 'disabled' : ''}>Run Autopilot now (demo)</button><span class="hint">In the app this happens at 7:00 AM without you.</span></div>` : ''}
+  </section>`;
+}
+function briefBox(b) {
+  return `<div class="brief-box"><span class="tag" style="color:var(--cue)">Today's brief · the speakers treat only this as fact</span><ul>${b.bullets.map(x => `<li>${esc(x)}</li>`).join('')}</ul><div class="srcs">${b.sources.map(s => `<span class="src">${esc(s)}</span>`).join('')}<span class="src">sample sources</span></div></div>`;
+}
+function footer(conv) {
+  if (conv?.brief) return `<div class="notice"><span>Brief from the listed sources; discussion AI-generated, not verified.</span><span>Prototype in mock mode: sample topic and scripted text.</span></div>`;
+  return `<div class="notice"><span>AI-generated; not independently verified.</span><span>Prototype in mock mode: all speech is scripted sample text.</span></div>`;
+}
+
+function viewStudio() {
+  const conv = cur();
+  if (!conv) return `<div class="empty-stage"><p>No discussion open.</p><button class="btn primary" data-route="create">Start one</button> <button class="btn" data-route="library">Open the library</button></div>`;
+  const sp = conv.speakers, st = conv.run.state;
+  const live = conv.turns.find(t => t.status === 'streaming');
+  const speakingSeq = S.audio.conv === conv.id ? S.audio.seq : null;
+  const parent = conv.parentId ? byId(conv.parentId) : null;
+  const first = conv.parentId ? conv.branchSeq + 1 : 1;
+  const total = finalSeq(conv);
+  const shownFrom = conv.parentId ? 1 : 1;
+
+  const pips = [];
+  for (let s = shownFrom; s <= total; s++) {
+    const t = conv.turns.find(x => x.seq === s);
+    const cls = [speakerFor(s), t?.status === 'completed' ? 'done' : '', t?.status === 'streaming' ? 'live' : '', t?.status === 'failed' ? 'fail' : '', t?.inherited ? 'inh' : ''].join(' ');
+    pips.push(`<div class="pip ${cls}" title="Turn ${s}: ${esc(sp[speakerFor(s)].name)}, ${esc(jobFor(conv, s))}"><div class="bar"></div><span class="tag">${s} ${esc(jobFor(conv, s))}</span></div>`);
+  }
+
+  const statusWord = {
+    idle: 'Ready', generating: live ? `${sp[live.speaker].name} is on air · turn ${live.seq} of ${total}` : 'Starting',
+    paused: conv.run.reason === 'ready' ? `Branch ready · ${BRANCH_TURNS} new turns` : `Paused after turn ${lastSeq(conv)}`,
+    completed: 'Complete', cancelled: `Stopped after turn ${lastSeq(conv)}`, failed: `Turn ${lastSeq(conv) + 1} failed`
+  }[st];
+  const pauseNote = conv.run.pauseReq ? ' · pausing after this turn' : '';
+
+  // transcript
+  const rows = [];
+  if (!conv.turns.length && st === 'idle') rows.push(`<div class="empty-stage"><p>Both seats are ready. Press Start to hear ${esc(sp.A.name)} open.</p></div>`);
+  conv.turns.forEach(t => {
+    conv.cues.filter(c => c.status === 'applied' && c.appliedSeq === t.seq).forEach(c => rows.push(cueCard(c, conv, false)));
+    rows.push(turnCard(conv, t, speakingSeq));
+    if (conv.parentId && t.seq === conv.branchSeq) rows.push(`<div class="splice">Branch starts here · direction: <b>${esc(conv.direction)}</b></div>`);
+    children(conv).filter(ch => ch.branchSeq === t.seq).forEach(ch => rows.push(`<div class="splice">✂ Spliced at turn ${t.seq}: <button data-open="${ch.id}">${esc(ch.direction)}</button></div>`));
+  });
+  conv.cues.filter(c => c.status === 'queued').forEach(c => rows.push(cueCard(c, conv, true)));
+
+  const canGen = st === 'idle' || st === 'paused' || st === 'failed';
+  const otherBusy = S.activeRun && S.activeRun !== conv.id;
+  const genBtns = `
+    ${st === 'idle' ? `<button class="btn primary" data-act="start" ${otherBusy ? 'disabled' : ''}>Start</button>` : ''}
+    ${st === 'paused' ? `<button class="btn primary" data-act="start" ${otherBusy ? 'disabled' : ''}>${conv.run.reason === 'ready' ? 'Start branch' : 'Resume'}</button>` : ''}
+    ${st === 'failed' ? `<button class="btn primary" data-act="retry" ${otherBusy ? 'disabled' : ''}>Retry turn ${lastSeq(conv) + 1}</button>` : ''}
+    ${st === 'generating' ? `<button class="btn" data-act="pause" ${conv.run.pauseReq ? 'disabled' : ''}>Pause after this turn</button>` : ''}
+    ${st === 'generating' || st === 'paused' || st === 'failed' ? `<button class="btn danger" data-act="stop">Stop</button>` : ''}
+    <button class="btn ghost" data-act="export">Export</button>
+    <button class="btn ghost panel-toggle" data-act="panel">Cues &amp; voices</button>`;
+  const audioBtns = !synth ? `<span class="state">Speech isn't available in this browser. Text stays available.</span>` : `
+    ${S.audio.state === 'idle' ? `<button class="btn" data-act="play" ${conv.turns.some(t => t.status === 'completed') ? '' : 'disabled'}>▶ Play from start</button>` : ''}
+    ${S.audio.state === 'speaking' ? `<button class="btn" data-act="apause">Pause</button>` : ''}
+    ${S.audio.state === 'paused' ? `<button class="btn" data-act="aresume">Resume</button>` : ''}
+    ${S.audio.state !== 'idle' ? `<button class="btn ghost" data-act="astop">Stop audio</button>` : ''}`;
+  const audioState = S.audio.state === 'idle' ? 'Not playing' : `${S.audio.state === 'paused' ? 'Paused' : 'Speaking'}: <b>${esc(sp[speakerFor(S.audio.seq)].name)}</b>, turn ${S.audio.seq}`;
+
+  return `
+  <div class="studio">
+    <section class="stage" aria-label="Discussion">
+      <div class="stage-head">
+        <div class="who A"><span class="flag A" aria-hidden="true">A</span><div style="min-width:0"><div class="nm">${esc(sp.A.name)} <span class="tally ${live?.speaker === 'A' ? 'on' : ''}" title="On air while generating" style="display:inline-block;margin-left:4px"></span></div><div class="md">${esc(sp.A.model)}</div><div class="spk ${speakingSeq && speakerFor(speakingSeq) === 'A' ? 'on' : ''}">🔊 speaking</div></div></div>
+        <div class="topic-title"><div class="tag">${MODES[conv.mode].label} · ${AUD[conv.audience].label} · ${TEMP[conv.temp].label} ${heatMeter(conv.temp)}</div><h2>${esc(conv.topic)}</h2>
+          ${conv.brief ? `<details class="brief stage-brief"><summary>Today's brief · ${conv.brief.sources.map(esc).join(', ')}${conv.autopilot ? ' · made by Autopilot' : ''}</summary>${briefBox(conv.brief)}</details>` : ''}
+          ${parent ? `<div class="lineage">Branch from turn ${conv.branchSeq} of <button data-open="${parent.id}">${esc(parent.title)}</button></div>` : (conv.parentId ? `<div class="lineage">Parent conversation was deleted</div>` : '')}
+        </div>
+        <div class="who B"><div style="min-width:0"><div class="nm"><span class="tally ${live?.speaker === 'B' ? 'on' : ''}" title="On air while generating" style="display:inline-block;margin-right:4px"></span> ${esc(sp.B.name)}</div><div class="md">${esc(sp.B.model)}</div><div class="spk ${speakingSeq && speakerFor(speakingSeq) === 'B' ? 'on' : ''}">🔊 speaking</div></div><span class="flag B" aria-hidden="true">B</span></div>
+      </div>
+      <div class="rail" style="--n:${total - shownFrom + 1}" aria-hidden="true">${pips.join('')}</div>
+      <div class="status-line" aria-live="polite"><span><b>${esc(statusWord)}</b>${pauseNote}</span><span>${cueCount(conv)} of ${CUE_LIMIT} cues used</span></div>
+      <div class="table">${rows.join('')}</div>
+      ${conv.artist ? artistCard(conv) : ''}
+      <div class="dock">
+        <div class="dock-group"><span class="tag">Generation</span><div class="dock-row">${genBtns}</div></div>
+        <div class="dock-group listen"><span class="tag">Listen</span><div class="dock-row">${audioBtns}<span class="state">${synth ? audioState : ''}</span></div></div>
+      </div>
+      ${footer(conv)}
+    </section>
+    ${panel(conv)}
+  </div>`;
+}
+
+function turnCard(conv, t, speakingSeq) {
+  const sp = conv.speakers[t.speaker];
+  const cls = ['turn', t.speaker, t.inherited ? 'inherited' : '', t.status === 'failed' ? 'failed' : '', speakingSeq === t.seq ? 'speaking' : '', S.focusSeq === t.seq ? 'focus' : ''].join(' ');
+  const busy = conv.run.state === 'generating';
+  const menu = S.openMenu === t.id ? `
+    <div class="menu" role="menu">
+      <button role="menuitem" data-deeper="${t.seq}" ${t.inherited || conv.run.state === 'completed' || conv.run.state === 'cancelled' ? 'disabled' : ''}>Go deeper on this<small>${t.inherited ? 'Inherited turn' : 'The next speaker expands this point'}</small></button>
+      <button role="menuitem" data-branch="${t.seq}" ${busy ? 'disabled' : ''}>Branch from here<small>${busy ? 'Pause or stop first' : 'New conversation, original unchanged'}</small></button>
+      <button role="menuitem" data-playfrom="${t.seq}">Play from here</button>
+      <button role="menuitem" data-copy="${t.id}">Copy text</button>
+    </div>` : '';
+  let body;
+  if (t.status === 'failed') body = `<p class="say">${esc(t.error)}</p>`;
+  else body = `<p class="say" id="say-${t.id}">${esc(t.text)}${t.status === 'streaming' ? '<span class="caret" aria-hidden="true"></span>' : ''}</p>`;
+  return `
+  <article class="${cls}" data-seq="${t.seq}" id="turn-${t.seq}">
+    <span class="flag ${t.speaker}" aria-hidden="true">${t.speaker}</span>
+    <div class="card">
+      <div class="card-head"><span class="nm">${esc(sp.name)}</span><span class="tag">Turn ${t.seq} · ${esc(t.job)}</span>
+        ${t.status === 'completed' ? `<button class="menu-btn" data-menu="${t.id}" aria-label="Actions for turn ${t.seq}" aria-haspopup="menu" aria-expanded="${S.openMenu === t.id}">⋯</button>` : ''}
+      </div>
+      ${body}
+      <div class="card-foot"><span>${esc(t.model)}</span><span>${t.inherited ? 'from parent' : t.status === 'streaming' ? 'streaming…' : t.status === 'failed' ? 'not saved' : 'saved'}</span></div>
+    </div>
+    ${menu}
+  </article>`;
+}
+
+function pendingTemp(conv) {
+  const q = conv.cues.filter(c => c.kind === 'temp' && c.status === 'queued');
+  return q.length ? q[q.length - 1].to : conv.temp;
+}
+function cueCard(c, conv, queued) {
+  const label = c.kind === 'challenge' ? 'Challenge' : c.kind === 'temp' ? `Temperature · ${TEMP[c.from].label} → ${TEMP[c.to].label}` : `Go deeper · turn ${c.targetSeq}`;
+  const when = queued ? `Lands before turn ${c.landsBefore}` : `Given before turn ${c.appliedSeq}`;
+  return `<div class="cue ${queued ? 'queued' : ''}"><div class="tag">Your cue · ${label} · ${when}</div>${c.text ? `<p>${esc(c.text)}</p>` : ''}</div>`;
+}
+
+function panel(conv) {
+  const tab = S.tab;
+  const done = conv.turns.filter(t => t.status === 'completed' && !t.inherited);
+  const closed = conv.run.state === 'completed' || conv.run.state === 'cancelled';
+  const left = CUE_LIMIT - cueCount(conv);
+  const queued = conv.cues.filter(c => c.status === 'queued');
+  let body = '';
+  if (tab === 'cue') body = `
+    <div class="voice-row"><h3>Challenge a claim</h3>
+      <p class="hint">A short objection. The next speaker must answer it.</p>
+      <textarea id="challenge" maxlength="200" placeholder="e.g. Doesn't this only work for office jobs?" ${closed ? 'disabled' : ''}></textarea>
+      <div class="dock-row"><button class="btn sm" data-act="challenge" ${closed || left < 1 ? 'disabled' : ''}>Queue challenge</button><span class="counter">${left} of ${CUE_LIMIT} left</span></div>
+    </div>
+    <div class="voice-row"><h3>Go deeper</h3>
+      <p class="hint">Pick a turn; the next speaker expands it instead of moving on.</p>
+      <select id="deeperSel" ${closed || !done.length ? 'disabled' : ''}>${done.map(t => `<option value="${t.seq}">Turn ${t.seq} · ${esc(conv.speakers[t.speaker].name)} · ${esc(t.job)}</option>`).join('') || '<option>No turns yet</option>'}</select>
+      <button class="btn sm" data-act="deeper" ${closed || !done.length || left < 1 ? 'disabled' : ''}>Queue go deeper</button>
+    </div>
+    <div class="voice-row"><h3>Temperature ${heatMeter(pendingTemp(conv))}</h3>
+      <p class="hint">Now ${TEMP[pendingTemp(conv)].label}. Changes from the next turn and uses one cue.</p>
+      <div class="dock-row"><button class="btn sm" data-knob="-1" ${closed || left < 1 || pendingTemp(conv) === 'calm' ? 'disabled' : ''}>Cool it down</button><button class="btn sm" data-knob="1" ${closed || left < 1 || pendingTemp(conv) === maxTemp(conv.audience) ? 'disabled' : ''}>Turn it up</button></div>
+    </div>
+    ${queued.length ? `<div class="voice-row"><h3>Queued</h3><ul class="queue-list">${queued.map(c => `<li><span>${c.kind === 'challenge' ? esc(c.text) : c.kind === 'temp' ? `Temperature → ${TEMP[c.to].label}` : 'Go deeper on turn ' + c.targetSeq}<br><span class="counter">before turn ${c.landsBefore}</span></span><button data-uncue="${c.id}">Remove</button></li>`).join('')}</ul></div>` : ''}
+    ${closed ? `<p class="hint">This run is ${conv.run.state}. To keep going, branch from any turn using its ⋯ menu.</p>` : ''}`;
+  if (tab === 'voices') body = voiceControls() + `<p class="hint">Voices come from your browser and device, so they differ between computers and phones.</p>`;
+  if (tab === 'branches') {
+    const root = rootOf(conv);
+    const node = c => `<li><button data-open="${c.id}" aria-current="${c.id === conv.id}">${c.parentId ? '✂ ' : ''}${esc(c.parentId ? c.direction : c.title)}<small>${c.parentId ? `from turn ${c.branchSeq} · ` : ''}${c.run.state} · ${c.turns.filter(t => t.status === 'completed' && !t.inherited).length} turns</small></button>${children(c).length ? `<ul>${children(c).map(node).join('')}</ul>` : ''}</li>`;
+    body = `<ul class="tree">${node(root)}</ul><p class="hint">Branch from any finished turn with its ⋯ menu. Branches get ${BRANCH_TURNS} new turns and never change the original.</p>`;
+  }
+  return `
+  <aside class="panel ${S.panelOpen ? 'open' : ''}" aria-label="Studio controls">
+    <div class="tabs" role="tablist">
+      ${[['cue','Cue'],['voices','Voices'],['branches','Branches']].map(([k, l]) => `<button role="tab" data-tab="${k}" aria-selected="${tab === k}">${l}</button>`).join('')}
+    </div>
+    <div class="panel-body">${body}${S.panelOpen ? '<button class="btn ghost sm" data-act="panel">Close</button>' : ''}</div>
+  </aside>`;
+}
+
+function voiceControls() {
+  if (!synth) return `<p class="hint">This browser has no speech synthesis. You can still read every turn.</p>`;
+  if (!voices.length) return `<p class="hint">Loading voices… Some browsers list them a moment after the page opens.</p>`;
+  const sp = (cur() || S.draft).speakers;
+  const row = k => {
+    const sel = voiceFor(k);
+    return `<div class="voice-row"><div class="lbl"><span class="dot ${k}"></span>${esc(sp[k].name)}</div>
+      <select id="voice-${k}" aria-label="Voice for ${esc(sp[k].name)}">${voices.map(v => `<option value="${esc(v.name)}" ${sel && sel.name === v.name ? 'selected' : ''}>${esc(v.name)} (${esc(v.lang)})</option>`).join('')}</select>
+      <button class="btn sm ghost" data-preview="${k}">Preview</button></div>`;
+  };
+  const same = voiceFor('A') && voiceFor('B') && voiceFor('A').name === voiceFor('B').name;
+  return row('A') + row('B') + (same ? `<p class="hint">Both speakers use the same voice. Pick different ones if your device offers them.</p>` : '') +
+    `<label class="fld"><span class="tag">Speed ${S.prefs.rate.toFixed(1)}×</span><input type="range" id="rate" min="0.8" max="1.4" step="0.1" value="${S.prefs.rate}"></label>`;
+}
+
+function viewLibrary() {
+  const roots = S.convs.filter(c => !c.parentId || !byId(c.parentId)).sort((a, b) => b.updatedAt - a.updatedAt);
+  const count = c => children(c).reduce((n, ch) => n + 1 + count(ch), 0);
+  const item = (c, depth) => {
+    const kids = count(c);
+    const rn = S.renaming === c.id;
+    return `<li class="lib-item ${depth ? 'child' : ''}" style="${depth ? `margin-left:${(depth - 1) * 24}px` : ''}">
+      <div class="lib-row"><button class="thumb-btn" data-open="${c.id}" aria-label="Open ${esc(c.title)}" style="background:none;border:0;padding:0;cursor:pointer;flex:none">${sketch(c, 'sketch thumb')}</button><div style="min-width:0">
+        ${rn ? `<div class="dock-row"><input type="text" id="rename-${c.id}" value="${esc(c.title)}" maxlength="120" style="max-width:420px"><button class="btn sm" data-saverename="${c.id}">Save</button><button class="btn sm ghost" data-cancel="1">Cancel</button></div>`
+             : `<div class="lib-title">${depth ? '✂ ' : ''}${esc(c.title)}</div>`}
+        <div class="lib-meta"><span class="status ${c.run.state}">${c.run.state}</span><span>${MODES[c.mode].label}</span><span>${new Date(c.createdAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>${depth ? `<span>from turn ${c.branchSeq}</span>` : ''}<span>${kids} ${kids === 1 ? 'branch' : 'branches'}</span></div>
+      </div></div>
+      <div class="lib-actions">
+        <button class="btn sm" data-open="${c.id}">Open</button>
+        <button class="btn sm ghost" data-rename="${c.id}">Rename</button>
+        <button class="btn sm ghost" data-export="${c.id}">Export</button>
+        <button class="btn sm danger" data-del="${c.id}">Delete</button>
+      </div>
+      ${S.confirmDelete === c.id ? `<div class="confirm"><span>Delete "${esc(c.title)}"${kids ? ` and its ${kids} ${kids === 1 ? 'branch' : 'branches'}` : ''}? This can't be undone.</span><button class="btn sm danger" data-delyes="${c.id}">Delete</button><button class="btn sm ghost" data-cancel="1">Keep it</button></div>` : ''}
+    </li>` + children(c).map(ch => item(ch, depth + 1)).join('');
+  };
+  return `<div class="lib">
+    <h1>Library</h1>
+    ${roots.length ? `<ul class="lib-list">${roots.map(r => item(r, 0)).join('')}</ul>` : `<p class="hint">No discussions yet. Start one from Create.</p>`}
+    ${footer()}</div>`;
+}
+
+function viewSettings() {
+  const sp = S.draft.speakers;
+  return `<div class="settings">
+    <h1>Settings</h1>
+    <section class="sec"><h2>Voices</h2>${voiceControls()}</section>
+    <section class="sec"><h2>Models</h2>
+      <p class="hint">Read-only here. In the app, models are set in the server's <code>.env</code> file and must be two different IDs.</p>
+      <dl class="kv"><dt>PROVIDER_MODE</dt><dd>mock</dd><dt>SPEAKER_A_MODEL</dt><dd>${esc(sp.A.model)}</dd><dt>SPEAKER_B_MODEL</dt><dd>${esc(sp.B.model)}</dd><dt>ARTIST_MODEL</dt><dd>${ARTIST.model}</dd>
+      <dt>ALLOW_PAID_MODELS</dt><dd>false</dd><dt>Free-model check</dt><dd>Not run in mock mode. In real mode both models must show $0 pricing or runs are blocked.</dd>
+      <dt>MAX_TURNS_PER_RUN</dt><dd>${MAX_TURNS}</dd><dt>MAX_OUTPUT_TOKENS</dt><dd>220</dd></dl>
+    </section>
+    <section class="sec"><h2>Topic Scout</h2>
+      <dl class="kv"><dt>SCOUT_TIME</dt><dd>07:00 (local)</dd><dt>Autopilot</dt><dd>${S.autopilot ? 'on: runs the top pick daily' : 'off'}</dd>
+      <dt>Sources</dt><dd>Hacker News · Wikipedia most-read · Reddit (SCOUT_SUBREDDITS) · RSS (SCOUT_RSS_FEEDS)</dd>
+      <dt>Ranking</dt><dd>The Split: most divided first</dd>
+      <dt>Always skip</dt><dd>Politics and elections · Tragedies and crime · Health scares · Private-life gossip</dd>
+      <dt>Reddit access</dt><dd>Needs REDDIT_CLIENT_ID and REDDIT_CLIENT_SECRET; skipped if missing</dd></dl>
+      <p class="hint">The Scout reads titles and summaries only. Speakers treat the brief as the only facts and say when they don't know.</p>
+    </section>
+    <section class="sec"><h2>Usage today</h2>
+      <dl class="kv"><dt>Requests</dt><dd>${S.requests} of ${DAILY_LIMIT} (mock turns are counted here so you can see the limit work)</dd><dt>Estimated cost</dt><dd>$0.00 in mock mode. Real mode shows "unknown" when pricing isn't returned.</dd></dl>
+      <p class="hint">This is a local safety limit set by the app. It is not a billing guarantee from the model provider.</p>
+    </section>
+    <section class="sec"><h2>API key</h2>
+      <p class="hint">The OpenRouter key lives only in <code>.env</code> on your computer, read by the local server. The browser never receives it. Status: <span class="model" style="display:inline">not set</span></p>
+    </section>
+    <section class="sec"><h2>Prototype controls</h2>
+      <label class="toggle"><input type="checkbox" id="simFail" ${S.sim.fail ? 'checked' : ''}> Simulate a provider failure on turn 5 (once per conversation)</label>
+      <label class="toggle"><input type="checkbox" id="simFast" ${S.sim.fast ? 'checked' : ''}> Fast streaming</label>
+      <div><button class="btn sm ghost" data-act="resetBudget">Reset today's counter</button></div>
+    </section>
+    ${footer()}</div>`;
+}
+
+/* ---------- modals ---------- */
+function modal(html) { $('#layer').innerHTML = `<div class="modal-back" data-close="1"><div class="modal" role="dialog" aria-modal="true">${html}</div></div>`; const f = $('#layer [autofocus]') || $('#layer button'); f && f.focus(); }
+function closeModal() { $('#layer').innerHTML = ''; }
+function exportModal(conv, fmt = 'md') {
+  modal(`<h2>Export "${esc(conv.title)}"</h2>
+    <div class="seg" role="group" aria-label="Format"><button data-fmt="md" data-for="${conv.id}" aria-pressed="${fmt === 'md'}">Markdown</button><button data-fmt="json" data-for="${conv.id}" aria-pressed="${fmt === 'json'}">JSON (schema v1)</button></div>
+    <textarea class="out" id="exportOut" readonly>${esc(fmt === 'md' ? exportMD(conv) : exportJSON(conv))}</textarea>
+    <p class="hint">In the app this saves a .${fmt} file. In this prototype, copy the text.</p>
+    <div class="modal-actions"><button class="btn" data-close="1">Close</button><button class="btn primary" data-copyout="1">Copy</button></div>`);
+}
+function branchModal(conv, seq) {
+  const t = conv.turns.find(x => x.seq === seq);
+  modal(`<h2>Branch from turn ${seq}</h2>
+    <p class="hint">A new conversation keeps turns 1–${seq} and continues for ${BRANCH_TURNS} turns in your direction. "${esc(conv.title)}" stays exactly as it is.</p>
+    <blockquote style="margin:0;border-left:2px solid var(--line);padding-left:12px;font-family:var(--f-say);color:var(--muted)">${esc(t.text.slice(0, 180))}…</blockquote>
+    <label class="fld"><span class="tag">New direction</span><input type="text" id="branchDir" maxlength="100" placeholder="e.g. Focus on restaurants and retail" autofocus></label>
+    <div class="modal-actions"><button class="btn" data-close="1">Cancel</button><button class="btn primary" data-dobranch="${seq}">Create branch</button></div>`);
+}
+let toastTimer;
+function toast(msg) {
+  let el = $('.toast'); if (!el) { el = document.createElement('div'); el.className = 'toast'; el.setAttribute('role', 'status'); document.body.appendChild(el); }
+  el.textContent = msg; clearTimeout(toastTimer); toastTimer = setTimeout(() => el.remove(), 2600);
+}
+function scrollToTurn(seq) { const el = document.getElementById('turn-' + seq); if (el) el.scrollIntoView({ block: 'nearest', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); }
+async function copy(text) { try { await navigator.clipboard.writeText(text); toast('Copied'); } catch { const o = $('#exportOut'); if (o) { o.select(); toast('Press Ctrl/⌘+C to copy'); } else toast('Copy blocked here'); } }
+function go(route) { if (route !== S.route) stopAudio(); S.route = route; S.openMenu = null; S.panelOpen = false; S.confirmDelete = null; S.renaming = null; render(); window.scrollTo(0, 0); }
+function openConv(id) { if (id !== S.currentId) stopAudio(); S.currentId = id; S.focusSeq = null; S.route = 'studio'; S.openMenu = null; closeModal(); render(); window.scrollTo(0, 0); }
+
+/* ---------- events ---------- */
+document.addEventListener('click', e => {
+  const b = e.target.closest('button, [data-close]');
+  if (!b) { if (S.openMenu) { S.openMenu = null; render(); } return; }
+  const d = b.dataset, conv = cur();
+  if (d.close && (e.target === b || b.tagName === 'BUTTON')) { closeModal(); return; }
+  if (d.route) return go(d.route);
+  if (d.preset) { S.draft.topic = PRESETS[+d.preset]; S.draft.brief = null; return render(); }
+  if (d.scout) { const t = SCOUT.find(x => x.id === d.scout); S.draft.topic = t.q; S.draft.brief = t; S.draft.mode = 'debate'; render(); $('#topic')?.scrollIntoView({ block: 'center' }); return; }
+  if (d.mode) { S.draft.mode = d.mode; return render(); }
+  if (d.aud) { S.draft.audience = d.aud; if (TEMP_ORDER.indexOf(S.draft.temp) > TEMP_ORDER.indexOf(maxTemp(d.aud))) S.draft.temp = maxTemp(d.aud); return render(); }
+  if (d.temp) { S.draft.temp = d.temp; return render(); }
+  if (d.knob) { const from = pendingTemp(conv), to = TEMP_ORDER[TEMP_ORDER.indexOf(from) + +d.knob]; if (to) queueCue(conv, { kind: 'temp', from, to }); return; }
+  if (b.id === 'startBtn') {
+    const c = newConv({ topic: S.draft.topic.trim(), mode: S.draft.mode, speakers: S.draft.speakers, brief: S.draft.brief, audience: S.draft.audience, temp: S.draft.temp });
+    S.convs.push(c); openConv(c.id); start(c); return;
+  }
+  if (d.act === 'autorun') {
+    const top = [...SCOUT].sort((a, b) => Math.abs(a.split - 50) - Math.abs(b.split - 50))[0];
+    const c = newConv({ topic: top.q, mode: 'debate', speakers: S.draft.speakers, brief: top, audience: S.draft.audience, temp: S.draft.temp });
+    c.autopilot = true; S.convs.push(c); openConv(c.id); toast('Autopilot started the top pick.'); start(c); return;
+  }
+  if (d.open) return openConv(d.open);
+  if (d.jump) { S.focusSeq = +d.jump; render(); return scrollToTurn(+d.jump); }
+  if (d.reartist) return runArtist(conv);
+  if (d.tab) { S.tab = d.tab; return render(); }
+  if (d.menu) { S.openMenu = S.openMenu === d.menu ? null : d.menu; return render(); }
+  if (d.deeper) { S.openMenu = null; if (queueCue(conv, { kind: 'deeper', targetSeq: +d.deeper })) { S.focusSeq = +d.deeper; render(); } return; }
+  if (d.branch) { S.openMenu = null; render(); return branchModal(conv, +d.branch); }
+  if (d.dobranch) { const v = $('#branchDir').value.trim(); if (!v) { $('#branchDir').focus(); toast('Add a direction for the branch.'); return; } closeModal(); return branch(conv, +d.dobranch, v); }
+  if (d.playfrom) { S.openMenu = null; return playFrom(conv, +d.playfrom); }
+  if (d.copy) { S.openMenu = null; const t = conv.turns.find(x => x.id === d.copy); render(); return copy(t.text); }
+  if (d.uncue) { const c = conv.cues.find(x => x.id === d.uncue); c.status = 'cancelled'; return render(); }
+  if (d.preview) { if (!synth) return; synth.cancel(); S.audio.token++; S.audio.state = 'idle'; return speak(`Hi, I'm ${(cur() || S.draft).speakers[d.preview].name}. This is how I'll sound.`, d.preview, () => {}); }
+  if (d.fmt) return exportModal(byId(d.for), d.fmt);
+  if (d.copyout) return copy($('#exportOut').value);
+  if (d.export) return exportModal(byId(d.export));
+  if (d.rename) { S.renaming = d.rename; S.confirmDelete = null; render(); const i = document.getElementById('rename-' + d.rename); i && i.focus(); return; }
+  if (d.saverename) { const v = document.getElementById('rename-' + d.saverename).value.trim(); if (v) byId(d.saverename).title = v; S.renaming = null; return render(); }
+  if (d.del) { S.confirmDelete = d.del; S.renaming = null; return render(); }
+  if (d.delyes) {
+    const kill = id => { children(byId(id)).forEach(c => kill(c.id)); const c = byId(id); if (S.activeRun === id) { c.run.token++; S.activeRun = null; } S.convs = S.convs.filter(x => x.id !== id); if (S.currentId === id) S.currentId = null; };
+    kill(d.delyes); S.confirmDelete = null; toast('Deleted'); return render();
+  }
+  if (d.cancel) { S.confirmDelete = null; S.renaming = null; return render(); }
+  const act = d.act;
+  if (!act) return;
+  if (act === 'start') return start(conv);
+  if (act === 'pause') return pause(conv);
+  if (act === 'stop') return stop(conv);
+  if (act === 'retry') return retry(conv);
+  if (act === 'export') return exportModal(conv);
+  if (act === 'panel') { S.panelOpen = !S.panelOpen; return render(); }
+  if (act === 'play') return playFrom(conv, 1);
+  if (act === 'apause') return pauseAudio();
+  if (act === 'aresume') return resumeAudio();
+  if (act === 'astop') { stopAudio(); return render(); }
+  if (act === 'challenge') { const v = $('#challenge').value.trim(); if (!v) { $('#challenge').focus(); toast('Write the objection first.'); return; } queueCue(conv, { kind: 'challenge', text: v }); return; }
+  if (act === 'deeper') { const s = +$('#deeperSel').value; if (queueCue(conv, { kind: 'deeper', targetSeq: s })) { S.focusSeq = s; render(); } return; }
+  if (act === 'resetBudget') { S.requests = 0; return render(); }
+});
+document.addEventListener('input', e => {
+  const t = e.target;
+  if (t.id === 'topic') { S.draft.topic = t.value;
+    if (S.draft.brief && t.value !== S.draft.brief.q) { S.draft.brief = null; $('.topic-box .brief-box')?.remove(); document.querySelectorAll('.topic-card.sel').forEach(c => { c.classList.remove('sel'); const bt = c.querySelector('[data-scout]'); if (bt) bt.textContent = 'Discuss this'; }); } const s = $('#startBtn'); if (s) s.disabled = !t.value.trim() || !!S.activeRun; document.querySelectorAll('[data-preset]').forEach(c => c.setAttribute('aria-pressed', PRESETS[+c.dataset.preset] === t.value)); }
+  if (t.id === 'name-A' || t.id === 'name-B') S.draft.speakers[t.id.slice(-1)].name = t.value || (t.id.endsWith('A') ? 'Speaker A' : 'Speaker B');
+  if (t.id === 'rate') { S.prefs.rate = +t.value; save(); const l = t.closest('label').querySelector('.tag'); if (l) l.textContent = `Speed ${S.prefs.rate.toFixed(1)}×`; }
+});
+document.addEventListener('change', e => {
+  const t = e.target;
+  if (t.id === 'voice-A') { S.prefs.voiceA = t.value; save(); render(); }
+  if (t.id === 'voice-B') { S.prefs.voiceB = t.value; save(); render(); }
+  if (t.id === 'autopilot') { S.autopilot = t.checked; render(); }
+  if (t.id === 'simFail') S.sim.fail = t.checked;
+  if (t.id === 'simFast') S.sim.fast = t.checked;
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { if ($('#layer').innerHTML) closeModal(); else if (S.openMenu || S.panelOpen) { S.openMenu = null; S.panelOpen = false; render(); } }
+  if (e.key === 'Enter' && e.target.id === 'branchDir') $('[data-dobranch]')?.click();
+});
+
+/* ---------- seed: one finished discussion with a branch ---------- */
+(function seed() {
+  const c = newConv({ topic: PRESETS[2], mode: 'explore', speakers: defaultSpeakers() });
+  c.createdAt = c.updatedAt = Date.now() - 86400000;
+  const cue = { id: uid(), kind: 'challenge', text: "Doesn't this only work for office jobs?", status: 'applied', appliedSeq: 6 };
+  c.cues.push(cue);
+  for (let s = 1; s <= 8; s++) c.turns.push({ id: uid(), seq: s, speaker: speakerFor(s), model: c.speakers[speakerFor(s)].model, job: JOBS[s - 1], text: textFor(c, s, s === 6 ? [cue] : []), status: 'completed', createdAt: c.createdAt });
+  c.run.state = 'completed';
+  const b = newConv({ topic: c.topic, mode: c.mode, speakers: c.speakers, parent: c, branchSeq: 4, direction: 'Focus on restaurants and retail' });
+  b.createdAt = b.updatedAt = c.createdAt + 3600000;
+  for (let s = 5; s <= 8; s++) b.turns.push({ id: uid(), seq: s, speaker: speakerFor(s), model: b.speakers[speakerFor(s)].model, job: jobFor(b, s), text: textFor(b, s, []), status: 'completed', createdAt: b.createdAt });
+  b.run.state = 'completed';
+  c.artist = mockArtist(c); b.artist = mockArtist(b);
+  S.convs.push(c, b);
+  S.currentId = c.id;
+})();
+render();
+})();
+</script>
