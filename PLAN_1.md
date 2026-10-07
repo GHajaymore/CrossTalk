@@ -187,9 +187,11 @@ USER    <topic>…</topic>
 
 **Anti-repetition, cheaply:** the prompt lists the opening 8 words of the speaker's own previous turns with "don't reuse these openings", and the server flags (but does not re-request) a turn that heavily overlaps an earlier one.
 
-## The broadcast booth
+## The studio: a real video podcast
 
-CrossTalk looks and feels like a live broadcast, because it will become one. The top of Create and Studio is a **booth**: two living voice orbs (amber for Speaker A, teal for B) that pulse with every word, an **ON AIR** sign that lights while a turn is generating, a spotlight that follows whoever is talking, room lighting that changes with Temperature (cool blue for Calm, warm amber for Lively, red for Heated), live captions of the current sentence, and a news-style ticker with the episode, turn count and your cues. Iris has a small booth window showing when she's listening or sketching. The booth stays on screen as the transcript scrolls below it, and it doubles as the visual for social clips later. Motion is smooth and turns off for people who set reduced motion. `docs/prototype.html` shows exactly how it should look and move.
+CrossTalk looks like a real video podcast being recorded, not an "AI" interface. The top of Create and Studio is the **studio set**: a foam-panelled wall with warm lamps, a wooden desk, and a presenter tile per host, each with a studio microphone, a TV-style name bar (name and personality), a voice-level meter, and a highlight on whoever is speaking. A guest tile appears in the middle when someone takes the mic. The top bar shows a **REC** light with a running timer (SAVED with the episode length when finished), the show and episode number, and Iris's status. Captions run along the bottom in the YouTube style. Room light warms or cools with Temperature. `docs/prototype.html` shows exactly how it should look.
+
+**Backdrop:** the prototype draws the set in CSS; the real app uses an actual studio photograph as the backdrop, from a free licence that allows commercial use with credit (for example Unsplash), or a set you photograph or commission.
 
 ## Speakers: names and personalities
 
@@ -227,7 +229,14 @@ The personality becomes the speaker's lens in the prompt. Personalities are role
 
 **Natural voices.** The app picks the most natural-sounding voices the device offers first (names containing Natural, Neural or Premium; Microsoft Edge has some of the best free ones), and you can still choose any voice. Studio-quality recorded voices come with podcast audio in Phase 2, starting with free open-source voices that run on your own machine.
 
-**Lifelike presenters.** The booth has two views: **Orbs** and **Presenters**. Presenters shows a two-camera video-podcast layout (CAM A and CAM B, the speaking presenter lit, with a recording dot), with simple animated stand-ins in the prototype. Real lifelike presenter video comes in Phase 2: invented faces only, never resembling a real person, and always labelled as AI. Generating talking-head video needs a paid service or a strong graphics card, so it waits until you choose to spend.
+**AI presenters in motion.** Each host tile is the slot for a lifelike, AI-generated human who moves and talks in real time: lip-sync, expressions and small natural movements while debating. Invented faces only, never resembling a real person, always labelled AI.
+
+| Approach | How it works | Cost | When |
+| --- | --- | --- | --- |
+| Real-time avatar service | The host's text goes to a streaming avatar service, which returns live video (usually over WebRTC) into the tile | Paid per minute; some real-time avatar APIs are enterprise-only today | Live shows |
+| Rendered after the debate | Once the text and audio are final, each turn is rendered as avatar video | Paid per minute, or free on your own computer with open-source models if it has a strong NVIDIA graphics card | Recorded episodes |
+
+The plan keeps this behind one `PresenterProvider` interface (stream live, or render a turn), so the provider can change without touching the engine. Until a budget is approved, the tiles show each host's initials and voice level. This is the one feature that can't stay free; it's a Phase 2 decision.
 
 **Real people join the show.** **Take the mic** lets you or a guest put a turn on air: it appears in a gold guest seat on the centre line, the next host responds to it directly, and it uses one cue. In the prototype the guest types; speaking into a microphone (speech to text), and remote guests joining a Live show, come once the app is hosted.
 
@@ -417,7 +426,7 @@ Eight milestones, each ending in a demo before approving the next. Nothing needs
 
 1. **Foundation + mock discussion**
    - npm workspace, shared Zod types, SQLite schema + migrations, Fastify routes, SSE stream.
-   - Create and Studio screens matching docs/prototype.html, including the broadcast booth (canvas voice orbs, ON AIR sign, spotlight, room lighting, live captions, ticker); turn rail; Format, Audience, Temperature and Personality settings stored on the conversation; auto host names; booth Orbs and Presenters views; episode numbers.
+   - Create and Studio screens matching docs/prototype.html, including the studio set (presenter tiles with name bars and voice meters, REC timer, captions, guest tile); turn rail; Format, Audience, Temperature and Personality settings stored on the conversation; auto host names; episode numbers.
    - MockProvider with scripted turns for all 5 presets, simulated streaming, delays, and an error switch.
    - Controller + state machine; Stop and Pause at turn boundaries; refresh restores history; restart marks the run interrupted.
    - Tests: state transitions, idempotent turn save, 8-turn stop, stop prevents further turns.
@@ -492,12 +501,12 @@ All settled Oct 7, 2026.
 | Cost | Everything free for now; no $10 OpenRouter credit; app stays at 40 requests a day |
 | Topic Scout | Today tray with optional Autopilot; Hacker News, Wikipedia, Reddit, RSS; you choose topics (10 categories incl. Politics, Economy, Scandals, Global affairs), regions (Local to World) and ranking (Most divided or Most talked about); always skips tragedies and crime, health scares and private people; built last |
 | Audience and Temperature | Five audiences (Kids, Teens, General, Mature, Expert) and three temperatures (Calm, Lively, Heated); dials in Milestone 1, live knob in Milestone 4; political topics allowed when you choose them, with fairness rules |
-| Look and feel | Live broadcast booth with lots of smooth motion (reduced motion respected) |
+| Look and feel | A real video podcast: studio set, presenter tiles, name bars, REC timer, captions; smooth motion (reduced motion respected) |
 | Formats | Recorded and Live |
 | Personalities | Both speakers: Auto by default (from topic and audience), eight presets, or Custom |
 | Iris's art | Titled; Sketch now, Picture, Painting and Dreamscape next phase |
 | End goal | Podcast, automatic social posting with your approval, and selling Iris's art; built in phases after the prototype |
-| Real people | Auto host names from region, audience and topic; natural voices first; Presenters view now, lifelike presenter video in Phase 2 (invented faces only); Take the mic for guests (typed now, microphone once hosted) |
+| Real people | Auto host names from region, audience and topic; natural voices first; presenter tiles now; AI-generated humans moving and talking in real time in Phase 2 (paid; invented faces only); Take the mic for guests (typed now, microphone once hosted) |
 | Admin | Control room for you: analytics, live control with producer notes, publishing approvals, topic pin/hide, rules; Milestone 8 |
 | Accounts | Now none; later: listening needs no account, taking part needs a free account, paid tier once premium features exist |
 | Where Claude Code runs | Cloud sessions on the private GitHub repo; a local copy only when trying demos |
