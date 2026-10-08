@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
-  AUDIENCES, CUE_LIMIT, episodeLabel, jobFor, MAX_TURNS, MODES, personaLabel, speakerFor, TEMPERATURES,
+  AUDIENCES, CUE_LIMIT, episodeLabel, hostSubtitle, jobFor, MAX_TURNS, MODES, speakerFor, TEMPERATURES,
   type AppConfig, type ConversationView,
 } from '@crosstalk/shared';
 import { api } from '../api/client';
@@ -11,6 +11,9 @@ import { StudioSet } from '../studio/StudioSet';
 import { TurnCard } from '../studio/TurnCard';
 import { TurnRail } from '../studio/TurnRail';
 import { BudgetBanner, realBlocked, SetupBanner } from '../lib/Banners';
+import { BrowserSpeech } from '../speech/BrowserSpeech';
+import { usePlayback, useVoices } from '../speech/usePlayback';
+import { VoicePicker } from '../speech/VoicePicker';
 import { lastSentence, spokenSeconds, tail } from '../lib/text';
 import { Footer } from './Footer';
 
@@ -21,6 +24,14 @@ export function Studio({ id, config, refreshConfig, toast }: Props) {
   const [panelOpen, setPanelOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
+  const { voices, prefs, update } = useVoices();
+  const play = usePlayback(view?.turns ?? [], prefs);
+  // Live format: each finished turn is read aloud as soon as it lands.
+  const lastSaved = view?.turns[view.turns.length - 1]?.seq ?? 0;
+  useEffect(() => {
+    if (view?.format === 'live' && view.run?.state === 'generating' && lastSaved && play.state === 'idle') play.playFrom(lastSaved);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lastSaved]);
 
   if (error && !view) return <div className="empty-stage"><p>{error}</p><a className="btn" href="#/create">Start a new one</a></div>;
   if (!view) return <div className="empty-stage"><p>Opening the studio…</p></div>;
@@ -53,8 +64,10 @@ export function Studio({ id, config, refreshConfig, toast }: Props) {
   }[st];
 
   const lastTurn = view.turns[view.turns.length - 1];
-  const caption = live
+  const listening = play.state !== 'idle' && play.speakerId;
+  const caption = live && !listening
     ? { who: live.speakerId, text: tail(live.text) || '…' }
+    : listening ? { who: play.speakerId, text: play.caption }
     : st === 'failed' ? { who: null, text: 'The connection dropped on this turn. Everything before it is saved.' }
     : lastTurn && st !== 'idle' && st !== 'generating' ? { who: lastTurn.speakerId, text: lastSentence(lastTurn.text) }
     : null;
@@ -71,10 +84,10 @@ export function Studio({ id, config, refreshConfig, toast }: Props) {
           topic={view.topic}
           tags={`${MODES[view.mode].label} · ${AUDIENCES[view.audience].label} · ${TEMPERATURES[view.temperature].label}`}
           temperature={view.temperature}
-          hosts={{ A: { name: sp.A.name, role: personaLabel(sp.A) }, B: { name: sp.B.name, role: personaLabel(sp.B) } }}
+          hosts={{ A: { name: sp.A.name, role: hostSubtitle(sp.A) }, B: { name: sp.B.name, role: hostSubtitle(sp.B) } }}
           guest={null}
-          speaking={live?.speakerId ?? null}
-          voiceLevel={pulse}
+          speaking={listening ? play.speakerId : live?.speakerId ?? null}
+          voiceLevel={listening ? play.pulse : pulse}
           caption={caption}
           runState={st}
           clock={{ seconds: spokenSeconds(view.turns.map(t => t.text)), running: st === 'generating' }}
@@ -96,7 +109,8 @@ export function Studio({ id, config, refreshConfig, toast }: Props) {
           )}
           {view.turns.map(t => (
             <TurnCard key={t.seq} seq={t.seq} speakerId={t.speakerId} name={sp[t.speakerId].name} objective={t.objective}
-              modelId={t.modelId} text={t.text} state="completed" onCopy={() => copy(t.text)} />
+              modelId={t.modelId} text={t.text} state="completed" onCopy={() => copy(t.text)}
+              speaking={play.state !== 'idle' && play.seq === t.seq} onPlayFrom={play.available ? () => play.playFrom(t.seq) : undefined} />
           ))}
           {live && !view.turns.some(t => t.seq === live.seq) && (
             <TurnCard seq={live.seq} speakerId={live.speakerId} name={sp[live.speakerId].name} objective={live.objective}
@@ -126,14 +140,20 @@ export function Studio({ id, config, refreshConfig, toast }: Props) {
           <div className="dock-group listen">
             <span className="tag">Listen</span>
             <div className="dock-row">
-              <button className="btn" disabled title="Voices arrive in Milestone 3">▶ Play from start</button>
-              <span className="state">Voices arrive in Milestone 3</span>
+              {!play.available && <span className="state">Speech isn't available in this browser. Every turn stays readable.</span>}
+              {play.available && play.state === 'idle' && <button className="btn" disabled={!view.turns.length} onClick={() => play.playFrom(1)}>▶ Play from start</button>}
+              {play.state === 'speaking' && <button className="btn" onClick={play.pause}>Pause</button>}
+              {play.state === 'paused' && <button className="btn" onClick={play.resume}>Resume</button>}
+              {play.state !== 'idle' && <button className="btn ghost" onClick={play.stop}>Stop audio</button>}
+              {play.available && <span className="state">{play.state === 'idle' ? 'Not playing' : <>{play.state === 'paused' ? 'Paused' : 'Speaking'}: <b>{play.speakerId && sp[play.speakerId].name}</b>, turn {play.seq}</>}</span>}
             </div>
           </div>
         </div>
         <Footer config={config} />
       </section>
-      <SidePanel open={panelOpen} onClose={() => setPanelOpen(false)} />
+      <SidePanel open={panelOpen} onClose={() => setPanelOpen(false)}
+        voices={<VoicePicker speakers={sp} voices={voices} prefs={prefs} update={update}
+          preview={k => new BrowserSpeech(() => prefs).speak([{ key: 'p', speakerId: k, text: `Hi, I'm ${sp[k].name}. This is how I'll sound on the show.` }], {})} />} />
     </div>
   );
 }

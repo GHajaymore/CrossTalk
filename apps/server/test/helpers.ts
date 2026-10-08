@@ -9,8 +9,8 @@ export const QUICK: MockTiming = { thinkMs: () => 1, wordMs: () => 1 };
 export const draft = (topic = 'Is a four-day workweek practical?') => ({
   topic, mode: 'explore' as const, format: 'recorded' as const, audience: 'general' as const, temperature: 'lively' as const,
   speakers: {
-    A: { name: '', autoName: true, persona: 'optimist' as const, autoPersona: true, lens: '' },
-    B: { name: '', autoName: true, persona: 'skeptic' as const, autoPersona: true, lens: '' },
+    A: { name: '', autoName: true, persona: 'optimist' as const, autoPersona: true, lens: '', role: '', autoRole: true },
+    B: { name: '', autoName: true, persona: 'skeptic' as const, autoPersona: true, lens: '', role: '', autoRole: true },
   },
 });
 

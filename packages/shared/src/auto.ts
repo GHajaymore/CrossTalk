@@ -62,15 +62,20 @@ export function resolveSpeakers(
   audience: Audience,
   drafts: { A: SpeakerDraft; B: SpeakerDraft },
   models: { A: string; B: string },
+  /** Roles written for this topic by a model; the keyword rule is used when absent. */
+  roles?: [string, string],
 ): Speakers {
   const names = autoNames(topic, audience);
   const personas = autoPersonas(topic, audience);
+  const fitted = roles ?? autoRoles(topic);
   const one = (id: SpeakerId, i: number) => {
     const d = drafts[id];
     const persona = d.autoPersona ? personas[i] : d.persona;
     const name = d.autoName || !d.name.trim() ? names[i] : d.name.trim();
     const lens = persona === 'custom' ? d.lens.trim() || 'A voice of their own' : PERSONAS[persona].lens;
-    return { id, name, autoName: d.autoName, persona, autoPersona: d.autoPersona, lens, modelId: models[id] };
+    const autoRole = d.autoRole ?? true;
+    const role = autoRole || !d.role?.trim() ? fitted[i] : d.role.trim();
+    return { id, name, autoName: d.autoName, persona, autoPersona: d.autoPersona, lens, role, autoRole, modelId: models[id] };
   };
   return { A: one('A', 0), B: one('B', 1) };
 }
@@ -79,6 +84,34 @@ export const speakerFor = (seq: number): SpeakerId => (seq % 2 === 1 ? 'A' : 'B'
 export const jobFor = (seq: number) => JOBS[seq - 1] ?? 'Continue';
 export const personaLabel = (s: { persona: PersonaKey; lens: string }) =>
   s.persona === 'custom' ? s.lens : PERSONAS[s.persona].label;
+/** What the name bar shows under a host's name: their role, else their personality. */
+export const hostSubtitle = (s: { persona: PersonaKey; lens: string; role?: string }) => s.role || personaLabel(s);
 export const initials = (name: string) =>
   name.replace(/^(Dr\.|Prof\.)\s+/, '').split(/\s+/).filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase() || '?';
 export const episodeLabel = (n: number) => `Ep. ${String(n).padStart(2, '0')}`;
+
+/**
+ * Host roles that fit the topic: two complementary, invented job profiles.
+ * A keyword rule covers common subjects (and mock mode); in real mode the server asks a free
+ * model to write roles for any topic and falls back to this.
+ */
+const ROLE_RULES: [RegExp, [string, string]][] = [
+  [/work ?week|four-day|workday|office|remote work|employ|hiring|job/, ['Owner of a 20-person design studio', 'Researcher who studies how people work']],
+  [/golf/, ['Head pro at a public golf club', 'Golf-course designer']],
+  [/restaurant|chef|menu|food|cook|tipping|\btip/, ['Chef who runs a neighbourhood restaurant', 'Food writer who reviews restaurants']],
+  [/pedestrian|\bcars?\b|street|traffic|cities|city|transit|transport|bike|parking/, ['City transport planner', 'Shop owner on a busy high street']],
+  [/\bai\b|artificial intelligence|automation|independent business|small business|\bshops?\b|retail/, ['Owner of a small bakery and café', 'Consultant who sets up digital tools for small firms']],
+  [/school|homework|teacher|education|student|exam/, ['Secondary-school teacher', 'Parent who sits on a school board']],
+  [/health|sleep|doctor|medical|diet|fitness/, ['Family doctor', 'Researcher who studies everyday health habits']],
+  [/climate|energy|environment|carbon|solar|electric/, ['Energy engineer', 'Researcher who studies climate policy']],
+  [/money|price|tax|econom|rent|housing|interest rate|inflation/, ['Small-business accountant', 'Economist who studies household budgets']],
+  [/software|coding|developer|\bapps?\b|tech|robot|startup/, ['Software engineer at a startup', 'Technology journalist']],
+  [/sport|football|soccer|tennis|basketball|olympic/, ['Coach at a community sports club', 'Sports journalist']],
+  [/music|film|movie|art|book|game/, ['Working musician and teacher', 'Culture critic']],
+  [/travel|tourism|holiday|flight|airline/, ['Owner of a small travel agency', 'Travel writer']],
+];
+
+export function autoRoles(topic: string): [string, string] {
+  const t = topic.toLowerCase();
+  return ROLE_RULES.find(([re]) => re.test(t))?.[1] ?? ['Someone who deals with this every day at work', 'Researcher who studies this question'];
+}

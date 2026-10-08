@@ -23,6 +23,7 @@ export const CUE_LIMIT = 3;
 export const TOPIC_MAX = 200;
 export const NAME_MAX = 28;
 export const LENS_MAX = 120;
+export const ROLE_MAX = 80;
 
 export const MODES = {
   explore: { label: 'Explore', help: 'They build on each other: one frames, the other widens, and both work through examples and trade-offs.' },

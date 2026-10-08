@@ -95,7 +95,18 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
   app.post('/api/conversations', async (req, reply) => {
     const parsed = CreateConversation.safeParse(req.body);
     if (!parsed.success) throw new ControllerError(parsed.error.issues[0]?.message ?? 'Invalid conversation.', 400);
-    return reply.status(201).send(controller.create(parsed.data));
+    // Real mode: one free request writes host roles that fit this topic. Any problem falls back to
+    // the keyword rule, and creating a conversation never fails because of it.
+    let roles: [string, string] | undefined;
+    const wantsRoles = parsed.data.speakers.A.autoRole || parsed.data.speakers.B.autoRole;
+    if (real && wantsRoles && !cfg.problems.length && controller.requestsToday() < cfg.dailyLimit) {
+      const verdicts = await checkModels();
+      if (!FreeModelGuard.blockMessage(verdicts)) {
+        controller.countRequest();
+        roles = (await (provider as OpenRouterProvider).generateRoles(parsed.data.topic, parsed.data.audience, cfg.models.A)) ?? undefined;
+      }
+    }
+    return reply.status(201).send(controller.create(parsed.data, roles));
   });
 
   app.get<{ Params: { id: string } }>('/api/conversations/:id', async req => view(req.params.id));

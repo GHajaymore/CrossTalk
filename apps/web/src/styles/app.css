@@ -210,3 +210,9 @@ label.fld{display:grid;gap:6px}
 .pill.real{color:var(--b);border-color:rgba(var(--b-rgb),.45)}
 .verdict{font-family:var(--f-ui);font-size:13px;margin-left:6px}
 .verdict.ok{color:var(--b)} .verdict.bad{color:var(--bad)}
+
+/* listening */
+.turn.speaking .card{border-color:var(--text);box-shadow:0 0 0 1px var(--text)}
+.dot{width:9px;height:9px;border-radius:2px;display:inline-block}
+.dot.A{background:var(--a)} .dot.B{background:var(--b)}
+.voice-row select{width:100%}

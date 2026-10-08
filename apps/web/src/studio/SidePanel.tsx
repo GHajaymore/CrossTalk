@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { CUE_LIMIT } from '@crosstalk/shared';
 
 type Tab = 'cue' | 'voices' | 'branches';
 
 /** Cue · Voices · Branches. In Milestone 1 these show what's coming, clearly marked. */
-export function SidePanel({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function SidePanel({ open, onClose, voices }: { open: boolean; onClose: () => void; voices: ReactNode }) {
   const [tab, setTab] = useState<Tab>('cue');
   return (
     <aside className={`panel${open ? ' open' : ''}`} aria-label="Studio controls">
@@ -33,7 +33,7 @@ export function SidePanel({ open, onClose }: { open: boolean; onClose: () => voi
             <div className="dock-row"><button className="btn sm" disabled>Cool it down</button><button className="btn sm" disabled>Turn it up</button></div>
           </div>
         </>}
-        {tab === 'voices' && <p className="hint">Voice per host, with preview, arrives in Milestone 3. The most natural-sounding voices your device offers will be picked first.</p>}
+        {tab === 'voices' && voices}
         {tab === 'branches' && <p className="hint">Branch from any finished turn with its ⋯ menu, from Milestone 4. Branches get 4 new turns and never change the original.</p>}
         {open && <button className="btn ghost sm" onClick={onClose}>Close</button>}
       </div>

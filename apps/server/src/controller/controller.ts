@@ -92,6 +92,8 @@ export class ConversationController {
   }
   today() { return this.now().toLocaleDateString('en-CA'); }
   requestsToday() { return this.repo.requestsOn(this.today()); }
+  /** Counts a model request made outside a run (e.g. writing host roles) toward today's limit. */
+  countRequest() { this.repo.countRequest(this.today()); }
 
   /** Resolves when the conversation's current run has stopped generating. */
   settled(conversationId: string) {
@@ -99,7 +101,7 @@ export class ConversationController {
   }
 
   // ---- commands ----
-  create(input: CreateConversation): ConversationView {
+  create(input: CreateConversation, roles?: [string, string]): ConversationView {
     const at = this.now().toISOString();
     const c: Conversation = {
       id: randomUUID(),
@@ -110,7 +112,7 @@ export class ConversationController {
       audience: input.audience,
       temperature: input.audience === 'kids' && input.temperature === 'heated' ? 'lively' : input.temperature,
       episode: this.repo.nextEpisode(),
-      speakers: resolveSpeakers(input.topic, input.audience, input.speakers, this.opts.models),
+      speakers: resolveSpeakers(input.topic, input.audience, input.speakers, this.opts.models, roles),
       parentId: null,
       branchTurnId: null,
       createdAt: at,

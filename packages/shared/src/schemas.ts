@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { AUDIENCES, FORMATS, LENS_MAX, MODES, NAME_MAX, PERSONAS, TEMPERATURES, TOPIC_MAX } from './constants';
+import { AUDIENCES, FORMATS, LENS_MAX, MODES, NAME_MAX, PERSONAS, ROLE_MAX, TEMPERATURES, TOPIC_MAX } from './constants';
 
 const keys = <T extends Record<string, unknown>>(o: T) => Object.keys(o) as [keyof T & string, ...(keyof T & string)[]];
 
@@ -25,6 +25,10 @@ export const SpeakerDraft = z.object({
   autoPersona: z.boolean(),
   /** Only used for the Custom personality. Treated as content, never as instructions. */
   lens: z.string().trim().max(LENS_MAX),
+  /** The host's invented job or background, fitted to the topic (e.g. "Chef who runs a small bistro"). */
+  role: z.string().trim().max(ROLE_MAX).default(''),
+  /** Let the app write a role that fits the topic. */
+  autoRole: z.boolean().default(true),
 });
 export type SpeakerDraft = z.infer<typeof SpeakerDraft>;
 

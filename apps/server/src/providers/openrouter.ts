@@ -1,7 +1,9 @@
 // OpenRouter chat completions with streaming, a timeout and cancellation.
 // Always sends exactly one `model`: never the fallback `models` array or an auto router,
 // so a model is never silently substituted.
-import { buildPrompt } from '../prompts/buildPrompt';
+import { z } from 'zod';
+import { ROLE_MAX, type Audience } from '@crosstalk/shared';
+import { buildPrompt, rolesPrompt } from '../prompts/buildPrompt';
 import { AbortedError, ProviderError, type Provider, type TurnOptions, type TurnRequest, type Usage } from './types';
 
 export const CHAT_URL = 'https://openrouter.ai/api/v1/chat/completions';
@@ -41,12 +43,44 @@ function httpError(status: number, detail: string, retryAfter: string | null): P
   return new ProviderError(`OpenRouter refused the request (${status})${said}.`, false, null, status);
 }
 
+const RoleReply = z.object({ A: z.string().trim().min(3).max(ROLE_MAX), B: z.string().trim().min(3).max(ROLE_MAX) });
+
 export class OpenRouterProvider implements Provider {
   readonly name = 'openrouter';
   private f: typeof fetch;
 
   constructor(private opts: OpenRouterOptions) {
     this.f = opts.fetch ?? fetch;
+  }
+
+  /**
+   * Two invented host roles that fit the topic (one short, non-streaming request).
+   * Returns null on any problem, so the caller falls back to the keyword rule.
+   */
+  async generateRoles(topic: string, audience: Audience, modelId: string): Promise<[string, string] | null> {
+    const { system, user } = rolesPrompt(topic, audience);
+    try {
+      const res = await this.f(CHAT_URL, {
+        method: 'POST',
+        signal: AbortSignal.timeout(Math.min(this.opts.timeoutMs, 45_000)),
+        headers: { Authorization: `Bearer ${this.opts.apiKey}`, 'Content-Type': 'application/json', 'X-Title': 'CrossTalk (local prototype)' },
+        body: JSON.stringify({
+          model: modelId,
+          messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
+          max_tokens: 600,
+          reasoning: { effort: 'low', exclude: true },
+        }),
+      });
+      if (!res.ok) return null;
+      const body = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+      const text = body.choices?.[0]?.message?.content ?? '';
+      const json = text.match(/\{[\s\S]*\}/)?.[0];
+      if (!json) return null;
+      const parsed = RoleReply.safeParse(JSON.parse(json));
+      return parsed.success ? [parsed.data.A.replace(/[<>]/g, ''), parsed.data.B.replace(/[<>]/g, '')] : null;
+    } catch {
+      return null;
+    }
   }
 
   async generateTurn(req: TurnRequest, { onToken, signal }: TurnOptions) {
