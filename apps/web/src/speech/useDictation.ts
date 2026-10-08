@@ -53,10 +53,12 @@ export function useDictation(onText: (text: string) => void) {
       cb.current(`${prefix}${prefix && !prefix.endsWith(' ') ? ' ' : ''}${finalText}${interim}`.replace(/\s+/g, ' ').trimStart());
     };
     r.onerror = e => { setError(ERRORS[e.error] ?? 'The microphone stopped. You can try again or type.'); };
-    r.onend = () => { setListening(false); rec.current = null; };
+    // Only the current session may end the listening state; a late end from an old one is ignored.
+    r.onend = () => { if (rec.current === r) { setListening(false); rec.current = null; } };
+    rec.current?.abort();
     rec.current = r;
     setListening(true);
-    try { r.start(); } catch { setListening(false); }
+    try { r.start(); } catch { rec.current = null; setListening(false); setError('The microphone is busy. Try again in a moment.'); }
   };
   const stop = () => rec.current?.stop();
   return { available, listening, error, start, stop };

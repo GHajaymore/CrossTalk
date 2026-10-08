@@ -68,10 +68,10 @@ export function CuePanel({ view, live, setView, toast, limit: cueLimit, allowHea
     </div>
     <div className="voice-row"><h3>Take the mic</h3>
       <p className="hint">Say your piece on air as a guest. You take the gold seat in the middle and the next host replies to you.</p>
-      <textarea value={guest} maxLength={CUE_TEXT_MAX} disabled={off} onChange={e => setGuest(e.target.value)} placeholder={mic.available ? 'Tap the mic and talk, or type: e.g. I run a bakery, and Friday is our busiest day.' : 'e.g. I run a bakery, and Friday is our busiest day.'} aria-label="Your words on air" />
+      <textarea value={guest} maxLength={CUE_TEXT_MAX} disabled={off} readOnly={mic.listening} onChange={e => setGuest(e.target.value)} placeholder={mic.available ? 'Tap the mic and talk, or type: e.g. I run a bakery, and Friday is our busiest day.' : 'e.g. I run a bakery, and Friday is our busiest day.'} aria-label="Your words on air" />
       <div className="dock-row">
         {mic.available && (
-          <button className={`btn sm mic-btn${mic.listening ? ' on' : ''}`} disabled={off} aria-pressed={mic.listening}
+          <button className={`btn sm mic-btn${mic.listening ? ' on' : ''}`} disabled={off && !mic.listening} aria-pressed={mic.listening}
             onClick={() => (mic.listening ? mic.stop() : mic.start(guest))}>{mic.listening ? '■ Stop' : '🎙 Talk'}</button>
         )}
         <button className="btn sm" disabled={off || mic.listening || !guest.trim()} onClick={() => send({ kind: 'guest', text: guest }, () => setGuest(''))}>Go on air</button>

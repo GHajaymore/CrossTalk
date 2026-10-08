@@ -23,14 +23,19 @@ export function comicBeats(v: ConversationView) {
   // Never the same turn as Iris's panel, and preferably the other host from the opening, so the strip moves.
   const cue = v.interventions.find(c => c.status === 'applied' && (c.kind === 'challenge' || c.kind === 'guest'));
   const fresh = (t: Turn | undefined) => !!t && t.seq !== opening?.seq && t.seq !== moment?.seq;
-  const candidates = [cue && turns.find(t => t.seq === cue.appliesBeforeSeq), ...turns.filter(t => /Push back|Catch|Pressure test|Test|Rethink|Curveball/.test(t.objective))].filter(fresh) as Turn[];
+  const CLASH_JOBS = new Set(['Push back', 'Catch', 'Test', 'Rethink', 'Curveball', 'Pressure test']);
+  const candidates = [cue && turns.find(t => t.seq === cue.appliesBeforeSeq), ...turns.filter(t => CLASH_JOBS.has(t.objective))].filter(fresh) as Turn[];
   const clash = candidates.find(t => t.speakerId !== opening?.speakerId) ?? candidates[0] ?? turns.find(fresh);
-  const landing = turns.at(-1);
+  // The last word, unless it's already in a panel; then the latest line that isn't.
+  const used = new Set([opening?.seq, clash?.seq, moment?.seq]);
+  const landing = [...turns].reverse().find(t => !used.has(t.seq));
   return { opening, clash, moment, landing };
 }
 
 export async function makeComic(v: ConversationView): Promise<Blob> {
-  await Promise.all([`600 30px ${SAY}`, `26px ${SAY}`, `600 24px ${UI}`, `18px ${TAG}`].map(f => document.fonts?.load(f).catch(() => {})));
+  // Load the exact faces drawn below, so text is measured and wrapped with the real font.
+  await Promise.all([`600 34px ${SAY}`, `28px ${SAY}`, `italic 24px ${SAY}`, `600 24px ${UI}`, `18px ${UI}`, `18px ${TAG}`, `600 16px ${TAG}`, `600 22px ${TAG}`]
+    .map(f => document.fonts?.load(f).catch(() => {})));
   const canvas = document.createElement('canvas');
   canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext('2d')!;
@@ -82,7 +87,7 @@ export async function makeComic(v: ConversationView): Promise<Blob> {
     ctx.fillStyle = col; ctx.beginPath(); ctx.roundRect(sx, sy, 44, 44, 10); ctx.fill();
     ctx.fillStyle = '#141517'; ctx.font = `600 22px ${TAG}`; ctx.fillText(k, sx + 15, sy + 11);
     ctx.fillStyle = C.text; ctx.font = `600 24px ${UI}`;
-    const name = `${v.speakers[k].name} · turn ${t.seq}`;
+    const name = wrap(ctx, `${v.speakers[k].name} · turn ${t.seq}`, pw - 110, 1)[0] ?? '';
     const nw = ctx.measureText(name).width;
     ctx.fillText(name, k === 'A' ? sx + 58 : sx - 14 - nw, sy + 10);
   };
@@ -105,7 +110,8 @@ export async function makeComic(v: ConversationView): Promise<Blob> {
     }
     ctx.fillStyle = C.iris; ctx.font = `italic 24px ${SAY}`;
     let ly = boxY + boxH + 14;
-    const quote = art ? `“${art.caption}”` : moment ? `“${bubbleText(moment.text)}”` : 'Iris is still drawing.';
+    const quote = art ? `“${art.caption}”` : moment ? `“${bubbleText(moment.text)}”`
+      : v.artist?.state === 'failed' ? `${ARTIST.name} didn't draw this one.` : `${ARTIST.name} is still drawing.`;
     for (const l of wrap(ctx, quote, pw - 40, 2)) { ctx.fillText(l, x + 20, ly); ly += 30; }
     if (art) { ctx.fillStyle = C.muted; ctx.font = `16px ${TAG}`; ctx.fillText(`“${art.artTitle.toUpperCase()}” · TURN ${art.momentSeq}`, x + 20, ly + 4, pw - 40); }
   }
