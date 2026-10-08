@@ -258,6 +258,27 @@ test('Scout: Show more is free, sources can be switched, social posts stay opini
   await expect(page.getByText(/Last refreshed just now/)).toBeVisible();
 });
 
+test('Scout: your interests, countries and own sites; briefs show their spread', async ({ page, request }) => {
+  await page.goto('/#/create');
+  await page.getByRole('button', { name: '↻ Refresh topics' }).click().catch(() => {});
+  await page.getByLabel('Your interests').fill('golf, tipping');
+  await page.getByLabel('Your interests').press('Enter');
+  await page.getByLabel('Follow a country').selectOption('IN');
+  await expect(page.getByRole('button', { name: 'Stop following India' })).toBeVisible();
+  const link = page.getByLabel("RSS link of a news site to add");
+  await link.fill('https://localhost/rss');
+  await page.getByRole('group', { name: 'Your news sites' }).getByRole('button', { name: 'Add' }).click();
+  await expect(page.getByRole('status').filter({ hasText: /isn't a public website/ })).toBeVisible();
+  await link.fill('https://news.example/rss');
+  await page.getByRole('group', { name: 'Your news sites' }).getByRole('button', { name: 'Add' }).click();
+  await expect(page.getByRole('button', { name: 'Remove https://news.example/rss' })).toBeVisible();
+  await expect(page.locator('.topic-card .perspectives').first()).toContainText(/\d+ sources?/);
+  const prefs = (await (await request.get('/api/scout')).json()).prefs;
+  expect(prefs).toMatchObject({ interests: 'golf, tipping', countries: ['IN'], feeds: ['https://news.example/rss'] });
+  // Put things back for the other tests.
+  await request.put('/api/scout/prefs', { data: { ...prefs, interests: '', countries: [], feeds: [] } });
+});
+
 test('Scout: run it, pick a topic, and the brief follows the episode', async ({ page, request }) => {
   await page.goto('/#/create');
   await page.getByRole('button', { name: '↻ Refresh topics' }).click();

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { AUDIENCES, CUE_TEXT_MAX, SCOUT_CATS, SCOUT_REGIONS, SCOUT_SOURCES, TITLE_MAX, FORMATS, LENGTHS, LENS_MAX, MODES, NAME_MAX, PERSONAS, ROLE_MAX, TEMPERATURES, TOPIC_MAX } from './constants';
+import { AUDIENCES, CUE_TEXT_MAX, SCOUT_CATS, SCOUT_COUNTRIES, SCOUT_INTERESTS_MAX, SCOUT_MAX_FEEDS, SCOUT_REGIONS, SCOUT_SOURCES, TITLE_MAX, FORMATS, LENGTHS, LENS_MAX, MODES, NAME_MAX, PERSONAS, ROLE_MAX, TEMPERATURES, TOPIC_MAX } from './constants';
 
 const keys = <T extends Record<string, unknown>>(o: T) => Object.keys(o) as [keyof T & string, ...(keyof T & string)[]];
 
@@ -62,6 +62,8 @@ export const ScoutCat = z.enum(keys(SCOUT_CATS));
 export type ScoutCat = z.infer<typeof ScoutCat>;
 export const ScoutRegion = z.enum(keys(SCOUT_REGIONS));
 export const ScoutSourceKey = z.enum(keys(SCOUT_SOURCES));
+export const ScoutCountry = z.enum(keys(SCOUT_COUNTRIES));
+export type ScoutCountry = z.infer<typeof ScoutCountry>;
 export type ScoutSourceKey = z.infer<typeof ScoutSourceKey>;
 export type ScoutRegion = z.infer<typeof ScoutRegion>;
 
@@ -74,11 +76,18 @@ export const ScoutPrefs = z.object({
   autopilot: z.boolean(),
   /** Which sources to read; all of them when left out (older saved preferences). */
   sources: z.array(ScoutSourceKey).default(['news', 'trends', 'reddit', 'social', 'hn', 'wikipedia']),
+  /** Things you care about, in your words ("golf, AI in healthcare"). The Scout favours them. */
+  interests: z.string().trim().max(SCOUT_INTERESTS_MAX).default(''),
+  /** Countries you follow; Google Trends looks there. */
+  countries: z.array(ScoutCountry).max(8).default([]),
+  /** Your own news sites: public https RSS or Atom links. */
+  feeds: z.array(z.string().trim().max(300).url().refine(u => u.startsWith('https://'), 'Use an https:// link.')).max(SCOUT_MAX_FEEDS).default([]),
 });
 export type ScoutPrefs = z.infer<typeof ScoutPrefs>;
 
 /** One "what happened" bullet, always tied to a source the Scout actually read. */
-export type ScoutBullet = { text: string; url: string; source: string };
+/** `home` is where the outlet is based, so a brief can show how many places it draws on. */
+export type ScoutBullet = { text: string; url: string; source: string; home?: ScoutRegion };
 
 export type ScoutTopic = {
   id: string;

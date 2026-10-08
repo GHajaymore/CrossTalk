@@ -16,7 +16,7 @@ import { exportJson, exportMarkdown, exportName } from './export';
 import { exportHtml } from './episodePage';
 import { SAMPLE_HN, SAMPLE_NEWS, SAMPLE_RANKING, SAMPLE_REDDIT, SAMPLE_RSS, SAMPLE_SOCIAL, SAMPLE_TRENDS, SAMPLE_WIKIPEDIA } from './scout/samples';
 import { Scout, ScoutError } from './scout/scout';
-import { GoogleTrendsSource, HackerNewsSource, newsSource, OpenSocialSource, redditSource, RssSource, SampleSource, WikipediaSource, type TopicSource } from './scout/sources';
+import { assertPublicUrl, GoogleTrendsSource, HackerNewsSource, newsSource, OpenSocialSource, redditSource, RssSource, SampleSource, WikipediaSource, type TopicSource } from './scout/sources';
 
 export type AppOptions = {
   timing?: MockTiming;
@@ -78,11 +78,10 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
   controllerRef = controller;
 
   // Topic Scout. Mock mode reads saved samples and never touches the network.
-  const scoutRegions = () => scout.prefs().regions;
   const scout: Scout = new Scout(repo, {
     sources: opts.scoutSources ?? (real
       ? [
-          newsSource(f, () => scoutRegions()), new GoogleTrendsSource(f, () => scoutRegions()), redditSource(f), new OpenSocialSource(f),
+          newsSource(f, () => scout.prefs()), new GoogleTrendsSource(f, () => scout.prefs()), redditSource(f), new OpenSocialSource(f),
           new HackerNewsSource(f), new WikipediaSource(f, () => new Date()), ...(cfg.scoutFeeds.length ? [new RssSource(f, cfg.scoutFeeds)] : []),
         ]
       : [
@@ -404,6 +403,13 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
   app.put('/api/scout/prefs', async req => {
     const parsed = ScoutPrefs.safeParse(req.body);
     if (!parsed.success) throw new ControllerError(parsed.error.issues[0]?.message ?? 'Invalid Scout settings.', 400);
+    // A site you add must be a public website. Checked now, so you hear about a bad link straight away
+    // (mock mode never fetches anything, so it skips the address lookup but keeps the other checks).
+    const before = new Set(scout.prefs().feeds);
+    for (const url of parsed.data.feeds.filter(u => !before.has(u))) {
+      try { await assertPublicUrl(url, real ? undefined : async () => [{ address: '203.0.113.1' }]); }
+      catch (e) { throw new ControllerError((e as Error).message, 400); }
+    }
     scout.setPrefs(parsed.data);
     return scoutView();
   });

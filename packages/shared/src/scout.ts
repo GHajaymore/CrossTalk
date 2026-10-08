@@ -21,6 +21,9 @@ export const DEFAULT_SCOUT_PREFS: ScoutPrefs = {
   place: '',
   autopilot: false,
   sources: ['news', 'trends', 'reddit', 'social', 'hn', 'wikipedia'],
+  interests: '',
+  countries: [],
+  feeds: [],
 };
 
 export const isSensitive = (t: Pick<ScoutTopic, 'category'>) => (SENSITIVE_CATS as readonly string[]).includes(t.category);

@@ -173,7 +173,7 @@ describe('Topic Scout: the brief on air', () => {
       const bad = await app.inject({ method: 'PUT', url: '/api/scout/prefs', payload: { cats: ['gossip'] } });
       expect(bad.statusCode).toBe(400);
       const prefs = { cats: ['tech'], regions: ['world'], rank: 'buzz', place: 'Columbus', autopilot: false };
-      expect((await app.inject({ method: 'PUT', url: '/api/scout/prefs', payload: prefs })).json().prefs).toEqual({ ...prefs, sources: ['news', 'trends', 'reddit', 'social', 'hn', 'wikipedia'] });
+      expect((await app.inject({ method: 'PUT', url: '/api/scout/prefs', payload: prefs })).json().prefs).toEqual({ ...prefs, sources: ['news', 'trends', 'reddit', 'social', 'hn', 'wikipedia'], interests: '', countries: [], feeds: [] });
       const ran = (await app.inject({ method: 'POST', url: '/api/scout/run' })).json();
       expect(ran.status.lastRun.state).toBe('ok');
       expect(ran.topics.length).toBeGreaterThan(0);
