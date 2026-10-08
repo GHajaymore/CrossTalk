@@ -10,6 +10,7 @@ import { BriefBox } from '../scout/BriefBox';
 import { BranchDialog } from '../studio/BranchDialog';
 import { LivingSketch, sketchProgress } from '../studio/LivingSketch';
 import { MindMeter } from '../studio/MindMeter';
+import { VerdictCard } from '../studio/VerdictCard';
 import { BranchList } from '../studio/BranchList';
 import { CueCard } from '../studio/CueCard';
 import { cueState, CuePanel } from '../studio/CuePanel';
@@ -199,6 +200,7 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
         </>}
         {view.interventions.filter(c => !shown.has(c.appliesBeforeSeq)).map(c => <CueCard key={c.id} cue={c} onCancel={canCancel(c) ? cancelCue(c) : undefined} />)}
       </div>
+      {view.mode === 'hotseat' && st === 'completed' && <VerdictCard view={view} setView={setView} toast={toast} />}
       {view.artist && (
         <ArtistCard notes={view.artist} speakers={sp} conversationId={id} toast={toast}
           onAgain={() => { api.askIris(id).catch(e => toast((e as Error).message)); /* her progress arrives over the live stream */ }}

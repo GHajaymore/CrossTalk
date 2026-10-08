@@ -139,6 +139,7 @@ export class ConversationController {
       branchDirection: null,
       scoutTopicId: input.scoutTopicId ?? null,
       publish: null,
+      verdict: null,
       createdAt: at,
       updatedAt: at,
     };
@@ -271,6 +272,7 @@ export class ConversationController {
       id: randomUUID(),
       title: input.direction,
       publish: null,
+      verdict: null,
       // The mood at the cut, not wherever the original ended up.
       temperature: this.repo.temperatureAt(conversationId, input.fromSeq),
       parentId: parent.id,

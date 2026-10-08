@@ -45,6 +45,7 @@ export const api = {
   scout: () => call<ScoutView>('/scout'),
   setScoutPrefs: (p: ScoutPrefs) => call<ScoutView>('/scout/prefs', { method: 'PUT', body: JSON.stringify(p) }),
   runScout: () => call<ScoutView>('/scout/run', { method: 'POST' }),
+  verdict: (id: string, verdict: 'held' | 'won' | 'torn') => call<ConversationView>(`/conversations/${id}/verdict`, { method: 'POST', body: JSON.stringify({ verdict }) }),
   addCue: (id: string, cue: CueInput) => call<ConversationView>(`/conversations/${id}/cues`, { method: 'POST', body: JSON.stringify(cue) }),
   cancelCue: (id: string, cueId: string) => call<ConversationView>(`/conversations/${id}/cues/${cueId}`, { method: 'DELETE' }),
   branch: (id: string, b: BranchInput) => call<ConversationView>(`/conversations/${id}/branch`, { method: 'POST', body: JSON.stringify(b) }),

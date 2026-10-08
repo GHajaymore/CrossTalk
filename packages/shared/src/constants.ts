@@ -38,6 +38,14 @@ export const ROLE_MAX = 80;
 export const MODES = {
   explore: { label: 'Explore', help: 'They build on each other: one frames, the other widens, and both work through examples and trade-offs.' },
   debate: { label: 'Friendly Debate', help: 'They start from contrasting lenses and can concede or revise. No winner is declared.' },
+  hotseat: { label: 'Hot seat', help: 'One host defends the less popular answer as strongly as it can honestly be argued; the other tries to win them over. At the end, you say who moved you.' },
+} as const;
+
+/** Hot seat: the listener's verdict at the end (never Iris's, never the hosts'). */
+export const VERDICTS = {
+  held: 'The hot seat held',
+  won: 'The challenger won me over',
+  torn: "I'm torn",
 } as const;
 
 export const FORMATS = {
