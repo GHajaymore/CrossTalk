@@ -1,23 +1,52 @@
 import { DAILY_LIMIT_DEFAULT, MAX_TURNS } from '@crosstalk/shared';
 
-const int = (v: string | undefined, d: number) => (v && /^\d+$/.test(v) ? Number(v) : d);
+const int = (v: string | undefined, d: number) => (v && /^\d+$/.test(v.trim()) ? Number(v.trim()) : d);
+const str = (v: string | undefined) => (v ?? '').trim();
 
 export type ServerConfig = ReturnType<typeof loadConfig>;
 
+/**
+ * Reads settings from the environment (and the repo's .env file, loaded in index.ts).
+ * Never throws for missing real-mode settings: the server starts and the UI explains what's missing.
+ */
 export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
-  const mode = (env.PROVIDER_MODE || 'mock').toLowerCase();
-  if (mode !== 'mock') {
-    // No silent fallback: real models arrive in Milestone 2.
-    throw new Error(`PROVIDER_MODE=${mode} isn't available yet. Milestone 1 runs in mock mode only; set PROVIDER_MODE=mock.`);
+  const mode = str(env.PROVIDER_MODE).toLowerCase() || 'mock';
+  if (mode !== 'mock' && mode !== 'openrouter') {
+    throw new Error(`PROVIDER_MODE=${mode} isn't supported. Use mock or openrouter.`);
   }
+  const real = mode === 'openrouter';
+  const models = real
+    ? { A: str(env.SPEAKER_A_MODEL), B: str(env.SPEAKER_B_MODEL) }
+    // Mock IDs, shown in the UI like real model IDs. Not real models.
+    : { A: 'mock/wren-v1', B: 'mock/hale-v1' };
+  const artistModel = real ? str(env.ARTIST_MODEL) || null : null;
+  const apiKey = real ? str(env.OPENROUTER_API_KEY) : '';
+
+  // Problems that block every real run until fixed. Each names what to change.
+  const problems: string[] = [];
+  if (real) {
+    if (!apiKey) problems.push('OPENROUTER_API_KEY is not set.');
+    if (!models.A) problems.push('SPEAKER_A_MODEL is not set.');
+    if (!models.B) problems.push('SPEAKER_B_MODEL is not set.');
+    if (models.A && models.A === models.B) problems.push('Speaker A and Speaker B must use different models.');
+    if (artistModel && (artistModel === models.A || artistModel === models.B)) problems.push('ARTIST_MODEL must differ from both speaker models.');
+  }
+
   return {
-    providerMode: 'mock' as const,
-    host: env.HOST || '127.0.0.1',
+    providerMode: mode as 'mock' | 'openrouter',
+    host: str(env.HOST) || '127.0.0.1',
     port: int(env.PORT, 8787),
-    dbPath: env.DB_PATH || new URL('../data/crosstalk.sqlite', import.meta.url).pathname,
+    dbPath: str(env.DB_PATH) || new URL('../data/crosstalk.sqlite', import.meta.url).pathname,
     dailyLimit: int(env.MAX_REQUESTS_PER_DAY, DAILY_LIMIT_DEFAULT),
     maxTurns: Math.min(int(env.MAX_TURNS_PER_RUN, MAX_TURNS), MAX_TURNS),
-    // Mock IDs, shown in the UI like real model IDs will be. Not real models.
-    models: { A: 'mock/wren-v1', B: 'mock/hale-v1' },
+    models,
+    artistModel,
+    apiKey,
+    allowPaidModels: str(env.ALLOW_PAID_MODELS).toLowerCase() === 'true',
+    maxOutputTokens: int(env.MAX_OUTPUT_TOKENS_PER_TURN, 220),
+    requestTimeoutMs: int(env.REQUEST_TIMEOUT_MS, 60_000),
+    problems,
   };
 }
+
+export const mockConfig = (over: Partial<ServerConfig> = {}): ServerConfig => ({ ...loadConfig({ PROVIDER_MODE: 'mock' }), ...over });

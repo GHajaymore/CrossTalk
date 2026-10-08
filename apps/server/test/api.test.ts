@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app';
+import { mockConfig } from '../src/config';
 import { INSTANT, draft } from './helpers';
 
-const cfg = { providerMode: 'mock' as const, host: '127.0.0.1', port: 0, dbPath: ':memory:', dailyLimit: 40, maxTurns: 8, models: { A: 'mock/wren-v1', B: 'mock/hale-v1' } };
+const cfg = mockConfig({ dbPath: ':memory:' });
 let close: (() => Promise<unknown>) | null = null;
 afterEach(async () => { await close?.(); close = null; });
 

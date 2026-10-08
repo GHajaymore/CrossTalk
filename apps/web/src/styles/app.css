@@ -198,3 +198,14 @@ label.fld{display:grid;gap:6px}
 @media (prefers-reduced-motion: reduce){
   *{animation:none!important;transition:none!important}
 }
+
+/* banners: budget hit, real mode blocked, couldn't start */
+.banner{display:flex;gap:12px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;border:1px solid rgba(240,128,110,.45);background:rgba(240,128,110,.08);border-radius:9px;padding:11px 14px;font-size:14px}
+.banner b{color:var(--bad)}
+.banner.info{border-color:rgba(var(--cue-rgb),.4);background:var(--cue-soft)}
+.banner.info b{color:var(--cue)}
+.banner ul{margin:6px 0 0;padding-left:18px;display:grid;gap:3px}
+.stage .banner{margin:12px 0 0}
+.pill.real{color:var(--b);border-color:rgba(var(--b-rgb),.45)}
+.verdict{font-family:var(--f-ui);font-size:13px;margin-left:6px}
+.verdict.ok{color:var(--b)} .verdict.bad{color:var(--bad)}

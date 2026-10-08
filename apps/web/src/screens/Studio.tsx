@@ -10,6 +10,7 @@ import { SidePanel } from '../studio/SidePanel';
 import { StudioSet } from '../studio/StudioSet';
 import { TurnCard } from '../studio/TurnCard';
 import { TurnRail } from '../studio/TurnRail';
+import { BudgetBanner, realBlocked, SetupBanner } from '../lib/Banners';
 import { lastSentence, spokenSeconds, tail } from '../lib/text';
 import { Footer } from './Footer';
 
@@ -19,6 +20,7 @@ export function Studio({ id, config, refreshConfig, toast }: Props) {
   const { view, live, pulse, error, setView } = useConversation(id, refreshConfig);
   const [panelOpen, setPanelOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [startError, setStartError] = useState<string | null>(null);
 
   if (error && !view) return <div className="empty-stage"><p>{error}</p><a className="btn" href="#/create">Start a new one</a></div>;
   if (!view) return <div className="empty-stage"><p>Opening the studio…</p></div>;
@@ -28,11 +30,17 @@ export function Studio({ id, config, refreshConfig, toast }: Props) {
   const lastSeq = view.turns.reduce((m, t) => Math.max(m, t.seq), 0);
   const failedSeq = st === 'failed' ? lastSeq + 1 : null;
   const otherBusy = !!config?.activeConversationId && config.activeConversationId !== id;
+  const cantRun = busy || otherBusy || realBlocked(config) || (!!config && config.requestsToday >= config.dailyLimit);
   const reason = view.run?.stopReason;
 
   const act = (fn: (id: string) => Promise<ConversationView>) => async () => {
     setBusy(true);
-    try { setView(await fn(id)); } catch (e) { toast((e as Error).message); } finally { setBusy(false); refreshConfig(); }
+    setStartError(null);
+    try { setView(await fn(id)); } catch (e) {
+      const msg = (e as Error).message;
+      // Long reasons (blocked models, limits) stay on screen; short ones are a toast.
+      if (fn === api.start) setStartError(msg); else toast(msg);
+    } finally { setBusy(false); refreshConfig(); }
   };
 
   const statusWord = {
@@ -79,6 +87,9 @@ export function Studio({ id, config, refreshConfig, toast }: Props) {
           <span>{view.interventions.length} of {CUE_LIMIT} cues used</span>
         </div>
 
+        <SetupBanner config={config} />
+        <BudgetBanner config={config} />
+        {startError && <div className="banner" role="alert"><span><b>Couldn't start.</b> {startError}</span><button className="btn sm ghost" onClick={() => setStartError(null)}>Dismiss</button></div>}
         <div className="table">
           {!view.turns.length && !live && st === 'idle' && (
             <div className="empty-stage"><p>Both seats are ready. Press Start to hear {sp.A.name} open.</p></div>
@@ -102,9 +113,9 @@ export function Studio({ id, config, refreshConfig, toast }: Props) {
           <div className="dock-group">
             <span className="tag">Generation</span>
             <div className="dock-row">
-              {st === 'idle' && <button className="btn primary" disabled={busy || otherBusy} onClick={act(api.start)}>Start</button>}
-              {st === 'paused' && <button className="btn primary" disabled={busy || otherBusy} onClick={act(api.start)}>Resume</button>}
-              {st === 'failed' && <button className="btn primary" disabled={busy || otherBusy} onClick={act(api.start)}>Retry turn {lastSeq + 1}</button>}
+              {st === 'idle' && <button className="btn primary" disabled={cantRun} onClick={act(api.start)}>Start</button>}
+              {st === 'paused' && <button className="btn primary" disabled={cantRun} onClick={act(api.start)}>Resume</button>}
+              {st === 'failed' && <button className="btn primary" disabled={cantRun} onClick={act(api.start)}>Retry turn {lastSeq + 1}</button>}
               {st === 'generating' && <button className="btn" disabled={busy || !!view.run?.pauseRequested} onClick={act(api.pause)}>Pause after this turn</button>}
               {(st === 'generating' || st === 'paused' || st === 'failed') && <button className="btn danger" disabled={busy} onClick={act(api.stop)}>Stop</button>}
               <button className="btn ghost" disabled title="Export arrives in Milestone 6">Export</button>
@@ -120,7 +131,7 @@ export function Studio({ id, config, refreshConfig, toast }: Props) {
             </div>
           </div>
         </div>
-        <Footer />
+        <Footer config={config} />
       </section>
       <SidePanel open={panelOpen} onClose={() => setPanelOpen(false)} />
     </div>

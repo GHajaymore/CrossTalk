@@ -45,13 +45,13 @@ export class MockProvider implements Provider {
     for (let i = 0; i < words.length; i++) {
       if (i === failAt) {
         this.failedOnce.add(c.id);
-        throw new ProviderError('Provider timed out (simulated). Earlier turns are saved.');
+        throw new ProviderError('Provider timed out (simulated). Earlier turns are saved.', false, null, 504);
       }
       const piece = (i ? ' ' : '') + words[i];
       text += piece;
       onToken(piece);
       await wait(this.timing.wordMs(fast), signal);
     }
-    return { text };
+    return { text, usage: null };
   }
 }

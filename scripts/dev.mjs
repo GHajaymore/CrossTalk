@@ -3,6 +3,8 @@ import { spawn } from 'node:child_process';
 
 const env = { ...process.env };
 if (process.argv.includes('--mock')) env.PROVIDER_MODE = 'mock';
+// Behind a proxy (e.g. a cloud session), Node's built-in fetch only uses it when asked.
+if ((env.HTTPS_PROXY || env.https_proxy) && !env.NODE_USE_ENV_PROXY) env.NODE_USE_ENV_PROXY = '1';
 
 const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 const kids = ['@crosstalk/server', '@crosstalk/web'].map(ws =>

@@ -51,4 +51,25 @@ export const MIGRATIONS: string[] = [
     requests  INTEGER NOT NULL DEFAULT 0
   );
   `,
+  `
+  -- One row per provider attempt, including retries and failures. Never stores prompts or keys.
+  CREATE TABLE provider_usage (
+    id               TEXT PRIMARY KEY,
+    run_id           TEXT NOT NULL REFERENCES generation_runs(id) ON DELETE CASCADE,
+    conversation_id  TEXT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+    seq              INTEGER NOT NULL,
+    attempt          INTEGER NOT NULL,
+    provider         TEXT NOT NULL,
+    model_id         TEXT NOT NULL,
+    status           TEXT NOT NULL,
+    error            TEXT,
+    latency_ms       INTEGER NOT NULL,
+    tokens_in        INTEGER,
+    tokens_out       INTEGER,
+    cost_usd         REAL,       -- NULL means unknown, never $0
+    date             TEXT NOT NULL,
+    created_at       TEXT NOT NULL
+  );
+  CREATE INDEX usage_by_date ON provider_usage(date);
+  `,
 ];

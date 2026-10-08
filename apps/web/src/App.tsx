@@ -47,9 +47,9 @@ export function App() {
 
   let screen;
   if (loc.route === 'studio') screen = loc.id ? <Studio key={loc.id} id={loc.id} config={config} refreshConfig={refreshConfig} toast={toast} /> : <div className="empty-stage">Opening the studio…</div>;
-  else if (loc.route === 'library') screen = <Library />;
+  else if (loc.route === 'library') screen = <Library config={config} />;
   else if (loc.route === 'settings') screen = <Settings config={config} refreshConfig={refreshConfig} />;
-  else if (loc.route === 'control') screen = <ControlRoom />;
+  else if (loc.route === 'control') screen = <ControlRoom config={config} />;
   else screen = <Create config={config} go={go} refreshConfig={refreshConfig} toast={toast} />;
 
   return (
@@ -63,7 +63,9 @@ export function App() {
             ))}
           </nav>
           <div className="top-right">
-            <span className="pill mock" title="Scripted sample text. No model is called.">Mock mode</span>
+            {config?.providerMode === 'openrouter'
+              ? <span className="pill real" title="Real AI models via OpenRouter, free models only">Real models</span>
+              : <span className="pill mock" title="Scripted sample text. No model is called.">Mock mode</span>}
             <span className="pill" title="App-side safety limit, not a billing guarantee">
               App limit {config?.requestsToday ?? 0} / {config?.dailyLimit ?? 40} today
             </span>
