@@ -189,8 +189,16 @@ test('Hot seat: vote who moved you, then make the episode poster', async ({ page
   await expect(page.getByRole('button', { name: 'The challenger won me over' })).toHaveAttribute('aria-pressed', 'true');
   await page.getByRole('button', { name: 'Make poster' }).click({ timeout: 60_000 });
   await expect(page.getByRole('img', { name: /Poster for/ })).toBeVisible();
-  const [dl] = await Promise.all([page.waitForEvent('download'), page.getByRole('link', { name: 'Download' }).click()]);
+  const poster = page.locator('.poster-tile', { hasText: 'Episode poster' });
+  const [dl] = await Promise.all([page.waitForEvent('download'), poster.getByRole('link', { name: 'Download' }).click()]);
   expect(dl.suggestedFilename()).toMatch(/^crosstalk-ep\d+-poster\.png$/);
+
+  // The comic strip, from the same Episode kit.
+  await page.getByRole('button', { name: 'Make comic' }).click();
+  await expect(page.getByRole('img', { name: /Comic strip of/ })).toBeVisible();
+  const comic = page.locator('.poster-tile', { hasText: 'Comic strip' });
+  const [dl2] = await Promise.all([page.waitForEvent('download'), comic.getByRole('link', { name: 'Download' }).click()]);
+  expect(dl2.suggestedFilename()).toMatch(/^crosstalk-ep\d+-comic\.png$/);
 });
 
 test('Call in by voice: talk, check the words, go on air', async ({ page }) => {

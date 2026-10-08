@@ -45,6 +45,8 @@ CrossTalk is a prototype for one person. These are the honest gaps.
 - **Call in by voice** uses the browser's own speech-to-text. It works in Chrome, Edge and Safari but not
   Firefox (the mic button simply doesn't appear). Chrome and Edge send the audio to their maker's speech
   service to transcribe it. You always see and can edit the words before they go on air.
+- **The comic strip** is built from the episode's own lines and Iris's one sketch; she doesn't draw a new
+  picture for every panel (that would need a request per panel, or an image model).
 - **The episode poster** is drawn on your device. The fonts it uses come from the page, so a poster made
   offline may fall back to plain system fonts.
 
