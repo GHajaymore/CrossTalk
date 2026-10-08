@@ -14,7 +14,7 @@ export const BUSY_WAIT_MS = 10_000;
 /** Timeouts and network errors wait this long. */
 export const OTHER_WAIT_MS = 2_000;
 /** Replies longer than this are trimmed to whole sentences (kids get a shorter limit). */
-export const MAX_SPOKEN_WORDS = { kids: 100, other: 150 } as const;
+export const MAX_SPOKEN_WORDS = { kids: 60, other: 90 } as const;
 
 const isBusy = (e: ProviderError) => e.status === 429 || (e.status !== null && e.status >= 500) || /overload|busy|capacity/i.test(e.message);
 const wordCount = (t: string) => t.split(/\s+/).filter(Boolean).length;
@@ -28,7 +28,7 @@ export function fitToLength(text: string, max: number): string {
     if (wordCount(out + s) > max) break;
     out += s;
   }
-  return wordCount(out) >= 40 ? out.trim() : text;
+  return wordCount(out) >= 12 ? out.trim() : text;
 }
 /** At most one automatic retry per turn: two attempts. */
 export const MAX_ATTEMPTS = 2;

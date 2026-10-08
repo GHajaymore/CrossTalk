@@ -96,7 +96,7 @@ describe('retry policy and request counting', () => {
     await controller.start(c.id);
     await controller.settled(c.id);
     const text = repo.listTurns(c.id)[0].text;
-    expect(text.split(/\s+/)).toHaveLength(150);
+    expect(text.split(/\s+/)).toHaveLength(90);
     expect(text.endsWith('you see.')).toBe(true);
   });
 

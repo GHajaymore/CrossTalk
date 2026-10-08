@@ -21,10 +21,10 @@ describe('HTTP API', () => {
 
     const got = (await app.inject({ url: `/api/conversations/${id}` })).json();
     expect(got.run.state).toBe('completed');
-    expect(got.turns).toHaveLength(8);
+    expect(got.turns).toHaveLength(16);
 
     const config = (await app.inject({ url: '/api/config' })).json();
-    expect(config).toMatchObject({ providerMode: 'mock', requestsToday: 8, nextEpisode: 2 });
+    expect(config).toMatchObject({ providerMode: 'mock', requestsToday: 16, nextEpisode: 2 });
   });
 
   it('rejects an empty topic with a readable message', async () => {

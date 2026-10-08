@@ -151,6 +151,8 @@ Paused and failed runs can continue; stopped (cancelled) and completed runs cann
 
 ## Conversation engine
 
+> **Update, Oct 8, 2026 (after the first real episode):** the owner found 8 long turns sounded like two speeches, not people talking. Episodes now have **16 short turns** (1–4 sentences each) in a **"two friends chatting"** style: react first, light humour, imagined stories ("picture a…"), names used rarely. The 16 turn jobs are: Hello, First take, Frame, Push back, Story, React, Example, Test, Big idea, Catch, Rethink, Curveball, Common ground, Still unsure, Takeaway, Sign-off. A full episode now uses about 16 requests, so the 40-a-day limit allows about 2 episodes a day. The table below is the original 8-turn plan, kept for history.
+
 The controller, not the models, runs the loop: for each seq it picks the speaker, builds the prompt, calls the provider, streams tokens, saves the turn, then checks for stop/pause and queued cues before the next one.
 
 | Turn | Speaker | Job (shown on the turn rail) |
@@ -510,6 +512,7 @@ All settled Oct 7, 2026.
 | Admin | Control room for you: analytics, live control with producer notes, publishing approvals, topic pin/hide, rules; Milestone 8 |
 | Accounts | Now none; later: listening needs no account, taking part needs a free account, paid tier once premium features exist |
 | Where Claude Code runs | Cloud sessions on the private GitHub repo; a local copy only when trying demos |
+| Episode shape (Oct 8) | 16 short turns, "two friends chatting"; natural conversation before natural voices |
 
 ## CLAUDE.md (create this in the repo root)
 

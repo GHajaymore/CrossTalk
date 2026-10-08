@@ -8,10 +8,16 @@ export const PRESETS = [
   'Can technology improve golf without changing its character?',
 ] as const;
 
-/** The job of each turn, shown on the turn rail. Index 0 is turn 1. */
-export const JOBS = ['Frame', 'Challenge', 'Example', 'Test', 'Implication', 'Limits', 'Common ground', 'Close'] as const;
+/**
+ * The job of each turn, shown on the turn rail. Index 0 is turn 1; Speaker A takes odd turns.
+ * Sixteen short turns so an episode flows like two friends talking, not two speeches.
+ */
+export const JOBS = [
+  'Hello', 'First take', 'Frame', 'Push back', 'Story', 'React', 'Example', 'Test',
+  'Big idea', 'Catch', 'Rethink', 'Curveball', 'Common ground', 'Still unsure', 'Takeaway', 'Sign-off',
+] as const;
 
-export const MAX_TURNS = 8;
+export const MAX_TURNS = 16;
 export const DAILY_LIMIT_DEFAULT = 40;
 export const CUE_LIMIT = 3;
 export const TOPIC_MAX = 200;

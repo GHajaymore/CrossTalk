@@ -54,12 +54,12 @@ describe('real mode runs', () => {
     await controller.settled(created.id);
     const v = (await app.inject({ url: `/api/conversations/${created.id}` })).json();
     expect(v.run.state).toBe('completed');
-    expect(v.turns.map((t: { text: string }) => t.text)).toEqual([1, 2, 3, 4, 5, 6, 7, 8].map(n => `Turn ${n} from ${n % 2 ? FREE_A : FREE_B}.`));
-    expect(net.chatCalls().map(c => c.body!.model)).toEqual([FREE_A, FREE_B, FREE_A, FREE_B, FREE_A, FREE_B, FREE_A, FREE_B]);
+    expect(v.turns.map((t: { text: string }) => t.text)).toEqual(Array.from({ length: 16 }, (_, i) => `Turn ${i + 1} from ${i % 2 ? FREE_B : FREE_A}.`));
+    expect(net.chatCalls().map(c => c.body!.model)).toEqual(Array.from({ length: 16 }, (_, i) => (i % 2 ? FREE_B : FREE_A)));
 
     const cfg = (await app.inject({ url: '/api/config' })).json();
-    expect(cfg).toMatchObject({ providerMode: 'openrouter', requestsToday: 8, apiKeySet: true, problems: [] });
-    expect(cfg.usageToday).toEqual({ attempts: 8, tokensIn: 1600, tokensOut: 48, costUsd: 0 });
+    expect(cfg).toMatchObject({ providerMode: 'openrouter', requestsToday: 16, apiKeySet: true, problems: [] });
+    expect(cfg.usageToday).toEqual({ attempts: 16, tokensIn: 3200, tokensOut: 96, costUsd: 0 });
     expect(cfg.guard.verdicts.map((x: { ok: boolean }) => x.ok)).toEqual([true, true]);
   });
 

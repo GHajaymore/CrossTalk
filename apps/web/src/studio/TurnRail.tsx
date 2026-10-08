@@ -10,7 +10,7 @@ export function TurnRail({ turns, liveSeq, failedSeq, speakers }: { turns: Turn[
         return (
           <div key={s} className={`pip ${cls}`} title={`Turn ${s}: ${speakers[speakerFor(s)].name}, ${jobFor(s)}`}>
             <div className="bar" />
-            <span className="tag">{s} {jobFor(s)}</span>
+            <span className="tag"><b>{s}</b>{jobFor(s)}</span>
           </div>
         );
       })}

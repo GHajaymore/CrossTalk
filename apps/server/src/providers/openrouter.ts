@@ -6,7 +6,7 @@ import { AbortedError, ProviderError, type Provider, type TurnOptions, type Turn
 
 export const CHAT_URL = 'https://openrouter.ai/api/v1/chat/completions';
 /** A reply cut off by the length limit is kept, trimmed to whole sentences, only if at least this many words remain. */
-export const MIN_WORDS_AFTER_TRIM = 40;
+export const MIN_WORDS_AFTER_TRIM = 12;
 
 /** Text up to the last sentence ending (. ? ! possibly followed by a closing quote or bracket). */
 export function wholeSentences(text: string) {

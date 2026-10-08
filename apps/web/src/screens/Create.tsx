@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import {
-  ARTIST, AUDIENCES, episodeLabel, FORMATS, LENS_MAX, MODES, NAME_MAX, PERSONAS, personaLabel, PRESETS, resolveSpeakers,
+  ARTIST, AUDIENCES, episodeLabel, FORMATS, LENS_MAX, MAX_TURNS, MODES, NAME_MAX, PERSONAS, personaLabel, PRESETS, resolveSpeakers,
   TEMPERATURE_ORDER, TEMPERATURES, TOPIC_MAX,
   type AppConfig, type Audience, type CreateConversation, type Format, type Mode, type PersonaKey, type SpeakerDraft, type SpeakerId, type Temperature,
 } from '@crosstalk/shared';
@@ -84,7 +84,7 @@ export function Create({ config, go, refreshConfig, toast }: Props) {
   return (
     <div className="create">
       <div className="hero">
-        <div className="tag">New episode · 8 turns · {episodeLabel(config?.nextEpisode ?? 1)}</div>
+        <div className="tag">New episode · {MAX_TURNS} turns · {episodeLabel(config?.nextEpisode ?? 1)}</div>
         <h1>Choose a topic. Record it with two AI hosts.</h1>
         <p>Challenge their ideas, turn up the heat, branch from any moment, and keep the episode and Iris's art.</p>
       </div>
@@ -172,7 +172,7 @@ export function Create({ config, go, refreshConfig, toast }: Props) {
           {blocked ? 'Real mode is blocked; see above.' : overBudget ? 'Daily limit reached.' : busy
             ? <>Another discussion is still generating. <a href={`#/studio/${config!.activeConversationId}`} style={{ color: 'var(--cue)' }}>Open it</a> to pause or stop it first.</>
             : !topic.trim() ? 'Add a topic first.'
-            : config?.providerMode === 'openrouter' ? 'Uses 8 requests to free models (up to 16 if turns are retried).'
+            : config?.providerMode === 'openrouter' ? `Uses ${MAX_TURNS} requests to free models (a few more if a turn is retried).`
             : 'Mock mode: scripted text, no model is called.'}
         </span>
       </div>

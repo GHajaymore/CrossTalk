@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { MODES, type AppConfig, type MockSettings } from '@crosstalk/shared';
+import { MAX_TURNS, MODES, type AppConfig, type MockSettings } from '@crosstalk/shared';
 import { api, type ConversationSummary } from '../api/client';
 import { SetupBanner } from '../lib/Banners';
 import { Footer } from './Footer';
@@ -23,7 +23,7 @@ export function Library({ config }: { config: AppConfig | null }) {
                     <span className={`status ${st}`}>{c.run?.stopReason === 'interrupted' ? 'interrupted' : st}</span>
                     <span>Ep. {String(c.episode).padStart(2, '0')}</span>
                     <span>{MODES[c.mode].label}</span>
-                    <span>{c.turnCount} of 8 turns</span>
+                    <span>{c.turnCount} of {MAX_TURNS} turns</span>
                     <span>{new Date(c.createdAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>
                   </div>
                 </div>

@@ -1,72 +1,121 @@
-// Scripted turns for mock mode. One script per preset topic, plus a generic one for anything else.
-// Each script follows the 8-turn arc in docs/PLAN.md: Frame, Challenge, Example, Test,
-// Implication, Limits, Common ground, Close. Speaker A speaks odd turns, Speaker B even turns.
+// Scripted turns for mock mode: two friends chatting, 16 short turns (docs/PLAN.md).
+// One script per preset topic, plus a generic one for anything else.
+// Speaker A speaks odd turns, Speaker B even turns. Scripts never use the hosts' names,
+// because names are chosen per episode.
 import { PRESETS, type SpeakerId, type Temperature } from '@crosstalk/shared';
 
 const AI_BUSINESS = [
-  "Let's frame this around leverage rather than replacement. An independent business has always been limited by the owner's hours: one person doing the books, the marketing, the ordering and the actual craft. AI tools are cheapest exactly where those owners are stretched thinnest, in the paperwork around the work. So the useful question isn't whether AI helps small businesses in general. It's which hours an owner gets back, and whether they spend them on the part customers actually come for.",
-  "I like 'which hours come back', but I'd challenge the idea that the hours stay with the owner. When every competitor gets the same tools, the time saved tends to become the new baseline, not a gift. If AI makes product descriptions free for one shop, it makes them free for the big chains too, and the chains have more data to tune them with. I'm not sure who ends up ahead, but I wouldn't assume it's the independents.",
-  "Fair, so let me make it concrete. Picture a two-person bike repair shop. The owner uses an assistant to answer the same twenty questions about opening hours and tyre sizes, drafts the weekly parts order from last month's invoices, and turns voice notes into repair quotes. None of that is visible to customers. What they notice is that the mechanic is at the bench instead of on the phone. The chains always had staff for that work; the small shop never did.",
-  "That example leans on the tool getting things right. What happens when the assistant tells a customer the shop opens at nine on a holiday, or quotes the wrong part? A chain absorbs one bad answer; a two-person shop can lose a regular. There's also subscription creep: five tools at twenty dollars a month each adds up on thin margins. I don't know the typical payback period, and I suspect most owners don't either.",
-  "Here's the strongest implication, I think. AI shrinks the minimum size at which a business can look professional. A solo baker can now have clear allergen labels, a decent website and translated menus, things that used to need an agency. That doesn't guarantee they win, but it lowers the cost of starting, and of staying small on purpose. The independents who benefit most may be the ones who use it to stay small, not to grow.",
-  "What we haven't said is that the platforms in between still set the terms. If customers find shops through a search engine or a delivery app that also uses AI to rank and summarise them, the owner's careful work can be flattened into a one-line summary they didn't write. And comfort matters: owners who enjoy experimenting will pull ahead of equally good owners who don't. That gap is real, and it has nothing to do with the quality of the bread.",
-  "So here's where we agree: AI helps most with the invisible admin, and it's only worth it if the saved time goes back into the thing customers value. Where we're still unsure is who captures the gains once everyone has the same tools, and how much small businesses depend on platforms they don't control. I'd also admit we don't know how often a wrong answer costs a shop a customer. That's an honest gap in what either of us can claim.",
-  "I'll close with the questions I'd ask before an owner signs up. Which single task eats the most hours each week, and could a tool do it reliably? What does one wrong answer to a customer cost? Who owns the data you feed in? The practical takeaway: start with one boring task, check the output for a month, and cancel anything that doesn't pay for itself. Small and reversible beats a full overhaul.",
+  "So today: will AI actually help independent businesses, or is it just another thing they're told they need? I'm leaning hopeful, which I suspect you're about to fix.",
+  "You know me so well. I'm not against it. I just notice every new tool promised small shops they'd compete with the big chains, and somehow the big chains keep winning.",
+  "Fair. Here's how I'd frame it, though. A small business is limited by one thing: the owner's hours. AI is cheapest exactly where they're stretched thinnest, the paperwork around the actual work.",
+  "Sure, but if every competitor gets the same tools, those saved hours become the new normal, not a gift. Free product descriptions for one shop means free for the chain too. And they have more data.",
+  "Okay, picture a two-person bike repair shop. The assistant answers the same twenty questions about opening hours, drafts the parts order from last month's invoices, and turns voice notes into quotes.",
+  "Ha, the twenty questions thing is real. Every shop has a laminated sign for exactly those. But what happens when the assistant tells someone you're open on a holiday? A chain shrugs that off. A two-person shop loses a regular.",
+  "True. So you keep it on the boring stuff where a mistake is cheap. Ordering, invoices, first drafts. The mechanic stays at the bench instead of on the phone, and that's what customers notice.",
+  "Then the question is whether it pays for itself. Five tools at twenty dollars a month adds up on thin margins. I honestly don't know the typical payback, and I suspect most owners don't either.",
+  "Here's the bit that excites me, though. AI shrinks the size you need to be to look professional. A solo baker can have clear allergen labels, a decent website, translated menus. That used to need an agency.",
+  "Okay, but here's the catch: the platforms in the middle still set the rules. If customers find you through an app that sums you up in one line you didn't write, all that careful work gets flattened.",
+  "Yeah, I hadn't really weighed that. You can polish everything and still be at the mercy of whoever ranks you. That's a real limit.",
+  "And a curveball: owners who enjoy experimenting will pull ahead of equally good owners who don't. That gap has nothing to do with the quality of the bread.",
+  "So where we land: it helps most with the invisible admin, and only if the saved time goes back into the thing customers love. And it doesn't fix who controls the storefront.",
+  "What I'm still unsure about is who captures the gains once everyone has the same tools. My guess is the platforms. I'd love to be wrong.",
+  "Takeaway for owners: pick one boring task that eats your week, try a tool on it for a month, and check every output. Cancel anything that doesn't pay for itself.",
+  "And own your customer list, whatever you do. That's us for today. Go support a local shop, maybe one with a laminated sign.",
 ];
 
 const CITIES = [
-  "Let's frame this as a question about space, because space is the one thing a city can't make more of. A street is a fixed width, and every metre goes to moving cars, parking them, or people on foot. So 'cars or pedestrians' is really asking which trips a particular street should serve best. A downtown shopping street and a ring road have different answers, and most of the fights come from treating them as the same.",
-  "That's a tidy framing, but I'd start somewhere else: who the street is for, not which trips it serves. Trip counts favour whoever travels most, and that tends to be commuters passing through rather than people who live there. A child walking to school makes one short trip a day, yet it may matter more than fifty drivers saving a minute. I'm not sure how to weigh those, but I don't think counting trips settles it.",
-  "Then let's look at one street. Imagine a four-lane main road through a town centre, two lanes moving and two parked. The town removes one parking lane, widens the pavement, adds a loading bay for deliveries at set hours, and keeps both through-lanes. Drivers still get through, a little slower. Cafés get outdoor tables. The trade-off is visible and specific, which is what lets people judge it instead of arguing about cars in general.",
-  "Let me test what that example assumes. It assumes the drivers who lose parking have somewhere else to go, and that shoppers arrive mostly on foot. Shop owners often believe their customers drive, and they're sometimes wrong, but not always. And what about the person who can't walk far, or the plumber carrying tools? If the change quietly makes the centre harder for them, a nicer pavement hasn't made the street fairer.",
-  "Here's what I think follows. Changes like this work best as trials, with paint and planters before concrete, because the arguments are mostly predictions. Cities that test a layout for a summer and count footfall, sales and journey times end up with evidence instead of slogans. And sometimes the result surprises both sides. The practical win is a decision process people can trust, even when they don't like every outcome.",
-  "What's overlooked is that a trial measures what's easy to count. Footfall and journey times show up in a spreadsheet; whether older residents feel cut off, or whether a street now belongs to visitors rather than neighbours, doesn't. There's also displacement: traffic pushed off one street lands on another, often a poorer one. A good trial has to ask who absorbed the change, not just whether the main street looks better.",
-  "So we agree on more than the title suggests. It's rarely all cars or all people; it's street by street, and the people with the least choice about how they travel deserve the most weight. Where we still differ is how far to trust the numbers, and I'll concede you can't count belonging. What neither of us knows is how long it takes habits to adjust, and whether a short trial ever captures that.",
-  "I'll close with the questions worth asking about any street. Who uses it, and who only passes through? Who can't easily change how they travel? Where does the displaced traffic go? The practical takeaway: pick one street, run a reversible trial with measures agreed in advance, and put the people who'd lose out in the room where the result gets judged. That's slower than a slogan, but it holds up.",
+  "Today's one gets people properly worked up: should cities put cars or pedestrians first? I've got a practical answer, but I suspect you've got a philosophical one.",
+  "Guilty. Before we talk lanes and parking, I want to know who a street is actually for. The people who live on it, or the people driving through it?",
+  "See, I'd start with space. A street is a fixed width. Every metre goes to moving cars, parked cars, or people on foot. So the question is which trips this particular street should serve.",
+  "But counting trips favours whoever travels most, and that's usually commuters passing through. A kid walking to school makes one short trip. Does that count less than fifty drivers saving a minute?",
+  "Okay, picture a main street through a small town. Four lanes, two moving, two parked. They swap one parking lane for wider pavement and a delivery bay. Traffic still moves, just slower, and the cafés put tables out.",
+  "Ha, the café tables always show up first. I like it. But who lost their parking space? And did the shop owners, who swear all their customers drive, get a say?",
+  "They should, and they're often wrong about it, but not always. Which is why I'd test it with paint and planters for one summer before anyone pours concrete.",
+  "Fine, but what would have to be true for the test to be fair? Think of someone who can't walk far, or the plumber hauling tools. If it quietly makes the centre harder for them, a nicer pavement isn't fairer.",
+  "That's why I like trials, though. Count footfall, sales and journey times. You get evidence instead of slogans, and sometimes the result surprises both sides.",
+  "Here's the catch: trials measure what's easy to count. Whether older residents feel cut off doesn't show up in a spreadsheet. And traffic pushed off one street lands on another, often a poorer one.",
+  "Yeah, that's fair. I'd been treating the spreadsheet as the whole story. Where the traffic goes has to be part of the test.",
+  "And my curveball: what if the street works fine and we're solving the wrong problem? Sometimes the real issue is a bus that comes every forty minutes.",
+  "Ha, the forty-minute bus, villain of every city story. Okay, where we agree: it's street by street, never all cars or all people, and the folks with the least choice get the most weight.",
+  "Agreed. What I still don't know is how long habits take to settle. A summer trial might just measure people being annoyed.",
+  "Takeaway: pick one street, run a reversible trial with measures agreed up front, and invite the people who'd lose out to judge the result.",
+  "And check the bus timetable first. That's us. Walk, drive or cycle home safely, everyone.",
 ];
 
 const FOUR_DAY = [
-  "Let's frame this as a question about output, not hours. A four-day week works when a team's results come from focused work that can be compressed, and it struggles where value depends on someone simply being available. So the practical question for an employer isn't whether it's good in general. It's which of our jobs are measured by outcomes and which are measured by coverage. That split, I think, predicts most of the success stories and most of the quiet reversals.",
-  "I like the outcomes-versus-coverage split, but I'd push on how clean it is. Most roles are a blend. A software engineer ships features, yet also answers incidents at 4 p.m. on a Friday. A nurse is almost pure coverage. The risk is that a four-day policy quietly becomes four long days plus an unofficial fifth on call. I'm unsure how often that happens, but it's the failure I'd look for first.",
-  "Here's a concrete version. Picture a twelve-person accounting firm outside tax season. They close Fridays but rotate one person each week to handle client calls, and that person takes Monday off instead. Output is tracked by files closed, not hours logged. The rotation answers your Friday-incident worry without pretending coverage disappears. It works because the firm can name its coverage needs precisely, a skill many teams have never had to practise.",
-  "That example works partly because it's small and seasonal, so let me test the assumptions. It assumes work expands to fill time, so compressing the week mostly removes slack. Sometimes true. But if the team is already at capacity, the same work now needs longer days, and fatigue can erase the gains. Then there's the customer side: if competitors answer on Fridays, does the firm lose clients? I don't know the size of that effect.",
-  "The strongest implication, I think, is that a four-day week forces an audit most organisations avoid: what does each meeting, report and approval actually produce? Teams that try it tend to cut recurring meetings first, because that's where time is easiest to recover. Even if a company returns to five days, that audit can be the lasting benefit. The schedule becomes a forcing function for deciding what work is worth doing at all.",
-  "What's being overlooked is who absorbs the friction. Salaried knowledge workers may gain a day. Hourly staff might lose pay if hours are cut, or gain exhausting ten-hour shifts. Managers often cover gaps informally. And small businesses with thin margins have less room to run a trial and recover from a bad one. So 'practical' depends heavily on whether the business can afford to be wrong for a quarter.",
-  "So here's where we agree: a four-day week is a design problem, not a perk. It needs explicit coverage plans, output measures people trust, and a time-boxed trial with a real exit. Where we're still uncertain: how much of the gain comes from the extra day itself versus the cleanup it forces, and whether results from early adopters, who chose to try it, carry over to firms that would adopt it reluctantly.",
-  "I'll close with the questions I'd want answered before trying it. Which roles are coverage roles, and who covers them? What single output measure would we watch, and what number would make us stop? How do hourly staff come out financially? The practical takeaway: run it as a three-month experiment on one team, measure before and after, and treat going back to five days as an acceptable result, not a failure.",
+  "Okay, today's question is one I genuinely can't make up my mind on: is a four-day workweek actually practical? My gut says yes, for a lot of jobs. Talk me out of it.",
+  "Happily. Well, half happily. Who doesn't love a three-day weekend? My worry is simpler: the work doesn't know it's Friday. Someone still has to pick up the phone.",
+  "Right, and I think that's the real question. Not whether it's nice, but which jobs are measured by what you produce, and which are measured by just being there.",
+  "Sure, but most jobs are both. An engineer ships features and also gets paged at four on a Friday. I'd bet the four-day week quietly turns into four long days plus an unofficial fifth.",
+  "Okay, picture a twelve-person accounting firm outside tax season. They close Fridays, but one person each week covers the phones and takes Monday off instead. Output's tracked by files closed, not hours.",
+  "Ha, I like that, mostly because someone actually wrote down who covers what. Most teams never have. But that's a small firm in a slow season. Easy mode.",
+  "Fair. So take a harder one: a busy dental clinic. You can't close Fridays, so you stagger. Half the team is off Friday, half off Monday. Patients don't notice, and staff still get the long weekend.",
+  "Okay, but what has to be true for that to work? Enough people to split, and enough slack that ten-hour days don't wreck everyone. If you're already stretched thin, it just makes Thursday miserable.",
+  "That's my favourite part, though. To even try it, you have to ask what every meeting and report is for. Teams that try it cut meetings first, and even if they go back to five days, they keep that.",
+  "Here's the catch nobody puts in the press release: who absorbs the friction? Salaried folks get a day back. Hourly staff might lose pay, or get exhausting shifts. Managers quietly cover the gaps.",
+  "Yeah, that's a real hit. If it only works for people with laptops and a salary, it's a perk, not a policy. Fair point.",
+  "And my curveball: what about the customer? If your competitor answers the phone on Friday and you don't, does anyone actually care? Or do we just assume they do?",
+  "Honestly, I think we agree more than it sounded. It's a design problem, not a perk. You need a coverage plan, a number you trust, and a real trial with a way back.",
+  "Agreed. What I'm still unsure about is how much of the gain is the extra day, and how much is just finally cleaning up the work. Early adopters chose this. Reluctant companies might see nothing.",
+  "So, takeaway for anyone listening: try it on one team for three months, measure before and after, and treat going back to five days as a perfectly fine result.",
+  "And check what happens to your hourly people before you celebrate. That's it from us. Thanks for listening, and enjoy your weekend, however long it is.",
 ];
 
 const RESTAURANT = [
-  "Let me start at a table. A family of four sits down, and nobody has to wave for the bill, explain an allergy twice, or wait while the kitchen guesses. The food arrives warm, and the room is quiet enough to talk. I think the ideal future restaurant is less about robots and more about removing the small frictions that spoil a meal, so the people working there can spend their attention on the part only people can do.",
-  "I'd push back on removing all friction, because some friction is the meal. Waiting for the waiter to notice you is annoying; the waiter remembering your name is the reason you come back. Every 'frictionless' restaurant I can picture looks like an airport lounge with better lighting. So my question is what a restaurant is actually for. If it's only efficient food delivery, the ideal future restaurant is your own kitchen and an app.",
-  "Then let me tell you about a small place I can picture clearly. Twelve tables, one set menu that changes weekly, ordered when you book. Because the kitchen knows the numbers in advance, almost nothing is thrown away, and the price is lower. The servers don't take orders, so they talk: where the fish came from, why the dessert is sour on purpose. Technology does the planning in the background. The evening still feels hosted, not processed.",
-  "That sounds lovely, and also like a place you can't wander into on a Tuesday because you're hungry. Pre-ordering assumes diners plan ahead and never change their minds, which describes almost nobody I've eaten with. What about the spontaneous meal, the picky child, the friend who announces a new diet at the table? I don't know how big that crowd is, but a lot of restaurants survive on walk-ins.",
-  "The strongest implication, I think, is that there won't be one ideal restaurant but a clearer split. Some places become planned, low-waste evenings with a story to tell. Others become fast, flexible and cheap, with machines doing more of the cooking. The interesting future is that each can be honest about what it is, instead of every restaurant trying to be a little of everything and doing none of it well.",
-  "Here's what we've skipped: the people in the kitchen. Low waste and set menus are great until you're the cook working a split shift for wages that haven't moved in years. Automation might take the worst jobs, or it might take the steady ones and leave the stressful ones. And rent decides more restaurant futures than any menu idea. The ideal restaurant you can't afford to open is, technically, a very nice daydream.",
-  "So here's our common ground: the best future restaurants use technology for planning and waste, and keep people for welcome and judgement. We both care about the meal feeling hosted. What's still uncertain is whether that model pays the staff fairly, and whether it can serve walk-ins as well as planners. I'll concede that a beautiful menu doesn't count for much if the kitchen can't keep its cooks.",
-  "I'll close with the questions I'd put to anyone designing one. Who gets the hours the machines save? What happens when a guest walks in without booking? How does the place survive if the rent doubles? The practical takeaway: borrow one idea, like a weekly set menu or smarter bookings, try it for a season, and keep whatever makes both guests and cooks happier. Also, keep the bread basket. Some traditions are load-bearing.",
+  "Today we're dreaming a little: what would an ideal future restaurant look like? I keep picturing a family sitting down, and nobody has to wave for the bill.",
+  "See, I picture a robot bringing me soup and then asking me to rate the soup. Five stars or the soup gets it.",
+  "Ha, no robots required. I think the ideal place removes the small frictions that spoil a meal, so the people working there can spend their attention on the part only people can do.",
+  "I'd push back on removing all friction, though. Waiting for a waiter is annoying, sure. But the waiter remembering your name is the reason you go back.",
+  "Okay, let me paint a place I can picture clearly. Twelve tables, one set menu that changes weekly, chosen when you book. The kitchen knows the numbers ahead, so almost nothing goes to waste.",
+  "Lovely. Also a place I can't wander into on a Tuesday because I'm hungry. Pre-ordering assumes people plan ahead, and I've met people.",
+  "Fair. So imagine the other half of the street: quick, flexible, cheap, with machines doing more of the cooking. You don't need one ideal restaurant. You need each place to be honest about what it is.",
+  "Okay, but what has to be true for the fancy one to survive? Diners who book, staff who stay, and a landlord who doesn't double the rent. That last one is doing a lot of work.",
+  "Here's the part I love, though. When the planning happens in the background, servers stop taking orders and start telling stories. Where the fish came from, why the dessert is sour on purpose.",
+  "And here's the catch: the cook. Low waste and set menus are great until you're the one on a split shift for wages that haven't moved in years. Automation might take the steady jobs and leave the stressful ones.",
+  "That's a fair hit. A beautiful menu doesn't mean much if the kitchen can't keep its cooks. I'd been telling the diner's story, not theirs.",
+  "Curveball: what if the ideal future restaurant is just your own kitchen and a really good app? I'm only half joking.",
+  "Ha, only half. Okay, where we agree: use technology for planning and waste, and keep people for welcome and judgement. The meal should feel hosted, not processed.",
+  "Agreed. What I can't work out is whether that model pays staff fairly, and whether it can still feed the walk-ins. The spontaneous Tuesday crowd is real.",
+  "Takeaway for anyone running a place: borrow one idea, maybe a weekly set menu or smarter bookings, and try it for a season. Keep what makes both guests and cooks happier.",
+  "And keep the bread basket. Some traditions are load-bearing. That's us. Go eat somewhere with a waiter who knows your name.",
 ];
 
 const GOLF = [
-  "Let's frame this by asking what golf's character actually is. I'd say it's three things: you play the ball as it lies, you keep your own score honestly, and the course is the opponent. Technology that helps people learn, practise and enjoy those things fits. Technology that removes them doesn't. So the line isn't between old and new. It's between tools that support the player's judgement and tools that replace it.",
-  "That's a generous line, but I'd challenge how cleanly it holds. Rangefinders were once seen as replacing judgement; now they're normal at most clubs. Drivers and balls have made long courses feel short. Each change looked small and helpful at the time. My worry is that character erodes one reasonable upgrade at a time, and nobody can point to the day it changed. I'm not certain that's happening, but it's the pattern I'd watch.",
-  "Here's a concrete case. A beginner uses a launch monitor at the range and learns their misses come from the club face, not their swing path. Two lessons later, they're enjoying a round instead of searching for balls. On the course nothing has changed: same rules, same honest score, same bunker on the fourteenth. That's technology improving golf for one person without touching its character. And plenty of beginners quit in their first year.",
-  "That example works because the technology stays at the range. Let me test what happens when it follows players onto the course. If a watch reads the green's slope and suggests the line, is that still your read? Rules bodies already limit some devices in competition, which tells you the line is real and contested. And cost matters: if improving depends on expensive gadgets, the game gets a little more exclusive. I don't know where most clubs draw that line.",
-  "The strongest implication I see is that technology could protect the character, not just threaten it. Cheaper simulators can teach strategy in winter, course sensors can save water, and better data can help designers place hazards so that skill, not distance, decides the hole. If we use the tools to keep the course a fair opponent, they're doing exactly what the game's character asks of them.",
-  "What's overlooked is pace and attention. Every screen added to a round is something to look at instead of the course or your playing partners. A four-hour round already strains busy lives, and checking data makes it longer. There's also the question of who decides: equipment makers profit from each upgrade, so they aren't neutral voices. And the people who love the quiet, walking side of the game aren't usually the ones testing new products.",
-  "So we agree on a lot: technology fits when it helps people learn and keeps the course a fair test, and it doesn't when it makes decisions for the player during a round. We also agree cost and pace are real concerns. What stays uncertain is where on-course aids should stop, and whether distance gains from equipment have already shifted the game more than either of us would like to admit.",
-  "I'll close with the questions I'd want answered for any new gadget. Does it change a decision the player is meant to make? Does it slow the round, or make it more expensive to play well? Who benefits most, the golfer or the seller? The practical takeaway: welcome technology at the range and in the greenkeeper's shed, be cautious on the course itself, and judge each tool by whether a beginner would still recognise the game.",
+  "Today's question is close to my heart: can technology make golf better without changing what makes it golf? I'm optimistic, but I know you've got a bag full of worries.",
+  "A whole bag, yes. My gut says every gadget looked small and harmless when it arrived, and somehow the game still drifted. Nobody can point to the day it changed.",
+  "So let's define it. I'd say golf's character is three things: you play the ball as it lies, you keep your own score honestly, and the course is the opponent.",
+  "Nice definition. But rangefinders were once seen as cheating, and now they're everywhere. Drivers and balls have made long courses feel short. Each step seemed reasonable at the time.",
+  "Okay, picture a beginner at the range with a launch monitor. It shows their misses come from the club face, not their swing. Two lessons later, they're enjoying a round instead of hunting for balls.",
+  "Ha, the ball-hunting phase. Deep in the bushes, pretending it's a nature walk. But that's at the range. What happens when the tech follows them onto the course?",
+  "Fair. On the course, I'd say help with learning, never with deciding. A watch that tells you the yardage, fine. A watch that reads the green and picks your line, no.",
+  "Then here's the test: who draws that line? Rules bodies already limit some devices in competition, so the line exists. But for a Saturday round at the local club, it's basically vibes.",
+  "Here's what excites me, though. Tech could protect the course. Sensors that save water, and data that helps designers place hazards so skill decides the hole, not just distance.",
+  "And the catch: pace. Every screen is something to stare at instead of the course or your friends. Rounds already take four hours, and checking data makes them longer.",
+  "Yeah, that one stings, because pace is part of the character too. I'll give you that completely.",
+  "My curveball: equipment makers profit from every upgrade, so they're never neutral. And people who love the quiet, walking side of golf aren't the ones testing new gadgets.",
+  "So where we agree: tech fits when it helps people learn and keeps the course a fair test. It doesn't when it makes decisions for you mid-round.",
+  "What I'm still unsure of is whether distance has already changed the game more than either of us would like to admit.",
+  "Takeaway: welcome tech at the range and in the greenkeeper's shed, be cautious on the course, and judge each gadget by whether a beginner would still recognise the game.",
+  "And keep up the pace. That's us. See you on the first tee, and please, play the ball as it lies.",
 ];
 
 const generic = (topic: string) => [
-  `Let me open with a framing. "${topic}" sounds like a yes-or-no question, but I think it's really about trade-offs between what people gain right away and what changes slowly underneath. I'd start by naming who benefits first, who pays first, and what would have to be true for the benefits to last. That gives us something firmer than general enthusiasm or general worry.`,
-  "That framing is useful, but I want to offer a different starting point. Instead of benefits and costs, I'd ask what the current situation is quietly doing well, because changes often break things nobody measured. If we can't describe what works today, we can't tell whether a new approach is an improvement or just a change. I'm not certain which framing serves us better, so let's test both.",
-  "Then let me make it concrete with a small example. Imagine one place and one group of people trying the change for a single season. In the first week they'd notice the novelty and the friction. By the second month, routines settle and the real effects show up: some tasks get easier, and some get pushed onto someone else. Small trials like that are where honest evidence usually comes from.",
-  "I'd test the assumption in that example, though. A small trial attracts people who already want it to work, so early results tend to look better than a wider rollout would. I'd also ask what happens at the edges: the person with less money, less time, or less say in the decision. If the change only works for the motivated middle, that's worth knowing before scaling it.",
-  "Fair. Here's the strongest implication I see: the most valuable outcome may not be the change itself but what it forces people to clarify. To decide well, everyone involved has to say what they value and what they'd give up. Even if the answer is to keep things mostly as they are, that conversation leaves people with clearer priorities than they had before.",
-  "The limitation we haven't covered is time. Many effects arrive slowly, after habits, prices or expectations adjust, and short trials miss them. There's also the cost of being wrong: some decisions are easy to reverse, others aren't. I'd treat anything that's hard to undo with far more caution than something you can quietly roll back after a few months.",
-  "So here's our common ground: the question deserves a trial mindset rather than a verdict, and we should name who bears the costs. What remains uncertain is how well small, voluntary experiments predict wider adoption, and which effects only appear over years. I'm comfortable saying the answer differs by context. I'm less comfortable claiming we know where the line falls.",
-  "I'll close with the open questions. What would a fair test look like, and who would design it? What result would change our minds? Who isn't in the room when the decision gets made? Practically: start small, measure something specific before and after, protect the people at the edges, and prefer choices you can reverse while the evidence is still thin.",
+  `Today's question: "${topic}" It sounds like a yes-or-no, but I think there's a lot hiding in it. Where's your gut on this?`,
+  "Honestly, my gut says it depends, which is a boring answer, so let me do better. I want to know what's working today before we change anything.",
+  "Good place to start. I'd frame it as who benefits first, who pays first, and what would have to be true for the benefits to last.",
+  "Sure, but changes often break things nobody measured. If we can't describe what works now, we can't tell an improvement from just a change.",
+  "Okay, picture one place and one small group trying it for a single season. Week one is novelty and friction. By month two, routines settle and the real effects show up.",
+  "Ha, the week-one novelty is so true. But small trials attract people who want it to work. Early results almost always look better than a wider rollout.",
+  "Fair. So you'd want to run it somewhere a bit reluctant too. If it works there, that tells you a lot more.",
+  "And ask what happens at the edges: the person with less money, less time, less say. If it only works for the motivated middle, that matters.",
+  "Here's what I find most valuable, though: deciding forces everyone to say what they actually value and what they'd give up. Even if nothing changes, people leave clearer.",
+  "The catch is time. A lot of effects arrive slowly, after habits and prices adjust. Short trials miss them, and some decisions are hard to undo.",
+  "Yeah, good point. Anything hard to reverse deserves way more caution than something you can quietly roll back.",
+  "My curveball: who isn't in the room when this gets decided? That's usually where the surprises come from.",
+  "So where we agree: this deserves a trial mindset, not a verdict, and we should name who bears the costs.",
+  "What I'm still unsure about is how well small, voluntary experiments predict the real thing. I'm comfortable saying it depends. Less comfortable saying on what.",
+  "Takeaway: start small, measure something specific before and after, and prefer choices you can reverse while the evidence is thin.",
+  "And protect the people at the edges. That's us for today. Thanks for listening.",
 ];
 
 /** Preset topic → script, in the same order as PRESETS. */
@@ -79,14 +128,16 @@ export function scriptFor(topic: string): string[] {
   return PRESET_SCRIPTS[t.toLowerCase()] ?? generic(t);
 }
 
-/** Temperature colours how each reply opens, so mock runs hint at the setting. */
-const HEAT_LEADS: Record<Temperature, Record<SpeakerId, string>> = {
-  calm: { A: "That's a fair concern, and it's worth taking slowly. ", B: "That's reasonable, and I'd add one careful point. " },
-  lively: { A: '', B: '' },
-  heated: { A: "I'm not giving that up so easily. ", B: "No, I don't buy that, and here's why. " },
+/** Temperature colours the push-back moments, so mock runs hint at the setting. */
+const HEAT_LEADS: Record<Temperature, string> = {
+  calm: "Fair, and I'll go gently here. ",
+  lively: '',
+  heated: 'Oh, come on. ',
 };
+/** Turns where the second host pushes back: Push back, Test, Catch. */
+const PUSH_BACK_TURNS = new Set([4, 8, 10]);
 
-export function mockTurnText(topic: string, seq: number, speakerId: SpeakerId, temperature: Temperature) {
+export function mockTurnText(topic: string, seq: number, _speakerId: SpeakerId, temperature: Temperature) {
   const base = scriptFor(topic)[seq - 1] ?? 'Let me pick up where we left off.';
-  return (seq > 1 ? HEAT_LEADS[temperature][speakerId] : '') + base;
+  return (PUSH_BACK_TURNS.has(seq) ? HEAT_LEADS[temperature] : '') + base;
 }

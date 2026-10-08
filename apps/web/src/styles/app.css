@@ -93,7 +93,8 @@ label.fld{display:grid;gap:6px}
 .pip.B.done .bar{background:var(--b);border-color:var(--b)}
 .pip.live .bar{background:var(--air);border-color:var(--air);animation:pulse 1.2s infinite}
 .pip.fail .bar{background:none;border-color:var(--bad);border-style:dashed}
-.pip .tag{font-size:10px;letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.pip .tag{font-size:9.5px;letter-spacing:.02em;line-height:1.25;max-width:100%;overflow-wrap:normal;display:grid}
+.pip .tag b{font-weight:600;color:var(--text);opacity:.7}
 .status-line{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:13.5px;color:var(--muted);margin-bottom:6px}
 .status-line b{color:var(--text);font-weight:600}
 @keyframes pulse{50%{opacity:.55}}
