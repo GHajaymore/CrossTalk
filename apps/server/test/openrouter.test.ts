@@ -55,6 +55,16 @@ describe('OpenRouter provider', () => {
     expect(await errorOf(run(make(status(402))))).toMatchObject({ retryable: false, message: expect.stringMatching(/balance/) });
   });
 
+  it("treats OpenRouter's daily free-model cap as a plain 'come back tomorrow', never retried", async () => {
+    const cap = 'Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day';
+    const body = fakeFetch({ replies: () => new Response(JSON.stringify({ error: { message: cap } }), { status: 429 }) }).f;
+    const e = await errorOf(run(make(body)));
+    expect(e).toMatchObject({ retryable: false, status: 429, message: expect.stringMatching(/free-model limit for today is used up.*resets once a day/) });
+    expect(e.message).not.toMatch(/credits/);
+    const streamed = fakeFetch({ replies: () => sse([JSON.stringify({ error: { code: 429, message: cap } })]) }).f;
+    expect(await errorOf(run(make(streamed)))).toMatchObject({ retryable: false, message: expect.stringMatching(/used up/) });
+  });
+
   it('turns an error sent mid-stream into a failure', async () => {
     const net = fakeFetch({ replies: () => sse([delta('Half a '), JSON.stringify({ error: { code: 502, message: 'upstream died' } })]) });
     expect(await errorOf(run(make(net.f)))).toMatchObject({ retryable: true, message: expect.stringMatching(/upstream died/) });
