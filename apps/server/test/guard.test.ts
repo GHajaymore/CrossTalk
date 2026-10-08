@@ -22,6 +22,15 @@ describe('free-model guard', () => {
     expect(judge('example/no-price', MODEL_LIST, null, false).ok).toBe(false);
   });
 
+  it('blocks a $0 model that is not one of the ":free" variants (it can still need credits)', () => {
+    expect(judge('example/zero-but-not-free', MODEL_LIST, null, false)).toMatchObject({ ok: false, reason: expect.stringMatching(/not one of OpenRouter's ":free" models/) });
+  });
+
+  it("never passes OpenRouter's automatic router, even when it is free", () => {
+    expect(judge('openrouter/free', MODEL_LIST, null, false)).toMatchObject({ ok: false, reason: expect.stringMatching(/automatic router/) });
+    expect(judge('openrouter/free', MODEL_LIST, null, true).ok).toBe(false);
+  });
+
   it('blocks everything when the model list cannot be read', async () => {
     const guard = new FreeModelGuard(fakeFetch({ listFails: true }).f, false);
     const verdicts = await guard.check([FREE_A]);

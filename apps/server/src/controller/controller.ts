@@ -9,6 +9,8 @@ import { AbortedError, ProviderError, type Provider, type Usage } from '../provi
 
 /** A 429 may be waited out once, up to this long. Longer waits pause the run instead. */
 export const MAX_RETRY_WAIT_MS = 20_000;
+/** A 429 without Retry-After waits this long before its one retry (free models are often briefly busy). */
+export const RATE_LIMIT_WAIT_MS = 5_000;
 /** At most one automatic retry per turn: two attempts. */
 export const MAX_ATTEMPTS = 2;
 
@@ -238,7 +240,7 @@ export class ConversationController {
           return null;
         }
         if (err.retryable && attempt < MAX_ATTEMPTS) {
-          try { await sleep(err.retryAfterMs ?? 1000, signal); } catch { return null; }
+          try { await sleep(err.retryAfterMs ?? (err.status === 429 ? RATE_LIMIT_WAIT_MS : 1000), signal); } catch { return null; }
           if (this.repo.latestRun(conversationId)?.state !== 'generating') return null;
           continue;
         }

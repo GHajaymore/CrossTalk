@@ -6,7 +6,9 @@ CrossTalk only runs models that OpenRouter's own price list shows at **$0** for 
 
 1. Open **openrouter.ai/models** and filter or sort by price so the free models show. You don't need to sign in to browse.
 2. For each candidate, open its page and check:
-   - **Pricing** shows $0 input and $0 output. A name ending in `:free` is a hint, not proof; the app checks the real price.
+   - **Pricing** shows $0 input and $0 output **and** the ID ends in `:free`. The app checks both. Some $0 models without `:free` still need purchased credits (OpenRouter answers "402 insufficient credits"), so the app blocks them.
+   - It isn't restricted to approved apps. Some free models answer "403 only available on agentic harnesses"; skip those.
+   - It isn't `openrouter/free` or another `openrouter/...` router: those pick a model for you, which CrossTalk never allows.
    - It's a **chat / text** model with a context window of at least 8K tokens.
    - It isn't marked deprecated or "going away".
    - Its **licence allows commercial use** if you plan to publish episodes (see `docs/PLAN.md`, Path to podcast).
@@ -35,4 +37,5 @@ Open **Settings** in the app. Each model shows **✓ Free** or **✕** with the 
 - OpenRouter allows about **20 requests a minute** and **50 a day** on free models if you've never bought credits. One discussion uses 8 requests, plus any retries.
 - The app stops itself at `MAX_REQUESTS_PER_DAY` (40 by default), so you stay under that.
 - A negative credit balance can make even free models fail with a "402" error.
+- Popular free models are often briefly busy ("rate limited"). The app waits 5 seconds and retries once; if it still fails, try again a few minutes later or pick a less busy model.
 - Source: https://openrouter.ai/docs/limits

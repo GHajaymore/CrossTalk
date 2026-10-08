@@ -24,6 +24,8 @@ export const MODEL_LIST: ModelInfo[] = [
   { id: PAID, pricing: { prompt: '0.000001', completion: '0.000002' } },
   { id: FAKE_FREE_SUFFIX, pricing: { prompt: '0', completion: '0.0000005' } },
   { id: 'example/no-price' },
+  { id: 'example/zero-but-not-free', pricing: { prompt: '0', completion: '0' } },
+  { id: 'openrouter/free', pricing: { prompt: '0', completion: '0' } },
 ];
 
 export type Call = { url: string; init: RequestInit; body: Record<string, unknown> | null };

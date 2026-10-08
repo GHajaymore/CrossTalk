@@ -71,6 +71,14 @@ describe('retry policy and request counting', () => {
     expect(repo.view(c.id)!.run?.state).toBe('completed');
   });
 
+  it('waits 5 seconds before retrying a 429 that gives no Retry-After', async () => {
+    const { repo, controller, c, waits } = setup([new ProviderError('Rate limited.', true, null, 429), 'Fine now.']);
+    await controller.start(c.id);
+    await controller.settled(c.id);
+    expect(waits).toEqual([5000]);
+    expect(repo.view(c.id)!.run?.state).toBe('completed');
+  });
+
   it('pauses instead of waiting more than 20 seconds', async () => {
     const { repo, controller, c, attempts, waits } = setup([new ProviderError('Rate limited.', true, 45_000, 429)]);
     await controller.start(c.id);
