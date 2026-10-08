@@ -1,18 +1,17 @@
-import type { Speakers } from '@crosstalk/shared';
 import type { VoicePrefs } from './BrowserSpeech';
 import { voicesFor } from './BrowserSpeech';
 
-type Props = { speakers: Speakers; voices: SpeechSynthesisVoice[]; prefs: VoicePrefs; update: (p: Partial<VoicePrefs>) => void; preview: (id: 'A' | 'B') => void };
+type Props = { names: { A: string; B: string }; voices: SpeechSynthesisVoice[]; prefs: VoicePrefs; update: (p: Partial<VoicePrefs>) => void; preview: (id: 'A' | 'B') => void };
 
 /** Voice per host, with preview, plus speed. Choices are remembered on this device only. */
-export function VoicePicker({ speakers, voices, prefs, update, preview }: Props) {
+export function VoicePicker({ names, voices, prefs, update, preview }: Props) {
   if (!('speechSynthesis' in window)) return <p className="hint">This browser can't speak aloud. You can still read every turn.</p>;
   if (!voices.length) return <p className="hint">Loading voices… Some browsers list them a moment after the page opens.</p>;
   const chosen = voicesFor(prefs);
   const row = (id: 'A' | 'B') => (
     <div className="voice-row" key={id}>
-      <h3><span><span className={`dot ${id}`} /> {speakers[id].name}</span></h3>
-      <select aria-label={`Voice for ${speakers[id].name}`} value={chosen[id]?.name ?? ''} onChange={e => update({ [id]: e.target.value })}>
+      <h3><span><span className={`dot ${id}`} /> {names[id]}</span></h3>
+      <select aria-label={`Voice for ${names[id]}`} value={chosen[id]?.name ?? ''} onChange={e => update({ [id]: e.target.value })}>
         {voices.map(v => <option key={v.name} value={v.name}>{v.name}</option>)}
       </select>
       <button className="btn sm ghost" onClick={() => preview(id)}>Preview</button>

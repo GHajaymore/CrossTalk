@@ -14,9 +14,12 @@
     "build": "npm run build -w @crosstalk/web",
     "start": "npm run start -w @crosstalk/server",
     "typecheck": "tsc -p packages/shared --noEmit && tsc -p apps/server --noEmit && tsc -p apps/web --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "e2e": "playwright test -c e2e/playwright.config.ts"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
+    "@playwright/test": "1.63.0",
     "typescript": "^5.6.3",
     "vitest": "^5.0.3"
   }

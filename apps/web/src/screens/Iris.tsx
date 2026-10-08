@@ -53,7 +53,7 @@ export function IrisPage({ config }: { config: AppConfig | null }) {
                     <span className="g-title">“{a.artTitle}”</span>
                     <span className="g-quote">“{a.caption}”</span>
                     <span className="tag">{episodeLabel(c.episode)} · turn {a.momentSeq}</span>
-                    <span className="g-topic">{c.title}</span>
+                    <span className="g-topic">{c.parentId ? <>{c.topic} <span className="lib-branch">✂ {c.title}</span></> : c.title}</span>
                   </a>
                 </li>
               );

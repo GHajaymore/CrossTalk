@@ -14,7 +14,7 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export type Access = { required: boolean; ok: boolean };
-export type ConversationSummary = Conversation & { run: Run | null; turnCount: number; artist?: ArtistNotes | null };
+export type ConversationSummary = Conversation & { run: Run | null; turnCount: number; artist?: ArtistNotes | null; branchCount: number };
 
 export const api = {
   config: () => call<AppConfig>('/config'),
@@ -29,6 +29,9 @@ export const api = {
   start: (id: string) => call<ConversationView>(`/conversations/${id}/start`, { method: 'POST' }),
   pause: (id: string) => call<ConversationView>(`/conversations/${id}/pause`, { method: 'POST' }),
   stop: (id: string) => call<ConversationView>(`/conversations/${id}/stop`, { method: 'POST' }),
+  rename: (id: string, title: string) => call<ConversationView>(`/conversations/${id}`, { method: 'PATCH', body: JSON.stringify({ title }) }),
+  remove: (id: string) => call<unknown>(`/conversations/${id}`, { method: 'DELETE' }),
+
   addCue: (id: string, cue: CueInput) => call<ConversationView>(`/conversations/${id}/cues`, { method: 'POST', body: JSON.stringify(cue) }),
   cancelCue: (id: string, cueId: string) => call<ConversationView>(`/conversations/${id}/cues/${cueId}`, { method: 'DELETE' }),
   branch: (id: string, b: BranchInput) => call<ConversationView>(`/conversations/${id}/branch`, { method: 'POST', body: JSON.stringify(b) }),

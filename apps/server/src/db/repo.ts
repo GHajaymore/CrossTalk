@@ -81,6 +81,19 @@ export class Repo {
     return (this.db.prepare('SELECT * FROM conversations ORDER BY updated_at DESC').all() as ConvRow[]).map(toConversation);
   }
 
+  rename(id: string, title: string) {
+    this.db.prepare('UPDATE conversations SET title = ? WHERE id = ?').run(title, id);
+  }
+
+  /** Deletes a conversation and everything that belongs to it (turns, runs, usage, cues, Iris's notes cascade). */
+  deleteConversation(id: string) {
+    this.db.prepare('DELETE FROM conversations WHERE id = ?').run(id);
+  }
+
+  branchCount(id: string): number {
+    return (this.db.prepare('SELECT COUNT(*) AS n FROM conversations WHERE parent_id = ?').get(id) as { n: number }).n;
+  }
+
   setTemperature(id: string, temperature: Conversation['temperature']) {
     this.db.prepare('UPDATE conversations SET temperature = ? WHERE id = ?').run(temperature, id);
   }

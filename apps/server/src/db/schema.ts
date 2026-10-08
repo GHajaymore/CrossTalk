@@ -120,4 +120,29 @@ export const MIGRATIONS: string[] = [
   );
   CREATE INDEX cues_by_conversation ON interventions(conversation_id, applies_before_seq);
   `,
+  `
+  -- Usage is an audit of what was spent, so it outlives deleted episodes (no cascading foreign keys).
+  CREATE TABLE provider_usage_v2 (
+    id               TEXT PRIMARY KEY,
+    run_id           TEXT NOT NULL,
+    conversation_id  TEXT NOT NULL,
+    seq              INTEGER NOT NULL,
+    attempt          INTEGER NOT NULL,
+    provider         TEXT NOT NULL,
+    model_id         TEXT NOT NULL,
+    status           TEXT NOT NULL,
+    error            TEXT,
+    latency_ms       INTEGER NOT NULL,
+    tokens_in        INTEGER,
+    tokens_out       INTEGER,
+    cost_usd         REAL,
+    date             TEXT NOT NULL,
+    created_at       TEXT NOT NULL
+  );
+  INSERT INTO provider_usage_v2 SELECT id, run_id, conversation_id, seq, attempt, provider, model_id, status, error,
+    latency_ms, tokens_in, tokens_out, cost_usd, date, created_at FROM provider_usage;
+  DROP TABLE provider_usage;
+  ALTER TABLE provider_usage_v2 RENAME TO provider_usage;
+  CREATE INDEX usage_by_date ON provider_usage(date);
+  `,
 ];

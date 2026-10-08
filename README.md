@@ -2,7 +2,7 @@
 
 A live broadcast studio where two AI hosts discuss a topic and you steer it. This is a local prototype, built one milestone at a time (see `docs/PLAN.md`).
 
-**Status:** Milestone 2, real two-model discussion. Mock mode (scripted text, no API key) still works; real mode uses two free models through OpenRouter.
+**Status:** Milestone 6, polish. Two hosts, 16 short turns, listener cues (challenge, go deeper, take the mic, temperature), branches, Iris the Artist, an episodes library and export. Mock mode (scripted text, no API key) always works; real mode uses free models through OpenRouter. Full setup: `docs/SETUP.md`.
 
 ## Run it
 
@@ -33,15 +33,19 @@ Free hosting on Render at crosstalk.ajailabs.app, locked with an access code: se
 | --- | --- |
 | `npm test` | Runs the Vitest suite |
 | `npm run typecheck` | Type-checks all three packages |
+| `npm run e2e` | End-to-end and accessibility tests in Chromium (see `docs/SETUP.md`) |
 | `npm run build` | Builds the web app |
+| `npm start` | Runs the server, serving the built app |
 
 ## Layout
 
 ```
-apps/web         React + Vite: Create and Studio screens, the studio set component
-apps/server      Fastify: conversation controller, mock provider, SQLite
+apps/web         React + Vite: Create, Studio (Watch, Listen, Read), Episodes, Iris, Settings
+apps/server      Fastify: conversation controller, providers, Iris, SQLite, export, access lock
 packages/shared  Zod schemas, types, constants, auto names and personalities
-docs/            Brief, plan, prototype and handoff
+e2e/             Playwright end-to-end and accessibility tests
+tools/voice      Free recorded voices (Kokoro) for an episode
+docs/            Brief, plan, setup, models, limitations, acceptance, deploy, Iris
 ```
 
 *AI-generated; not independently verified.*

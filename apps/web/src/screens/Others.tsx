@@ -1,48 +1,11 @@
-import { useEffect, useState } from 'react';
-import { sketchSrc } from '../studio/ArtistCard';
-import { MODES, turnTotal, type AppConfig, type MockSettings } from '@crosstalk/shared';
-import { api, type ConversationSummary } from '../api/client';
+import { useState } from 'react';
+import type { AppConfig, MockSettings } from '@crosstalk/shared';
+import { api } from '../api/client';
+import { BrowserSpeech } from '../speech/BrowserSpeech';
+import { useVoices } from '../speech/usePlayback';
+import { VoicePicker } from '../speech/VoicePicker';
 import { SetupBanner } from '../lib/Banners';
 import { Footer } from './Footer';
-
-/** Milestone 1 stand-in: a plain list so saved discussions can be reopened. The full Library is Milestone 6. */
-export function Library({ config }: { config: AppConfig | null }) {
-  const [items, setItems] = useState<ConversationSummary[] | null>(null);
-  useEffect(() => { api.list().then(setItems).catch(() => setItems([])); }, []);
-  return (
-    <div className="page">
-      <div><h1>Episodes</h1><p className="hint">Each episode shows Iris's sketch. Her full gallery is on the <a href="#/iris">Iris</a> page. Rename, export, delete and branches arrive in Milestone 6.</p></div>
-      {!items ? <p className="hint">Loading…</p> : !items.length ? <p className="hint">No discussions yet. Start one from Create.</p> : (
-        <ul className="lib-list">
-          {items.map(c => {
-            const st = c.run?.state ?? 'idle';
-            return (
-              <li className="lib-item" key={c.id}>
-                <div className="lib-row">
-                {c.artist?.sketchSvg && <a href={`#/studio/${c.id}`}><img className="thumb" src={sketchSrc(c.artist.sketchSvg)} alt={`Iris's sketch: ${c.artist.artTitle}`} /></a>}
-                <div style={{ minWidth: 0 }}>
-                  <div className="lib-title">{c.title}</div>
-                  <div className="lib-meta">
-                    <span className={`status ${st}`}>{c.run?.stopReason === 'interrupted' ? 'interrupted' : st}</span>
-                    <span>Ep. {String(c.episode).padStart(2, '0')}</span>
-                    {c.parentId && <span className="lib-branch">✂ Branch from turn {c.branchSeq}</span>}
-                    <span>{MODES[c.mode].label}</span>
-                    <span>{c.turnCount} of {turnTotal(c)} turns</span>
-                    <span>{new Date(c.createdAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>
-                    {c.artist?.state === 'done' && <span>“{c.artist.artTitle}”</span>}
-                  </div>
-                </div>
-                </div>
-                <a className="btn sm" href={`#/studio/${c.id}`}>Open</a>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-      <Footer config={config} />
-    </div>
-  );
-}
 
 export function Settings({ config, refreshConfig }: { config: AppConfig | null; refreshConfig: () => void }) {
   const [checking, setChecking] = useState(false);
@@ -68,8 +31,9 @@ export function Settings({ config, refreshConfig }: { config: AppConfig | null; 
 
   return (
     <div className="page">
-      <div><h1>Settings</h1><p className="hint">Voices and Scout settings arrive in later milestones. What Iris has learned from you is on the <a href="#/iris">Iris</a> page.</p></div>
+      <div><h1>Settings</h1><p className="hint">What Iris has learned from you is on the <a href="#/iris">Iris</a> page. Topic Scout settings arrive with Milestone 7.</p></div>
       <SetupBanner config={config} onSettings />
+      <VoiceSettings />
       <section className="sec"><h2>Models</h2>
         <p className="hint">Read-only here. Models are set in the server's settings (the <code>.env</code> file, or the cloud environment's variables) and must be different IDs.</p>
         <dl className="kv">
@@ -104,6 +68,19 @@ export function Settings({ config, refreshConfig }: { config: AppConfig | null; 
       </section>}
       <Footer config={config} />
     </div>
+  );
+}
+
+/** The device's voices for the left and right seats. Every episode uses them; recordings use their own voices. */
+function VoiceSettings() {
+  const { voices, prefs, update } = useVoices();
+  const names = { A: 'Left seat (warm)', B: 'Right seat (cool)' };
+  return (
+    <section className="sec"><h2>Voices</h2>
+      <p className="hint">Saved on this device only. The same choices are in the Studio under Cues &amp; voices. Episodes with a rendered recording play its natural voices instead.</p>
+      <VoicePicker names={names} voices={voices} prefs={prefs} update={update}
+        preview={k => new BrowserSpeech(() => prefs).speak([{ key: 'p', speakerId: k, text: `This is the ${k === 'A' ? 'left' : 'right'} seat. This is how I'll sound on the show.` }], {})} />
+    </section>
   );
 }
 
