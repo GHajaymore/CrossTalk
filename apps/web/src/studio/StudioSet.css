@@ -85,3 +85,20 @@
 @media (prefers-reduced-motion: reduce){
   .set *{animation:none!important;transition:none!important}
 }
+
+/* Living portraits: invented hosts drawn in the app. Motion values come from Portrait's life loop. */
+.set-portrait{position:absolute;left:0;bottom:0;width:78%;height:96%;overflow:visible}
+.set-portrait .p-body{animation:p-breathe 4.6s ease-in-out infinite}
+.set-portrait .p-head{transform-box:fill-box;transform-origin:50% 92%;transform:translate(var(--turn,0px),var(--nod,0px)) rotate(var(--tilt,0deg));transition:transform var(--dur,.6s) ease-in-out}
+.set-portrait .p-iris{transform:translate(var(--gx,0px),var(--gy,0px));transition:transform .25s ease-out}
+.set-portrait .p-lid{transform-box:fill-box;transform-origin:50% 0;transform:scaleY(0);animation:p-blink 4s infinite}
+.set-portrait .p-brow{transform-box:fill-box;transform-origin:50% 50%;transition:transform var(--dur,.6s) ease-in-out}
+.set-portrait .p-brow.l{transform:translateY(var(--brow,0px)) rotate(var(--furrow,0deg))}
+.set-portrait .p-brow.r{transform:translateY(var(--brow,0px)) rotate(calc(var(--furrow,0deg) * -1))}
+.set-portrait .p-smile{opacity:var(--smile,0);transition:opacity var(--dur,.6s) ease-in-out}
+.set-portrait .p-rest{opacity:calc(1 - var(--smile,0));transition:opacity var(--dur,.6s) ease-in-out}
+/* The mouth opens with the voice level the set writes on the tile (--lvl), closed when not speaking. */
+.set-portrait .p-mouth{transform-box:fill-box;transform-origin:50% 30%;transform:scale(calc(.75 + var(--lvl,0) * .35),calc(var(--lvl,0) * 1.5))}
+@keyframes p-breathe{0%,100%{transform:translateY(0)}50%{transform:translateY(1.4px)}}
+@keyframes p-blink{0%,93%,100%{transform:scaleY(0)}95.5%{transform:scaleY(1)}}
+@media (prefers-reduced-motion:reduce){.set-portrait .p-body,.set-portrait .p-lid{animation:none}.set-portrait .p-head,.set-portrait .p-brow{transition:none}}
