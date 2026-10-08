@@ -249,7 +249,15 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
               {st === 'failed' && <button className="btn primary" disabled={cantRun} onClick={act(api.start)}>Retry turn {lastSeq + 1}</button>}
               {st === 'generating' && <button className="btn" disabled={busy || !!view.run?.pauseRequested} onClick={act(api.pause)}>Pause after this turn</button>}
               {(st === 'generating' || st === 'paused' || st === 'failed') && <button className="btn danger" disabled={busy} onClick={act(api.stop)}>Stop</button>}
-              {tab === 'read' && <button className="btn ghost" disabled title="Export arrives in Milestone 6">Export</button>}
+              {tab === 'read' && view.turns.length > 0 && (
+                <details className="export-menu">
+                  <summary className="btn ghost">Export</summary>
+                  <div className="menu" role="menu">
+                    <a role="menuitem" href={`/api/conversations/${id}/export.md`} download>Markdown script<small>Readable transcript with cues and Iris</small></a>
+                    <a role="menuitem" href={`/api/conversations/${id}/export.json`} download>JSON<small>Schema v1: models, turns, cues, branches</small></a>
+                  </div>
+                </details>
+              )}
               {tab === 'watch' && <button className="btn ghost" onClick={goOnAir} title="Full screen, just the set">On air ⛶</button>}
               <button className="btn ghost panel-toggle" onClick={() => setPanelOpen(o => !o)}>Cues &amp; voices</button>
             </div>

@@ -12,6 +12,7 @@ import { OpenRouterProvider } from './providers/openrouter';
 import type { Provider } from './providers/types';
 import type { ServerConfig } from './config';
 import { registerAccess, registerWeb } from './access';
+import { exportJson, exportMarkdown, exportName } from './export';
 
 export type AppOptions = {
   timing?: MockTiming;
@@ -200,6 +201,19 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
   app.post<{ Params: { id: string } }>('/api/conversations/:id/stop', async req => {
     controller.stop(req.params.id);
     return view(req.params.id);
+  });
+
+  // Export: the transcript as JSON (schema v1) or a readable Markdown script.
+  app.get<{ Params: { id: string; fmt: string } }>('/api/conversations/:id/export.:fmt', async (req, reply) => {
+    const v = view(req.params.id);
+    if (req.params.fmt === 'json') {
+      return reply.header('Content-Disposition', `attachment; filename="${exportName(v, 'json')}"`).type('application/json')
+        .send(JSON.stringify(exportJson(v, repo.listUsage(v.id)), null, 2));
+    }
+    if (req.params.fmt === 'md') {
+      return reply.header('Content-Disposition', `attachment; filename="${exportName(v, 'md')}"`).type('text/markdown; charset=utf-8').send(exportMarkdown(v));
+    }
+    throw new ControllerError('Export as json or md.', 404);
   });
 
   // Milestone 4: listener cues and branches.

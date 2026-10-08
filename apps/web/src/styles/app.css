@@ -369,3 +369,9 @@ label.fld{display:grid;gap:6px}
 @media (max-width: 680px){
   .cut-line span{font-size:12px}
 }
+.export-menu{position:relative}
+.export-menu summary{list-style:none}
+.export-menu summary::-webkit-details-marker{display:none}
+.export-menu .menu{top:auto;bottom:44px;left:0}
+.export-menu .menu a{display:block;padding:8px 10px;border-radius:5px;color:var(--text);text-decoration:none}
+.export-menu .menu a:hover{background:var(--surface)}
