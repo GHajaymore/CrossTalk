@@ -82,9 +82,9 @@ export function App() {
           <div className="top-right">
             {config?.providerMode === 'openrouter'
               ? <span className="pill real" title="Real AI models via OpenRouter, free models only">Real models</span>
-              : <span className="pill mock" title="Scripted sample text. No model is called.">Mock mode</span>}
-            <span className="pill" title="App-side safety limit, not a billing guarantee">
-              App limit {config?.requestsToday ?? 0} / {config?.dailyLimit ?? 40} today
+              : <span className="pill mock" title="Scripted sample text. No model is called.">Mock<span className="long"> mode</span></span>}
+            <span className="pill" title="App-side safety limit, not a billing guarantee" aria-label={`App limit: ${config?.requestsToday ?? 0} of ${config?.dailyLimit ?? 40} requests today`}>
+              <span className="long">App limit </span>{config?.requestsToday ?? 0} / {config?.dailyLimit ?? 40}<span className="long"> today</span>
             </span>
           </div>
         </div>

@@ -42,7 +42,7 @@ export function IrisPage({ config }: { config: AppConfig | null }) {
       </header>
 
       <section className="sec"><h2>Gallery</h2>
-        {!items ? <p className="hint">Loading…</p> : !drawn.length ? <p className="hint">No sketches yet. Finish an episode and Iris draws it.</p> : (
+        {!items ? <p className="hint">Loading…</p> : !drawn.length ? <p className="hint">No drawings yet. Finish an episode and Iris paints it.</p> : (
           <ul className="gallery">
             {drawn.map(c => {
               const a = c.artist!;

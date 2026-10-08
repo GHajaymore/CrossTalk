@@ -32,14 +32,21 @@ export function Episodes({ config, toast }: { config: AppConfig | null; toast: (
 
   return (
     <div className="page">
-      <div><h1>Episodes</h1><p className="hint">Every episode you've made, with its branches underneath. Iris's sketches are also in her gallery on the <a href="#/iris">Iris</a> page.</p></div>
+      <div><h1>Episodes</h1><p className="hint">Every episode you've made, with its branches underneath. Iris's art is also in her gallery on the <a href="#/iris">Iris</a> page.</p></div>
       {items && items.length > 3 && (
         <label className="fld lib-search"><span className="sr-only">Search episodes</span>
           <input type="text" value={q} onChange={e => setQ(e.target.value)} placeholder="Search titles, topics and branch directions" />
         </label>
       )}
       {!items ? <p className="hint">Loading…</p>
-        : !items.length ? <p className="hint">No episodes yet. Start one from <a href="#/create">Create</a>.</p>
+        : !items.length ? (
+          <div className="first-run">
+            <span className="brand-mark big" aria-hidden="true"><i /><i /></span>
+            <h2>Your shelf is empty</h2>
+            <p className="hint">Pick a topic, press record, and two hosts talk it through in about a minute. Iris listens from the booth and paints the moment that stayed with her. Every episode lands here.</p>
+            <a className="btn primary" href="#/create">● Make your first episode</a>
+          </div>
+        )
         : !roots.length ? <p className="hint">Nothing matches “{q}”.</p>
         : <ul className="lib-list">{roots.map(c => row(c, 0))}</ul>}
       <Footer config={config} />
