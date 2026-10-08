@@ -65,9 +65,11 @@ test("Iris's card shows her sketch, perspective, and learns from feedback", asyn
   const id = await finishedEpisode(request);
   await page.goto(`/#/studio/${id}/read`);
   const card = page.getByRole('region', { name: "Iris's perspective" });
-  // She painted this Explore episode as a Dreamscape; the listener can switch it.
-  await expect(card.getByRole('button', { name: 'Dreamscape', exact: true })).toHaveAttribute('aria-pressed', 'true');
-  await expect(card.getByRole('img', { name: /Iris's dreamscape/ })).toBeVisible();
+  // She picks a style (her own, or the taste she has learned); the card shows it, and the listener can switch it.
+  const picked = (await (await request.get(`/api/conversations/${id}`)).json()).artist.artStyle as string;
+  const name = picked[0].toUpperCase() + picked.slice(1);
+  await expect(card.getByRole('button', { name, exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(card.getByRole('img', { name: new RegExp(`Iris's ${picked}`) })).toBeVisible();
   await card.getByRole('button', { name: 'Painting', exact: true }).click();
   await expect(card.getByRole('img', { name: /Iris's painting/ })).toBeVisible();
   await expect(card.getByRole('button', { name: /Watch her paint/ })).toBeVisible();
