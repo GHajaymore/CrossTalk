@@ -1,0 +1,14 @@
+{
+  "name": "CrossTalk by Ajai Labs",
+  "short_name": "CrossTalk",
+  "description": "Two AI hosts talk it through. You listen, cue and decide.",
+  "start_url": "/#/studio",
+  "display": "standalone",
+  "background_color": "#111214",
+  "theme_color": "#111214",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" }
+  ]
+}

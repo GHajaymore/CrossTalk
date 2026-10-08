@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import {
-  ARTIST, AUDIENCES, episodeLabel, FORMATS, LENS_MAX, MODES, NAME_MAX, PERSONAS, personaLabel, PRESETS, resolveSpeakers,
+  ARTIST, AUDIENCES, episodeLabel, FORMATS, hostSubtitle, LENS_MAX, MAX_TURNS, MODES, NAME_MAX, PERSONAS, PRESETS, resolveSpeakers, ROLE_MAX,
   TEMPERATURE_ORDER, TEMPERATURES, TOPIC_MAX,
   type AppConfig, type Audience, type CreateConversation, type Format, type Mode, type PersonaKey, type SpeakerDraft, type SpeakerId, type Temperature,
 } from '@crosstalk/shared';
@@ -10,7 +10,7 @@ import { HeatMeter } from '../lib/HeatMeter';
 import { StudioSet } from '../studio/StudioSet';
 import { Footer } from './Footer';
 
-const seatDraft = (persona: PersonaKey): SpeakerDraft => ({ name: '', autoName: true, persona, autoPersona: true, lens: '' });
+const seatDraft = (persona: PersonaKey): SpeakerDraft => ({ name: '', autoName: true, persona, autoPersona: true, lens: '', role: '', autoRole: true });
 const maxTemp = (a: Audience): Temperature => (a === 'kids' ? 'lively' : 'heated');
 
 type Props = { config: AppConfig | null; go: (hash: string) => void; refreshConfig: () => void; toast: (m: string) => void };
@@ -29,6 +29,7 @@ export function Create({ config, go, refreshConfig, toast }: Props) {
   const speakers = useMemo(() => resolveSpeakers(topic, audience, drafts, models), [topic, audience, drafts, models.A, models.B]);
   const edit = (k: SpeakerId, patch: Partial<SpeakerDraft>) => setDrafts(d => ({ ...d, [k]: { ...d[k], ...patch } }));
   const busy = !!config?.activeConversationId;
+  const real = config?.providerMode === 'openrouter';
   const overBudget = !!config && config.requestsToday >= config.dailyLimit;
   const blocked = realBlocked(config);
   const canStart = !!topic.trim() && !busy && !starting && !overBudget && !blocked;
@@ -65,6 +66,16 @@ export function Create({ config, go, refreshConfig, toast }: Props) {
           <input type="text" maxLength={NAME_MAX} value={d.autoName ? s.name : d.name} onChange={e => edit(k, { autoName: false, name: e.target.value })} />
         </label>
         <label className="fld">
+          <span className="tag">Role {d.autoRole
+            ? <span className="auto-chip">Auto</span>
+            : <button type="button" className="link-btn" onClick={() => edit(k, { autoRole: true, role: '' })}>↺ Back to auto</button>}</span>
+          <input type="text" maxLength={ROLE_MAX}
+            value={d.autoRole ? (real ? '' : s.role) : d.role}
+            placeholder={real ? 'Written to fit the topic when you start' : 'e.g. Chef who runs a small bistro'}
+            onChange={e => edit(k, { autoRole: false, role: e.target.value })} />
+        </label>
+        {d.autoRole && <p className="hint" style={{ margin: '-4px 0 0' }}>{real ? 'A fitting job for this topic is written by the AI when recording starts.' : 'A job that fits this topic.'} Type your own to change it.</p>}
+        <label className="fld">
           <span className="tag">Personality</span>
           <select value={d.autoPersona ? 'auto' : d.persona}
             onChange={e => e.target.value === 'auto' ? edit(k, { autoPersona: true }) : edit(k, { autoPersona: false, persona: e.target.value as PersonaKey })}>
@@ -84,7 +95,7 @@ export function Create({ config, go, refreshConfig, toast }: Props) {
   return (
     <div className="create">
       <div className="hero">
-        <div className="tag">New episode · 8 turns · {episodeLabel(config?.nextEpisode ?? 1)}</div>
+        <div className="tag">New episode · {MAX_TURNS} turns · {episodeLabel(config?.nextEpisode ?? 1)}</div>
         <h1>Choose a topic. Record it with two AI hosts.</h1>
         <p>Challenge their ideas, turn up the heat, branch from any moment, and keep the episode and Iris's art.</p>
       </div>
@@ -94,7 +105,10 @@ export function Create({ config, go, refreshConfig, toast }: Props) {
         topic={topic.trim() || 'Pick a topic to start recording'}
         tags={`${MODES[mode].label} · ${AUDIENCES[audience].label} · ${TEMPERATURES[temperature].label}`}
         temperature={temperature}
-        hosts={{ A: { name: speakers.A.name, role: personaLabel(speakers.A) }, B: { name: speakers.B.name, role: personaLabel(speakers.B) } }}
+        hosts={{
+          A: { name: speakers.A.name, role: real && drafts.A.autoRole ? 'Role written when you start' : hostSubtitle(speakers.A) },
+          B: { name: speakers.B.name, role: real && drafts.B.autoRole ? 'Role written when you start' : hostSubtitle(speakers.B) },
+        }}
         speaking={null}
         voiceLevel={0}
         caption={null}
@@ -161,7 +175,7 @@ export function Create({ config, go, refreshConfig, toast }: Props) {
 
       <div className="booth-note">
         <span className="flag C" aria-hidden="true">I</span>
-        <span><b>{ARTIST.name}, {ARTIST.role},</b> listens from the booth. When the discussion ends, she shares her perspective as a listener and sketches the moment that stayed with her. <span className="soon">Milestone 5</span></span>
+        <span><b>{ARTIST.name}, {ARTIST.role},</b> listens from the booth. When the discussion ends, she shares her perspective as a listener and sketches the moment that stayed with her. Tell her what you think and she learns your taste.</span>
       </div>
 
       <SetupBanner config={config} />
@@ -172,7 +186,7 @@ export function Create({ config, go, refreshConfig, toast }: Props) {
           {blocked ? 'Real mode is blocked; see above.' : overBudget ? 'Daily limit reached.' : busy
             ? <>Another discussion is still generating. <a href={`#/studio/${config!.activeConversationId}`} style={{ color: 'var(--cue)' }}>Open it</a> to pause or stop it first.</>
             : !topic.trim() ? 'Add a topic first.'
-            : config?.providerMode === 'openrouter' ? 'Uses 8 requests to free models (up to 16 if turns are retried).'
+            : config?.providerMode === 'openrouter' ? `Uses ${MAX_TURNS} requests to free models (a few more if a turn is retried).`
             : 'Mock mode: scripted text, no model is called.'}
         </span>
       </div>

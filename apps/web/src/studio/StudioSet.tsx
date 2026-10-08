@@ -149,8 +149,7 @@ export function StudioSet(p: StudioSetProps) {
       <div className="set-desk" aria-hidden="true" />
       {p.caption?.text ? (
         <div className="set-cap" aria-live="off">
-          {capName && <b className={p.caption.who ?? ''}>{capName}</b>}
-          <span>{p.caption.text}</span>
+          <span>{capName && <b className={p.caption.who ?? ''}>{capName}</b>}{p.caption.text}</span>
         </div>
       ) : null}
     </section>

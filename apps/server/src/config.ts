@@ -2,6 +2,7 @@ import { DAILY_LIMIT_DEFAULT, MAX_TURNS } from '@crosstalk/shared';
 
 const int = (v: string | undefined, d: number) => (v && /^\d+$/.test(v.trim()) ? Number(v.trim()) : d);
 const str = (v: string | undefined) => (v ?? '').trim();
+export const ACCESS_CODE_MIN = 8;
 
 export type ServerConfig = ReturnType<typeof loadConfig>;
 
@@ -32,9 +33,21 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
     if (artistModel && (artistModel === models.A || artistModel === models.B)) problems.push('ARTIST_MODEL must differ from both speaker models.');
   }
 
+  // Reachable from other machines (e.g. hosted on Render) means it must be locked with an access code.
+  const host = str(env.HOST) || '127.0.0.1';
+  const accessCode = str(env.ACCESS_CODE);
+  const local = host === '127.0.0.1' || host === 'localhost' || host === '::1';
+  if (!local && accessCode.length < ACCESS_CODE_MIN) {
+    throw new Error(`HOST=${host} makes CrossTalk reachable from other machines, so ACCESS_CODE must be set (at least ${ACCESS_CODE_MIN} characters).`);
+  }
+  if (accessCode && accessCode.length < ACCESS_CODE_MIN) throw new Error(`ACCESS_CODE must be at least ${ACCESS_CODE_MIN} characters.`);
+
   return {
     providerMode: mode as 'mock' | 'openrouter',
-    host: str(env.HOST) || '127.0.0.1',
+    host,
+    accessCode: accessCode || null,
+    // The built web app, served by this server when it exists (one process to host).
+    webDir: str(env.WEB_DIR) || new URL('../../web/dist', import.meta.url).pathname,
     port: int(env.PORT, 8787),
     dbPath: str(env.DB_PATH) || new URL('../data/crosstalk.sqlite', import.meta.url).pathname,
     dailyLimit: int(env.MAX_REQUESTS_PER_DAY, DAILY_LIMIT_DEFAULT),
@@ -50,4 +63,5 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
   };
 }
 
-export const mockConfig = (over: Partial<ServerConfig> = {}): ServerConfig => ({ ...loadConfig({ PROVIDER_MODE: 'mock' }), ...over });
+// Tests never serve a web build, whether or not one has been built.
+export const mockConfig = (over: Partial<ServerConfig> = {}): ServerConfig => ({ ...loadConfig({ PROVIDER_MODE: 'mock' }), webDir: '', ...over });

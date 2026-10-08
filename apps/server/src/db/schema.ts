@@ -72,4 +72,32 @@ export const MIGRATIONS: string[] = [
   );
   CREATE INDEX usage_by_date ON provider_usage(date);
   `,
+  `
+  -- Iris, the Artist: one row per conversation (her latest drawing).
+  CREATE TABLE artist_notes (
+    conversation_id  TEXT PRIMARY KEY REFERENCES conversations(id) ON DELETE CASCADE,
+    state            TEXT NOT NULL,
+    model_id         TEXT NOT NULL,
+    perspective      TEXT NOT NULL DEFAULT '',
+    moment_seq       INTEGER NOT NULL DEFAULT 0,
+    caption          TEXT NOT NULL DEFAULT '',
+    art_title        TEXT NOT NULL DEFAULT '',
+    art_style        TEXT NOT NULL DEFAULT 'sketch',
+    sketch_svg       TEXT,
+    image_prompt     TEXT NOT NULL DEFAULT '',
+    error            TEXT,
+    version          INTEGER NOT NULL DEFAULT 1,
+    created_at       TEXT NOT NULL
+  );
+
+  -- What the listener tells Iris about her work; she reads recent notes before drawing.
+  CREATE TABLE iris_feedback (
+    id               TEXT PRIMARY KEY,
+    conversation_id  TEXT REFERENCES conversations(id) ON DELETE SET NULL,
+    rating           TEXT NOT NULL CHECK (rating IN ('up', 'down')),
+    note             TEXT NOT NULL DEFAULT '',
+    art_title        TEXT,
+    created_at       TEXT NOT NULL
+  );
+  `,
 ];

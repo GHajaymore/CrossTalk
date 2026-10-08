@@ -31,7 +31,7 @@ export const MODEL_LIST: ModelInfo[] = [
 export type Call = { url: string; init: RequestInit; body: Record<string, unknown> | null };
 
 /** A fetch that serves the model list and streams scripted chat replies, recording every call. */
-export function fakeFetch(opts: { replies?: (call: Call, n: number) => Response | Promise<Response>; listFails?: boolean } = {}) {
+export function fakeFetch(opts: { replies?: (call: Call, n: number) => Response | Promise<Response>; roles?: (call: Call) => Response; listFails?: boolean } = {}) {
   const calls: Call[] = [];
   let chats = 0;
   const f = (async (input: string | URL | Request, init: RequestInit = {}) => {
@@ -43,8 +43,17 @@ export function fakeFetch(opts: { replies?: (call: Call, n: number) => Response 
       if (opts.listFails) throw new TypeError('fetch failed');
       return Response.json({ data: MODEL_LIST });
     }
+    // Non-streaming calls write host roles.
+    if (body && body.stream !== true) {
+      return opts.roles ? opts.roles(call) : Response.json({ choices: [{ message: { content: '{"A": "Owner of a small accounting firm", "B": "Researcher who studies working hours"}' } }] });
+    }
     chats++;
     return opts.replies ? opts.replies(call, chats) : sse([': OPENROUTER PROCESSING', delta('A real '), delta('reply.'), usageChunk(120, 4, 0), '[DONE]']);
   }) as typeof fetch;
-  return { f, calls, chatCalls: () => calls.filter(c => c.url.endsWith('/chat/completions')) };
+  return {
+    f, calls,
+    /** Turn requests (streamed). */
+    chatCalls: () => calls.filter(c => c.url.endsWith('/chat/completions') && c.body?.stream === true),
+    roleCalls: () => calls.filter(c => c.url.endsWith('/chat/completions') && c.body?.stream !== true),
+  };
 }

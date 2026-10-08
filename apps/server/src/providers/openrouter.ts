@@ -1,12 +1,14 @@
 // OpenRouter chat completions with streaming, a timeout and cancellation.
 // Always sends exactly one `model`: never the fallback `models` array or an auto router,
 // so a model is never silently substituted.
-import { buildPrompt } from '../prompts/buildPrompt';
+import { z } from 'zod';
+import { ROLE_MAX, type Audience } from '@crosstalk/shared';
+import { buildPrompt, rolesPrompt } from '../prompts/buildPrompt';
 import { AbortedError, ProviderError, type Provider, type TurnOptions, type TurnRequest, type Usage } from './types';
 
 export const CHAT_URL = 'https://openrouter.ai/api/v1/chat/completions';
 /** A reply cut off by the length limit is kept, trimmed to whole sentences, only if at least this many words remain. */
-export const MIN_WORDS_AFTER_TRIM = 40;
+export const MIN_WORDS_AFTER_TRIM = 12;
 
 /** Text up to the last sentence ending (. ? ! possibly followed by a closing quote or bracket). */
 export function wholeSentences(text: string) {
@@ -41,12 +43,59 @@ function httpError(status: number, detail: string, retryAfter: string | null): P
   return new ProviderError(`OpenRouter refused the request (${status})${said}.`, false, null, status);
 }
 
+const RoleReply = z.object({ A: z.string().trim().min(3).max(ROLE_MAX), B: z.string().trim().min(3).max(ROLE_MAX) });
+
 export class OpenRouterProvider implements Provider {
   readonly name = 'openrouter';
   private f: typeof fetch;
 
   constructor(private opts: OpenRouterOptions) {
     this.f = opts.fetch ?? fetch;
+  }
+
+  /**
+   * Two invented host roles that fit the topic (one short, non-streaming request).
+   * Returns null on any problem, so the caller falls back to the keyword rule.
+   */
+  /** One non-streaming request; returns the reply text. Throws ProviderError on failure. */
+  async complete(modelId: string, system: string, user: string, maxTokens: number, timeoutMs = 90_000): Promise<string> {
+    let res: Response;
+    try {
+      res = await this.f(CHAT_URL, {
+        method: 'POST',
+        signal: AbortSignal.timeout(Math.min(this.opts.timeoutMs * 2, timeoutMs)),
+        headers: { Authorization: `Bearer ${this.opts.apiKey}`, 'Content-Type': 'application/json', 'X-Title': 'CrossTalk (local prototype)' },
+        body: JSON.stringify({
+          model: modelId,
+          messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
+          max_tokens: maxTokens,
+          reasoning: { effort: 'low', exclude: true },
+        }),
+      });
+    } catch (e) {
+      throw new ProviderError((e as Error).name === 'TimeoutError' ? 'OpenRouter timed out.' : "Couldn't reach OpenRouter.", true);
+    }
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      let detail = '';
+      try { detail = (JSON.parse(body) as { error?: { message?: string } }).error?.message ?? ''; } catch { /* not JSON */ }
+      throw httpError(res.status, detail, res.headers.get('retry-after'));
+    }
+    const body = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+    return body.choices?.[0]?.message?.content ?? '';
+  }
+
+  async generateRoles(topic: string, audience: Audience, modelId: string): Promise<[string, string] | null> {
+    const { system, user } = rolesPrompt(topic, audience);
+    try {
+      const text = await this.complete(modelId, system, user, 600, 45_000);
+      const json = text.match(/\{[\s\S]*\}/)?.[0];
+      if (!json) return null;
+      const parsed = RoleReply.safeParse(JSON.parse(json));
+      return parsed.success ? [parsed.data.A.replace(/[<>]/g, ''), parsed.data.B.replace(/[<>]/g, '')] : null;
+    } catch {
+      return null;
+    }
   }
 
   async generateTurn(req: TurnRequest, { onToken, signal }: TurnOptions) {

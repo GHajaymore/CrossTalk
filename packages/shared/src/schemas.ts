@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { AUDIENCES, FORMATS, LENS_MAX, MODES, NAME_MAX, PERSONAS, TEMPERATURES, TOPIC_MAX } from './constants';
+import { AUDIENCES, FORMATS, LENS_MAX, MODES, NAME_MAX, PERSONAS, ROLE_MAX, TEMPERATURES, TOPIC_MAX } from './constants';
 
 const keys = <T extends Record<string, unknown>>(o: T) => Object.keys(o) as [keyof T & string, ...(keyof T & string)[]];
 
@@ -25,6 +25,10 @@ export const SpeakerDraft = z.object({
   autoPersona: z.boolean(),
   /** Only used for the Custom personality. Treated as content, never as instructions. */
   lens: z.string().trim().max(LENS_MAX),
+  /** The host's invented job or background, fitted to the topic (e.g. "Chef who runs a small bistro"). */
+  role: z.string().trim().max(ROLE_MAX).default(''),
+  /** Let the app write a role that fits the topic. */
+  autoRole: z.boolean().default(true),
 });
 export type SpeakerDraft = z.infer<typeof SpeakerDraft>;
 
@@ -104,12 +108,51 @@ export const Conversation = z.object({
 });
 export type Conversation = z.infer<typeof Conversation>;
 
+/** When each turn starts and ends in a rendered audio file, in seconds. */
+export type AudioTiming = { seq: number; speakerId: SpeakerId; start: number; end: number };
+/** A rendered episode recording (natural voices), if one exists. */
+export type EpisodeAudio = { url: string; durationSec: number; voices: { A: string; B: string }; timings: AudioTiming[] };
+
+/** Iris, the Artist: a listener's perspective and a titled sketch, made after an episode ends. */
+export const ArtistNotes = z.object({
+  conversationId: z.string(),
+  state: z.enum(['listening', 'done', 'failed']),
+  modelId: z.string(),
+  perspective: z.string(),
+  momentSeq: z.number().int(),
+  /** A quote of 20 words or fewer from the turn she drew. */
+  caption: z.string(),
+  artTitle: z.string(),
+  artStyle: z.enum(['sketch', 'picture', 'painting', 'dreamscape']),
+  /** Checked SVG line art, or null if her drawing failed the safety check. */
+  sketchSvg: z.string().nullable(),
+  /** Saved for a painted version later. */
+  imagePrompt: z.string(),
+  error: z.string().nullable(),
+  /** How many times she has drawn this episode. */
+  version: z.number().int(),
+  createdAt: z.string(),
+});
+export type ArtistNotes = z.infer<typeof ArtistNotes>;
+
+/** What the listener told Iris about her work. She reads recent notes before every drawing. */
+export const IrisFeedbackInput = z.object({
+  conversationId: z.string().nullable(),
+  rating: z.enum(['up', 'down']),
+  note: z.string().trim().max(300),
+});
+export type IrisFeedback = z.infer<typeof IrisFeedbackInput> & { id: string; artTitle: string | null; createdAt: string };
+
 /** A conversation with everything the Studio needs to draw it. */
 export type ConversationView = Conversation & {
   turns: Turn[];
   run: Run | null;
   /** Cue cards. Always empty until Milestone 4. */
   interventions: Intervention[];
+  /** The rendered recording, when tools/voice has made one. */
+  audio?: EpisodeAudio | null;
+  /** Iris's notes for this episode, once she has listened. */
+  artist?: ArtistNotes | null;
 };
 
 /** Events sent from the server over Server-Sent Events. */

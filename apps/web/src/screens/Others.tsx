@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { MODES, type AppConfig, type MockSettings } from '@crosstalk/shared';
+import { sketchSrc } from '../studio/ArtistCard';
+import { MAX_TURNS, MODES, type AppConfig, type MockSettings } from '@crosstalk/shared';
 import { api, type ConversationSummary } from '../api/client';
 import { SetupBanner } from '../lib/Banners';
 import { Footer } from './Footer';
@@ -10,22 +11,26 @@ export function Library({ config }: { config: AppConfig | null }) {
   useEffect(() => { api.list().then(setItems).catch(() => setItems([])); }, []);
   return (
     <div className="page">
-      <div><h1>Library</h1><p className="hint">A simple list for now. Rename, export, delete, branches and Iris's thumbnails arrive in Milestone 6.</p></div>
+      <div><h1>Episodes</h1><p className="hint">Each episode shows Iris's sketch. Her full gallery is on the <a href="#/iris">Iris</a> page. Rename, export, delete and branches arrive in Milestone 6.</p></div>
       {!items ? <p className="hint">Loading…</p> : !items.length ? <p className="hint">No discussions yet. Start one from Create.</p> : (
         <ul className="lib-list">
           {items.map(c => {
             const st = c.run?.state ?? 'idle';
             return (
               <li className="lib-item" key={c.id}>
+                <div className="lib-row">
+                {c.artist?.sketchSvg && <a href={`#/studio/${c.id}`}><img className="thumb" src={sketchSrc(c.artist.sketchSvg)} alt={`Iris's sketch: ${c.artist.artTitle}`} /></a>}
                 <div style={{ minWidth: 0 }}>
                   <div className="lib-title">{c.title}</div>
                   <div className="lib-meta">
                     <span className={`status ${st}`}>{c.run?.stopReason === 'interrupted' ? 'interrupted' : st}</span>
                     <span>Ep. {String(c.episode).padStart(2, '0')}</span>
                     <span>{MODES[c.mode].label}</span>
-                    <span>{c.turnCount} of 8 turns</span>
+                    <span>{c.turnCount} of {MAX_TURNS} turns</span>
                     <span>{new Date(c.createdAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>
+                    {c.artist?.state === 'done' && <span>“{c.artist.artTitle}”</span>}
                   </div>
+                </div>
                 </div>
                 <a className="btn sm" href={`#/studio/${c.id}`}>Open</a>
               </li>
@@ -62,7 +67,7 @@ export function Settings({ config, refreshConfig }: { config: AppConfig | null; 
 
   return (
     <div className="page">
-      <div><h1>Settings</h1><p className="hint">Voices and Scout settings arrive in later milestones.</p></div>
+      <div><h1>Settings</h1><p className="hint">Voices and Scout settings arrive in later milestones. What Iris has learned from you is on the <a href="#/iris">Iris</a> page.</p></div>
       <SetupBanner config={config} onSettings />
       <section className="sec"><h2>Models</h2>
         <p className="hint">Read-only here. Models are set in the server's settings (the <code>.env</code> file, or the cloud environment's variables) and must be different IDs.</p>

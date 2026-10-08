@@ -1,17 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { AppConfig } from '@crosstalk/shared';
-import { api } from './api/client';
+import { api, type Access } from './api/client';
+import { Lock } from './screens/Lock';
 import { Create } from './screens/Create';
+import { IrisPage } from './screens/Iris';
 import { ControlRoom, Library, Settings } from './screens/Others';
-import { Studio } from './screens/Studio';
+import { Studio, STUDIO_TABS, type StudioTab } from './screens/Studio';
 
-// Routes live in the URL hash (#/studio/<id>), so a refresh reopens the same discussion.
+// Routes live in the URL hash (#/studio/<id>/<tab>), so a refresh reopens the same discussion and view.
 const parse = (h: string) => {
-  const [route = 'create', id = null] = h.replace(/^#\/?/, '').split('/') as [string?, string?];
-  return { route: route || 'create', id };
+  const [route = 'create', id = null, view = null] = h.replace(/^#\/?/, '').split('/') as [string?, string?, string?];
+  const tab: StudioTab = STUDIO_TABS.some(([k]) => k === view) ? view as StudioTab : 'watch';
+  return { route: route === 'library' ? 'episodes' : route || 'create', id, tab };
 };
 
-const NAV: [string, string][] = [['create', 'Create'], ['studio', 'Studio'], ['library', 'Library'], ['settings', 'Settings'], ['control', 'Control room']];
+const NAV: [string, string][] = [['create', 'Create'], ['studio', 'Studio'], ['episodes', 'Episodes'], ['iris', 'Iris'], ['settings', 'Settings'], ['control', 'Control room']];
 
 export function App() {
   const [loc, setLoc] = useState(() => parse(location.hash));
@@ -19,6 +22,14 @@ export function App() {
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const toastTimer = useRef<number>();
   const lastStudio = useRef<string | null>(null);
+  const [access, setAccess] = useState<Access | null>(null);
+  useEffect(() => {
+    const check = () => api.access().then(setAccess).catch(() => setAccess({ required: false, ok: true }));
+    check();
+    addEventListener('crosstalk:locked', check);
+    return () => removeEventListener('crosstalk:locked', check);
+  }, []);
+  const unlocked = !!access && (!access.required || access.ok);
 
   useEffect(() => {
     const on = () => { setLoc(parse(location.hash)); window.scrollTo(0, 0); };
@@ -27,7 +38,7 @@ export function App() {
   }, []);
 
   const refreshConfig = useCallback(() => { api.config().then(setConfig).catch(() => {}); }, []);
-  useEffect(refreshConfig, [loc.route, refreshConfig]);
+  useEffect(() => { if (unlocked) refreshConfig(); }, [loc.route, refreshConfig, unlocked]);
 
   const toast = useCallback((m: string) => {
     setToastMsg(m);
@@ -38,16 +49,20 @@ export function App() {
 
   // "Studio" with no id opens the active discussion, else the last one you had open, else the newest.
   useEffect(() => {
-    if (loc.route !== 'studio' || loc.id) return;
+    if (!unlocked || loc.route !== 'studio' || loc.id) return;
     const target = config?.activeConversationId ?? lastStudio.current;
     if (target) { go(`#/studio/${target}`); return; }
     api.list().then(l => { if (l[0]) go(`#/studio/${l[0].id}`); else go('#/create'); }).catch(() => go('#/create'));
-  }, [loc, config?.activeConversationId]);
+  }, [loc, config?.activeConversationId, unlocked]);
   if (loc.route === 'studio' && loc.id) lastStudio.current = loc.id;
 
+  if (!access) return <main className="wrap"><div className="empty-stage">Opening CrossTalk…</div></main>;
+  if (!unlocked) return <Lock onOpen={setAccess} />;
+
   let screen;
-  if (loc.route === 'studio') screen = loc.id ? <Studio key={loc.id} id={loc.id} config={config} refreshConfig={refreshConfig} toast={toast} /> : <div className="empty-stage">Opening the studio…</div>;
-  else if (loc.route === 'library') screen = <Library config={config} />;
+  if (loc.route === 'studio') screen = loc.id ? <Studio key={loc.id} id={loc.id} tab={loc.tab} config={config} refreshConfig={refreshConfig} toast={toast} /> : <div className="empty-stage">Opening the studio…</div>;
+  else if (loc.route === 'episodes') screen = <Library config={config} />;
+  else if (loc.route === 'iris') screen = <IrisPage config={config} />;
   else if (loc.route === 'settings') screen = <Settings config={config} refreshConfig={refreshConfig} />;
   else if (loc.route === 'control') screen = <ControlRoom config={config} />;
   else screen = <Create config={config} go={go} refreshConfig={refreshConfig} toast={toast} />;

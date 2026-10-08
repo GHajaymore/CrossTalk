@@ -8,3 +8,5 @@ dist/
 *.sqlite-*
 apps/server/data/
 .DS_Store
+tools/voice/node_modules/
+*.mp3

@@ -7,8 +7,8 @@ import { delta, fakeFetch, FREE_A, FREE_B, sse, usageChunk } from './fakeOpenRou
 const conv: Conversation = {
   id: 'c1', title: 't', topic: 'Is a four-day workweek practical?', mode: 'debate', format: 'recorded', audience: 'general', temperature: 'lively', episode: 1,
   speakers: {
-    A: { id: 'A', name: 'Wren', autoName: true, persona: 'optimist', autoPersona: true, lens: 'Imaginative', modelId: FREE_A },
-    B: { id: 'B', name: 'Hale', autoName: true, persona: 'skeptic', autoPersona: true, lens: 'Analytical', modelId: FREE_B },
+    A: { id: 'A', name: 'Wren', autoName: true, persona: 'optimist', autoPersona: true, lens: 'Imaginative', modelId: FREE_A, role: '', autoRole: true },
+    B: { id: 'B', name: 'Hale', autoName: true, persona: 'skeptic', autoPersona: true, lens: 'Analytical', modelId: FREE_B, role: '', autoRole: true },
   },
   parentId: null, branchTurnId: null, createdAt: '', updatedAt: '',
 };

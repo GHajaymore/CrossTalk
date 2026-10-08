@@ -14,7 +14,7 @@ export const BUSY_WAIT_MS = 10_000;
 /** Timeouts and network errors wait this long. */
 export const OTHER_WAIT_MS = 2_000;
 /** Replies longer than this are trimmed to whole sentences (kids get a shorter limit). */
-export const MAX_SPOKEN_WORDS = { kids: 100, other: 150 } as const;
+export const MAX_SPOKEN_WORDS = { kids: 60, other: 90 } as const;
 
 const isBusy = (e: ProviderError) => e.status === 429 || (e.status !== null && e.status >= 500) || /overload|busy|capacity/i.test(e.message);
 const wordCount = (t: string) => t.split(/\s+/).filter(Boolean).length;
@@ -28,7 +28,7 @@ export function fitToLength(text: string, max: number): string {
     if (wordCount(out + s) > max) break;
     out += s;
   }
-  return wordCount(out) >= 40 ? out.trim() : text;
+  return wordCount(out) >= 12 ? out.trim() : text;
 }
 /** At most one automatic retry per turn: two attempts. */
 export const MAX_ATTEMPTS = 2;
@@ -52,6 +52,8 @@ export type ControllerOptions = {
   now?: () => Date;
   /** Checked before every run (config problems, free-model guard). Returns why the run is blocked, or null. */
   preflight?: () => Promise<string | null>;
+  /** Called once when a run completes (Iris listens then). */
+  onCompleted?: (conversationId: string) => void;
   /** Waiting before a retry. Replaceable in tests. */
   sleep?: (ms: number, signal: AbortSignal) => Promise<void>;
 };
@@ -83,6 +85,8 @@ export class ConversationController {
     return () => { this.bus.off(conversationId, fn); };
   }
   private emit(conversationId: string, e: ControllerEvent) { this.bus.emit(conversationId, e); }
+  /** Something else about this conversation changed (e.g. Iris finished); subscribers re-read it. */
+  notify(conversationId: string) { this.emit(conversationId, { type: 'changed' }); }
 
   // ---- queries ----
   get activeConversationId() { return this.active?.conversationId ?? null; }
@@ -92,6 +96,8 @@ export class ConversationController {
   }
   today() { return this.now().toLocaleDateString('en-CA'); }
   requestsToday() { return this.repo.requestsOn(this.today()); }
+  /** Counts a model request made outside a run (e.g. writing host roles) toward today's limit. */
+  countRequest() { this.repo.countRequest(this.today()); }
 
   /** Resolves when the conversation's current run has stopped generating. */
   settled(conversationId: string) {
@@ -99,7 +105,7 @@ export class ConversationController {
   }
 
   // ---- commands ----
-  create(input: CreateConversation): ConversationView {
+  create(input: CreateConversation, roles?: [string, string]): ConversationView {
     const at = this.now().toISOString();
     const c: Conversation = {
       id: randomUUID(),
@@ -110,7 +116,7 @@ export class ConversationController {
       audience: input.audience,
       temperature: input.audience === 'kids' && input.temperature === 'heated' ? 'lively' : input.temperature,
       episode: this.repo.nextEpisode(),
-      speakers: resolveSpeakers(input.topic, input.audience, input.speakers, this.opts.models),
+      speakers: resolveSpeakers(input.topic, input.audience, input.speakers, this.opts.models, roles),
       parentId: null,
       branchTurnId: null,
       createdAt: at,
@@ -290,7 +296,7 @@ export class ConversationController {
       if (!run || run.id !== runId || run.state !== 'generating' || signal.aborted) return;
 
       const seq = this.repo.lastSeq(conversationId) + 1;
-      if (seq > this.opts.maxTurns) { this.transition(run, 'completed', null); return; }
+      if (seq > this.opts.maxTurns) { this.transition(run, 'completed', null); queueMicrotask(() => this.opts.onCompleted?.(conversationId)); return; }
       if (run.pauseRequested) { this.transition(run, 'paused', 'by you'); return; }
       if (this.requestsToday() >= this.opts.dailyLimit) { this.transition(run, 'paused', 'Daily request limit reached'); return; }
 

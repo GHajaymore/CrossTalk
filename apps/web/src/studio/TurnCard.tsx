@@ -9,7 +9,10 @@ export type TurnCardProps = {
   modelId: string;
   text: string;
   state: 'completed' | 'streaming' | 'failed';
+  /** Being read aloud right now. */
+  speaking?: boolean;
   onCopy?: () => void;
+  onPlayFrom?: () => void;
 };
 
 /** One spoken turn, landing from its speaker's side of the table. */
@@ -28,7 +31,7 @@ export function TurnCard(p: TurnCardProps) {
   }, [open]);
 
   return (
-    <article ref={ref} className={`turn ${p.speakerId} ${p.state === 'failed' ? 'failed' : ''}`} id={`turn-${p.seq}`}>
+    <article ref={ref} className={`turn ${p.speakerId}${p.state === 'failed' ? ' failed' : ''}${p.speaking ? ' speaking' : ''}`} id={`turn-${p.seq}`}>
       <span className={`flag ${p.speakerId}`} aria-hidden="true">{p.speakerId}</span>
       <div className="card">
         <div className="card-head">
@@ -51,7 +54,7 @@ export function TurnCard(p: TurnCardProps) {
         <div className="menu" role="menu">
           <button role="menuitem" disabled>Go deeper on this<small>Arrives in Milestone 4</small></button>
           <button role="menuitem" disabled>Branch from here<small>Arrives in Milestone 4</small></button>
-          <button role="menuitem" disabled>Play from here<small>Arrives in Milestone 3</small></button>
+          <button role="menuitem" disabled={!p.onPlayFrom} onClick={() => { setOpen(false); p.onPlayFrom?.(); }}>Play from here<small>{p.onPlayFrom ? 'Read aloud from this turn' : "Speech isn't available in this browser"}</small></button>
           <button role="menuitem" onClick={() => { setOpen(false); p.onCopy?.(); }}>Copy text</button>
         </div>
       )}

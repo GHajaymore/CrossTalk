@@ -1,4 +1,4 @@
-import type { MockSettings } from '@crosstalk/shared';
+import { MAX_TURNS, type MockSettings } from '@crosstalk/shared';
 import { ConversationController, type ControllerOptions } from '../src/controller/controller';
 import { openDb, Repo } from '../src/db/repo';
 import { MockProvider, type MockTiming } from '../src/providers/mock';
@@ -9,8 +9,8 @@ export const QUICK: MockTiming = { thinkMs: () => 1, wordMs: () => 1 };
 export const draft = (topic = 'Is a four-day workweek practical?') => ({
   topic, mode: 'explore' as const, format: 'recorded' as const, audience: 'general' as const, temperature: 'lively' as const,
   speakers: {
-    A: { name: '', autoName: true, persona: 'optimist' as const, autoPersona: true, lens: '' },
-    B: { name: '', autoName: true, persona: 'skeptic' as const, autoPersona: true, lens: '' },
+    A: { name: '', autoName: true, persona: 'optimist' as const, autoPersona: true, lens: '', role: '', autoRole: true },
+    B: { name: '', autoName: true, persona: 'skeptic' as const, autoPersona: true, lens: '', role: '', autoRole: true },
   },
 });
 
@@ -19,7 +19,7 @@ export function setup(opts: { timing?: MockTiming; mock?: Partial<MockSettings>;
   const mock: MockSettings = { failOnce: false, fast: true, ...opts.mock };
   const provider = new MockProvider(() => mock, opts.timing ?? INSTANT);
   const controller = new ConversationController(repo, provider, {
-    maxTurns: 8, dailyLimit: 40, models: { A: 'mock/wren-v1', B: 'mock/hale-v1' }, ...opts.controller,
+    maxTurns: MAX_TURNS, dailyLimit: 40, models: { A: 'mock/wren-v1', B: 'mock/hale-v1' }, ...opts.controller,
   });
   return { repo, provider, controller, mock };
 }

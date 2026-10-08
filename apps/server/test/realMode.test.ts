@@ -54,12 +54,13 @@ describe('real mode runs', () => {
     await controller.settled(created.id);
     const v = (await app.inject({ url: `/api/conversations/${created.id}` })).json();
     expect(v.run.state).toBe('completed');
-    expect(v.turns.map((t: { text: string }) => t.text)).toEqual([1, 2, 3, 4, 5, 6, 7, 8].map(n => `Turn ${n} from ${n % 2 ? FREE_A : FREE_B}.`));
-    expect(net.chatCalls().map(c => c.body!.model)).toEqual([FREE_A, FREE_B, FREE_A, FREE_B, FREE_A, FREE_B, FREE_A, FREE_B]);
+    expect(v.turns.map((t: { text: string }) => t.text)).toEqual(Array.from({ length: 16 }, (_, i) => `Turn ${i + 1} from ${i % 2 ? FREE_B : FREE_A}.`));
+    expect(net.chatCalls().map(c => c.body!.model)).toEqual(Array.from({ length: 16 }, (_, i) => (i % 2 ? FREE_B : FREE_A)));
 
     const cfg = (await app.inject({ url: '/api/config' })).json();
-    expect(cfg).toMatchObject({ providerMode: 'openrouter', requestsToday: 8, apiKeySet: true, problems: [] });
-    expect(cfg.usageToday).toEqual({ attempts: 8, tokensIn: 1600, tokensOut: 48, costUsd: 0 });
+    // 16 turns + 1 request that wrote the host roles.
+    expect(cfg).toMatchObject({ providerMode: 'openrouter', requestsToday: 17, apiKeySet: true, problems: [] });
+    expect(cfg.usageToday).toEqual({ attempts: 16, tokensIn: 3200, tokensOut: 96, costUsd: 0 });
     expect(cfg.guard.verdicts.map((x: { ok: boolean }) => x.ok)).toEqual([true, true]);
   });
 
@@ -84,6 +85,44 @@ describe('real mode runs', () => {
   it('refuses the mock controls in real mode', async () => {
     const { app } = boot();
     expect((await app.inject({ method: 'PUT', url: '/api/mock', payload: { failOnce: true, fast: true } })).statusCode).toBe(409);
+  });
+});
+
+describe('host roles that fit the topic', () => {
+  it('asks the speaker A model once for two roles and stores them on the hosts', async () => {
+    const { app, net } = boot();
+    const c = (await app.inject({ method: 'POST', url: '/api/conversations', payload: draft() })).json();
+    expect(c.speakers.A.role).toBe('Owner of a small accounting firm');
+    expect(c.speakers.B.role).toBe('Researcher who studies working hours');
+    const [call] = net.roleCalls();
+    expect(net.roleCalls()).toHaveLength(1);
+    expect(call.body).toMatchObject({ model: FREE_A });
+    expect(JSON.stringify(call.body)).toContain('<topic>Is a four-day workweek practical?</topic>');
+    expect((await app.inject({ url: '/api/config' })).json().requestsToday).toBe(1);
+  });
+
+  it('falls back to the built-in roles when the reply is unusable, and never fails to create', async () => {
+    const { app } = boot({}, fakeFetch({ roles: () => Response.json({ choices: [{ message: { content: 'Sorry, I cannot do that.' } }] }) }));
+    const res = await app.inject({ method: 'POST', url: '/api/conversations', payload: draft() });
+    expect(res.statusCode).toBe(201);
+    expect(res.json().speakers.A.role).toBe('Owner of a 20-person design studio');
+  });
+
+  it('keeps a role typed by the listener and asks for none when both are typed', async () => {
+    const { app, net } = boot();
+    const d = draft();
+    d.speakers.A = { ...d.speakers.A, role: 'Night-shift nurse', autoRole: false };
+    d.speakers.B = { ...d.speakers.B, role: 'Hospital manager', autoRole: false };
+    const c = (await app.inject({ method: 'POST', url: '/api/conversations', payload: d })).json();
+    expect([c.speakers.A.role, c.speakers.B.role]).toEqual(['Night-shift nurse', 'Hospital manager']);
+    expect(net.roleCalls()).toHaveLength(0);
+  });
+
+  it('writes no roles with a model when the free-model check fails', async () => {
+    const { app, net } = boot({ SPEAKER_B_MODEL: PAID });
+    const c = (await app.inject({ method: 'POST', url: '/api/conversations', payload: draft() })).json();
+    expect(net.roleCalls()).toHaveLength(0);
+    expect(c.speakers.B.role).toBe('Researcher who studies how people work');
   });
 });
 

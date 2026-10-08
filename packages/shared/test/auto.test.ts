@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { AUDIENCES, autoNames, autoPersonas, PRESETS, resolveSpeakers, type Audience } from '../src';
+import { AUDIENCES, autoNames, autoPersonas, autoRoles, PRESETS, resolveSpeakers, type Audience } from '../src';
 
 const audiences = Object.keys(AUDIENCES) as Audience[];
 
@@ -43,11 +43,30 @@ describe('auto personalities', () => {
 
   it('keeps a hand-set name and personality', () => {
     const s = resolveSpeakers(PRESETS[0], 'general', {
-      A: { name: 'Marlo', autoName: false, persona: 'custom', autoPersona: false, lens: 'A retired chef who hates waste' },
-      B: { name: '', autoName: true, persona: 'skeptic', autoPersona: true, lens: '' },
+      A: { name: 'Marlo', autoName: false, persona: 'custom', autoPersona: false, lens: 'A retired chef who hates waste', role: 'Head chef', autoRole: false },
+      B: { name: '', autoName: true, persona: 'skeptic', autoPersona: true, lens: '', role: '', autoRole: true },
     }, { A: 'm/a', B: 'm/b' });
     expect(s.A).toMatchObject({ name: 'Marlo', persona: 'custom', lens: 'A retired chef who hates waste', modelId: 'm/a' });
     expect(s.B.persona).toBe('skeptic');
     expect(s.B.name).toBe(autoNames(PRESETS[0], 'general')[1]);
+  });
+});
+
+describe('host roles that fit the topic', () => {
+  it('fits a role pair to each preset', () => {
+    expect(autoRoles(PRESETS[0])).toEqual(['Owner of a small bakery and café', 'Consultant who sets up digital tools for small firms']);
+    expect(autoRoles(PRESETS[1])).toEqual(['City transport planner', 'Shop owner on a busy high street']);
+    expect(autoRoles(PRESETS[2])).toEqual(['Owner of a 20-person design studio', 'Researcher who studies how people work']);
+    expect(autoRoles(PRESETS[3])).toEqual(['Chef who runs a neighbourhood restaurant', 'Food writer who reviews restaurants']);
+    expect(autoRoles(PRESETS[4])).toEqual(['Head pro at a public golf club', 'Golf-course designer']);
+  });
+
+  it('uses model-written roles when given, and keeps typed ones', () => {
+    const drafts = {
+      A: { name: '', autoName: true, persona: 'optimist' as const, autoPersona: true, lens: '', role: '', autoRole: true },
+      B: { name: '', autoName: true, persona: 'skeptic' as const, autoPersona: true, lens: '', role: 'Beekeeper', autoRole: false },
+    };
+    const s = resolveSpeakers('Should cities keep bees?', 'general', drafts, { A: 'a', B: 'b' }, ['Urban ecologist', 'Parks manager']);
+    expect([s.A.role, s.B.role]).toEqual(['Urban ecologist', 'Beekeeper']);
   });
 });
