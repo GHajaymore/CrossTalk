@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ARTIST, AUDIENCES, blockedHit, DEFAULT_RULES, episodeLabel, FORMATS, hostSubtitle, isSensitive, LENS_MAX, MAX_TURNS, MODES, NAME_MAX, PERSONAS, PRESETS, resolveSpeakers, ROLE_MAX,
   TEMPERATURE_ORDER, TEMPERATURES, TOPIC_MAX,
@@ -40,6 +40,11 @@ export function Create({ config, go, refreshConfig, toast }: Props) {
   const blocked = realBlocked(config);
   // The Control room's rules: blocked words keep a topic off air; Mature and Heated can be switched off.
   const rules = config?.rules ?? DEFAULT_RULES;
+  // If the Control room switches off what's selected, step back to the nearest allowed choice.
+  useEffect(() => {
+    if (audience === 'mature' && !rules.allowMature) setAudience('general');
+    if (temperature === 'heated' && !rules.allowHeated) setTemperature('lively');
+  }, [rules.allowMature, rules.allowHeated]); // eslint-disable-line react-hooks/exhaustive-deps
   const blockedWord = blockedHit(topic, rules.blocked);
   const canStart = !!topic.trim() && !busy && !starting && !overBudget && !blocked && !blockedWord
     && !(audience === 'mature' && !rules.allowMature) && !(temperature === 'heated' && !rules.allowHeated);

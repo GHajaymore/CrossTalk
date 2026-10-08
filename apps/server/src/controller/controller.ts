@@ -242,6 +242,8 @@ export class ConversationController {
   cancelCue(conversationId: string, cueId: string) {
     const cue = this.repo.listCues(conversationId).find(x => x.id === cueId);
     if (!cue) throw new ControllerError('Cue not found.', 404);
+    // A producer note belongs to the Control room; a listener can't take it back.
+    if (cue.kind === 'note') throw new ControllerError("Producer notes can't be taken back here.", 403);
     if (cue.status !== 'queued') throw new ControllerError('That cue has already landed.', 409);
     const live = this.liveTurn(conversationId);
     if (live && live.seq >= cue.appliesBeforeSeq) throw new ControllerError("Too late: that cue is already on air.", 409);

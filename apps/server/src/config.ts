@@ -44,6 +44,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
   }
   if (accessCode && accessCode.length < ACCESS_CODE_MIN) throw new Error(`ACCESS_CODE must be at least ${ACCESS_CODE_MIN} characters.`);
   // The Control room is always locked online, in every mode: ADMIN_CODE, or ACCESS_CODE if that's all there is.
+  if (str(env.ADMIN_CODE) && str(env.ADMIN_CODE).length < ACCESS_CODE_MIN) throw new Error(`ADMIN_CODE must be at least ${ACCESS_CODE_MIN} characters.`);
   const adminCode = [str(env.ADMIN_CODE), str(env.ACCESS_CODE)].find(c => c.length >= ACCESS_CODE_MIN) ?? null;
 
   return {

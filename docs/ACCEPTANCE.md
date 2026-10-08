@@ -4,7 +4,7 @@ The 17 acceptance tests from `docs/BRIEF.md` §13, each with how it was verified
 `npm test` (Vitest), "E2E" with `npm run e2e` (Playwright, Chromium, mock mode). "Manual" means checked
 by hand, and why it isn't automated.
 
-Last full run (Oct 8, 2026): `npm test` 16 files, 121 tests passed · `npm run e2e` 10 passed.
+Last full run (Oct 8, 2026, after Milestone 8): `npm test` 19 files, 154 tests passed · `npm run e2e` 12 passed.
 
 | # | Test | Verified by |
 |---|---|---|

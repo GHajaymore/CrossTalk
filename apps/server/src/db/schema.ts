@@ -220,4 +220,9 @@ export const MIGRATIONS: string[] = [
     detail  TEXT NOT NULL
   );
   `,
+  `
+  -- Episodes that finished before publishing existed also wait for the owner's OK.
+  UPDATE conversations SET publish = 'waiting'
+    WHERE publish IS NULL AND id IN (SELECT conversation_id FROM generation_runs WHERE state = 'completed');
+  `,
 ];

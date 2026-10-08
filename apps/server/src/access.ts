@@ -1,7 +1,7 @@
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 import { createReadStream, existsSync, statSync } from 'node:fs';
 import { extname, join, normalize, sep } from 'node:path';
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type { ServerConfig } from './config';
 
 const COOKIE = 'ct_access';
@@ -15,6 +15,16 @@ const digest = (s: string) => createHash('sha256').update(s).digest();
 const same = (a: string, b: string) => timingSafeEqual(digest(a), digest(b));
 
 type Lock = { cookie: string; code: string | null; salt: string };
+
+/**
+ * Which route a request will run: the matched route pattern, or for an unmatched request its decoded
+ * path, so an encoded path can never reach a route its prefix check didn't see.
+ */
+const routeOf = (req: FastifyRequest) => {
+  const matched = req.routeOptions?.url;
+  if (matched && matched !== '/*') return matched;
+  try { return decodeURIComponent(req.url.split('?')[0]); } catch { return '/api/'; }
+};
 
 /** A code you type once per device; the cookie holds a keyed hash, never the code itself. */
 function makeLock({ cookie, code, salt }: Lock) {
@@ -64,7 +74,8 @@ export function registerAccess(app: FastifyInstance, cfg: ServerConfig) {
   });
 
   app.addHook('onRequest', async (req, reply) => {
-    const path = req.url.split('?')[0];
+    // The route Fastify actually matched (after decoding), never the raw URL: "/%61pi/..." can't slip past.
+    const path = routeOf(req);
     if (!path.startsWith('/api/') || path === '/api/access') return;
     if (!ok(req.headers.cookie)) return reply.status(401).send({ error: 'Enter the access code first.', locked: true });
   });
@@ -90,7 +101,7 @@ export function registerAdmin(app: FastifyInstance, cfg: ServerConfig) {
   });
 
   app.addHook('onRequest', async (req, reply) => {
-    const path = req.url.split('?')[0];
+    const path = routeOf(req);
     if (!path.startsWith('/api/admin/') || path === '/api/admin/access') return;
     if (!ok(req.headers.cookie)) return reply.status(403).send({ error: 'Sign in to the Control room first.', adminLocked: true });
   });

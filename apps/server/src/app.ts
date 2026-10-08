@@ -112,7 +112,8 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
 
   // Never log request headers or bodies: the key travels only from this server to OpenRouter.
   // Behind a host's proxy (only when locked for hosting), so wrong-code limits see the real address.
-  const app = Fastify({ logger: opts.logger ?? false, trustProxy: cfg.hosted });
+  // Hosted behind one proxy (Render): trust only its hop, so a client can't fake its address with X-Forwarded-For.
+  const app = Fastify({ logger: opts.logger ?? false, trustProxy: cfg.hosted ? (_addr: string, hop: number) => hop < 1 : false });
   registerAccess(app, cfg);
   const admin = registerAdmin(app, cfg);
   registerWeb(app, cfg);
@@ -356,8 +357,10 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
       pinned: typeof req.body?.pinned === 'boolean' ? req.body.pinned : undefined,
       hidden: typeof req.body?.hidden === 'boolean' ? req.body.hidden : undefined,
     };
+    if (flags.pinned === undefined && flags.hidden === undefined) throw new ControllerError('Pin or hide: send pinned or hidden as true or false.', 400);
     repo.setTopicFlags(t.id, flags);
-    audit(flags.hidden !== undefined ? (flags.hidden ? 'hid topic' : 'showed topic') : (flags.pinned ? 'pinned topic' : 'unpinned topic'), t.question);
+    const did = [flags.pinned !== undefined && (flags.pinned ? 'pinned' : 'unpinned'), flags.hidden !== undefined && (flags.hidden ? 'hid' : 'showed')].filter(Boolean).join(' and ');
+    audit(`${did} topic`, t.question);
     return scoutView();
   });
 

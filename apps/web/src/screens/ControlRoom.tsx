@@ -92,7 +92,8 @@ function OverviewTab() {
 
 function LiveTab({ active, reload, toast }: { active: ConversationSummary[]; reload: () => void; toast: (m: string) => void }) {
   const [notes, setNotes] = useState<Record<string, string>>({});
-  const act = async (fn: () => Promise<unknown>, done: string) => { try { await fn(); toast(done); reload(); } catch (e) { toast((e as Error).message); } };
+  /** Runs an action; true only if it worked, so a failed note keeps what you typed. */
+  const act = async (fn: () => Promise<unknown>, done: string) => { try { await fn(); toast(done); reload(); return true; } catch (e) { toast((e as Error).message); return false; } };
   if (!active.length) return <p className="empty-stage">Nothing is on air. Start a discussion and you can pause it, stop it or send a producer note from here.</p>;
   return <>{active.map(c => (
     <section className="sec live-row" key={c.id}>
@@ -106,7 +107,7 @@ function LiveTab({ active, reload, toast }: { active: ConversationSummary[]; rel
           <button className="btn sm danger" onClick={() => act(() => api.stop(c.id), 'Stopped')}>Stop</button>
         </div>
       </div>
-      <form className="dock-row" onSubmit={e => { e.preventDefault(); void act(() => api.note(c.id, notes[c.id] ?? ''), 'Producer note queued for the next turn').then(() => setNotes(n => ({ ...n, [c.id]: '' }))); }}>
+      <form className="dock-row" onSubmit={e => { e.preventDefault(); void act(() => api.note(c.id, notes[c.id] ?? ''), 'Producer note queued for the next turn').then(ok => { if (ok) setNotes(n => ({ ...n, [c.id]: '' })); }); }}>
         <label className="sr-only" htmlFor={`note-${c.id}`}>Producer note</label>
         <input id={`note-${c.id}`} type="text" maxLength={200} value={notes[c.id] ?? ''} onChange={e => setNotes(n => ({ ...n, [c.id]: e.target.value }))}
           placeholder="Producer note for the next speaker, e.g. Keep it to the facts we have" style={{ flex: 1, minWidth: 200 }} />

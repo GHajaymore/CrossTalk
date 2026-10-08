@@ -130,3 +130,44 @@ describe('Control room: the admin lock', () => {
     } finally { await withCode.app.close(); }
   });
 });
+
+describe('Control room: review fixes', () => {
+  it('an encoded path can never get past either lock', async () => {
+    const t = buildApp({ ...loadConfig({ HOST: '0.0.0.0', ADMIN_CODE: 'lantern-harbour-9' }), dbPath: ':memory:', webDir: '' }, { timing: INSTANT });
+    try {
+      for (const url of ['/api/admin/rules', '/api/%61dmin/rules', '/%61pi/admin/rules', '/api/admin%2Frules', '/api/ADMIN/rules']) {
+        const r = await t.app.inject({ url });
+        expect([403, 404], url).toContain(r.statusCode);
+      }
+      expect((await t.app.inject({ method: 'PUT', url: '/api/%61dmin/rules', payload: rules({ blocked: ['x'] }) })).statusCode).toBe(403);
+    } finally { await t.app.close(); }
+
+    const real = buildApp({ ...loadConfig({ PROVIDER_MODE: 'openrouter', HOST: '0.0.0.0', ACCESS_CODE: 'harbour-lantern-42', OPENROUTER_API_KEY: 'k', SPEAKER_A_MODEL: 'a:free', SPEAKER_B_MODEL: 'b:free' }), dbPath: ':memory:', webDir: '' }, { timing: INSTANT });
+    try {
+      for (const url of ['/api/conversations', '/%61pi/conversations', '/api/%63onversations']) expect((await real.app.inject({ url })).statusCode, url).toBe(401);
+    } finally { await real.app.close(); }
+  });
+
+  it("a listener can't take back a producer note", async () => {
+    const t = local();
+    try {
+      const id = await pausedAt(t, 2);
+      const note = t.controller.addNote(id, 'Stay on the facts.');
+      const r = await t.app.inject({ method: 'DELETE', url: `/api/conversations/${id}/cues/${note.id}` });
+      expect(r.statusCode).toBe(403);
+      expect(t.repo.listCues(id)[0].status).toBe('queued');
+    } finally { await t.app.close(); }
+  });
+
+  it('a too-short ADMIN_CODE fails loudly; topic changes are logged exactly', async () => {
+    expect(() => loadConfig({ HOST: '0.0.0.0', ADMIN_CODE: 'admin12' })).toThrow(/ADMIN_CODE must be at least 8/);
+    const t = local();
+    try {
+      await t.scout.run();
+      const topic = t.scout.tray()[0];
+      expect((await t.app.inject({ method: 'POST', url: `/api/admin/topics/${topic.id}`, payload: {} })).statusCode).toBe(400);
+      await t.app.inject({ method: 'POST', url: `/api/admin/topics/${topic.id}`, payload: { pinned: true, hidden: true } });
+      expect(t.repo.listAudit()[0]).toMatchObject({ action: 'pinned and hid topic', detail: topic.question });
+    } finally { await t.app.close(); }
+  });
+});

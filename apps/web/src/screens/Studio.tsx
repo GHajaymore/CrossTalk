@@ -153,7 +153,7 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
   };
   // Each cue card sits on the centre line just before the turn it lands on.
   // A waiting cue can be taken back until its turn starts being written.
-  const canCancel = (c: Intervention) => c.status === 'queued' && !c.fromOriginal && !(live && live.seq >= c.appliesBeforeSeq);
+  const canCancel = (c: Intervention) => c.status === 'queued' && c.kind !== 'note' && !c.fromOriginal && !(live && live.seq >= c.appliesBeforeSeq);
   const cuesBefore = (seq: number) => view.interventions.filter(c => c.appliesBeforeSeq === seq)
     .map(c => <CueCard key={c.id} cue={c} onCancel={canCancel(c) ? cancelCue(c) : undefined} />);
   const shown = new Set([...view.turns.map(t => t.seq), ...(live ? [live.seq] : []), ...(failedSeq ? [failedSeq] : [])]);
