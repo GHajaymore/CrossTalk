@@ -30,6 +30,10 @@ CrossTalk is a prototype for one person. These are the honest gaps.
   illustration (Picture) needs an image model, and none is free yet. Her picture prompts are saved so
   past episodes can be redrawn.
 - **Very old browsers** may show the painted styles without their washes (they need SVG filters).
+- **OpenRouter caps free-model requests per account per day**, across every app and key you use. When
+  it's reached, CrossTalk says so plainly, doesn't spend a retry on it, and the episode waits; press
+  Retry after the reset (about midnight UTC). OpenRouter raises the cap if you add credit; CrossTalk
+  still uses only $0 models, so it's your choice and never needed.
 - **Up next keeps playing while the page stays open.** With device voices, some phones pause speech
   when the screen locks; rendered recordings carry on more reliably. It remembers what it played per
   browser tab, so a new visit can start the shelf again.

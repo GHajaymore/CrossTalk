@@ -32,9 +32,19 @@ const retryAfterMs = (h: string | null) => {
   return Number.isNaN(at) ? null : Math.max(0, at - Date.now());
 };
 
+/**
+ * OpenRouter's daily cap on free-model requests for the whole account. Not "busy": waiting a minute
+ * or retrying won't help until it resets, so it's never retried automatically.
+ */
+const isDailyCap = (detail: string) => /per[- ]day|daily/i.test(detail);
+const dailyCapError = (status: number) => new ProviderError(
+  "OpenRouter's free-model limit for today is used up on this account (it counts every app and key). It resets once a day, around midnight UTC. Press Retry after that; nothing is lost.",
+  false, null, status);
+
 /** Turns an HTTP failure into a plain message and decides whether one retry is allowed. */
 function httpError(status: number, detail: string, retryAfter: string | null): ProviderError {
   const said = detail ? ` (${detail.slice(0, 160)})` : '';
+  if (status === 429 && isDailyCap(detail)) return dailyCapError(status);
   if (status === 429) return new ProviderError(`Rate limited by OpenRouter${said}.`, true, retryAfterMs(retryAfter), status);
   if (status >= 500) return new ProviderError(`OpenRouter had a server error ${status}${said}.`, true, null, status);
   if (status === 401) return new ProviderError('OpenRouter rejected the API key. Check OPENROUTER_API_KEY.', false, null, status);
@@ -167,6 +177,7 @@ export class OpenRouterProvider implements Provider {
           try { chunk = JSON.parse(data); } catch { continue; }
           if (chunk.error) {
             const code = Number(chunk.error.code) || 0;
+            if (code === 429 && isDailyCap(chunk.error.message ?? '')) throw dailyCapError(code);
             throw new ProviderError(`OpenRouter stopped mid-turn: ${chunk.error.message ?? 'unknown error'}.`, code === 429 || code >= 500, null, code || null);
           }
           if (chunk.choices?.[0]?.finish_reason === 'length') cutOff = true;

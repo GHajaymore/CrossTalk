@@ -567,3 +567,5 @@ img.living{object-fit:cover}
 .style-pick .tick{width:20px;height:20px;border-radius:5px;border:1px solid var(--line);display:grid;place-items:center;font-size:13px;color:#141517}
 .style-pick[aria-pressed="true"] .tick{background:var(--iris);border-color:var(--iris)}
 .style-pick.off{cursor:default}
+
+.fail-reason{margin:-4px 0 12px;padding:10px 12px;border:1px dashed rgba(240,128,110,.5);border-radius:8px;color:var(--bad);font-size:14px}
