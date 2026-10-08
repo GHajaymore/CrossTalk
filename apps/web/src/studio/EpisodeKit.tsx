@@ -63,6 +63,9 @@ export function EpisodeKit({ c, toast }: { c: ConversationView; toast: (m: strin
       </div>
       <div className="kit-grid">
         <div className="kit-tile"><b>Podcast episode</b><p>Title, show notes, {c.turns.length} chapters and the full transcript are ready. {c.audio ? 'Audio with natural voices is ready too.' : 'Audio comes when the episode is voiced.'}</p><span className="badge ok">Text ready</span><span className={`badge ${c.audio ? 'ok' : 'later'}`}>{c.audio ? 'Audio ready' : 'Audio · later'}</span></div>
+        <div className="kit-tile"><b>Episode page</b><p>One file with {c.artist?.state === 'done' ? "Iris's art, " : ''}the whole conversation{c.turns.some(t => t.stance != null) ? ', the mind-change meter' : ''} and a Play button that reads it aloud. Opens in any browser, works offline, sends nothing.</p>
+          <div className="dock-row"><a className="btn sm" href={`/api/conversations/${c.id}/export.html`} download>Download page</a></div>
+          <span className="badge ok">Free · works offline</span></div>
         <ImageTile c={c} toast={toast} title="Episode poster" button="Make poster" alt="Poster for" make={makePoster} name={posterName}
           blurb="The question, the hosts, Iris's sketch and quote, and where each host landed, in one image to share." />
         <ImageTile c={c} toast={toast} title="Comic strip" button="Make comic" alt="Comic strip of" make={makeComic} name={comicName}

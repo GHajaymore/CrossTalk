@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3';
-import { ArtistNotes, Conversation, Intervention, Run, type BranchSummary, type ConversationView, type ScoutStatus, type ScoutTopic, type IrisFeedback, type RunState, type Speakers, type Turn } from '@crosstalk/shared';
+import { ArtistNotes, Conversation, Intervention, Run, type BranchSummary, type ConversationView, type ScoutStatus, type ScoutTopic, type IrisFeedback, type PaintStyle, type RunState, type Speakers, type Turn } from '@crosstalk/shared';
 import { MIGRATIONS } from './schema';
 
 export type DB = Database.Database;
@@ -273,7 +273,19 @@ export class Repo {
       ON CONFLICT (conversation_id) DO UPDATE SET state = excluded.state, model_id = excluded.model_id, perspective = excluded.perspective,
         moment_seq = excluded.moment_seq, caption = excluded.caption, art_title = excluded.art_title, art_style = excluded.art_style,
         sketch_svg = excluded.sketch_svg, image_prompt = excluded.image_prompt, error = excluded.error, version = excluded.version,
-        created_at = excluded.created_at`).run(a);
+        created_at = excluded.created_at, style_by_listener = 0`).run(a);
+  }
+
+  /** The listener picked a style for Iris's art. Returns false if she has nothing drawn to restyle. */
+  setArtStyle(conversationId: string, style: PaintStyle) {
+    return this.db.prepare(`UPDATE artist_notes SET art_style = ?, style_by_listener = 1
+      WHERE conversation_id = ? AND state = 'done' AND sketch_svg IS NOT NULL`).run(style, conversationId).changes > 0;
+  }
+
+  /** Styles the listener chose themselves on recent drawings, newest first. */
+  listenerStyles(limit = 10): PaintStyle[] {
+    return (this.db.prepare(`SELECT art_style FROM artist_notes WHERE style_by_listener = 1 ORDER BY created_at DESC LIMIT ?`)
+      .all(limit) as { art_style: PaintStyle }[]).map(r => r.art_style);
   }
 
   addFeedback(f: IrisFeedback) {

@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  AUDIENCES, CUE_LIMIT, episodeLabel, hideStanceTag, hostSubtitle, jobIn, MODES, speakerFor, TEMPERATURES, turnTotal,
+  artworkSvg, AUDIENCES, CUE_LIMIT, episodeLabel, hideStanceTag, hostSubtitle, jobIn, MODES, paintStyleOf, speakerFor, TEMPERATURES, turnTotal,
   type AppConfig, type ConversationView, type Intervention,
 } from '@crosstalk/shared';
 import { api } from '../api/client';
 import { useConversation } from '../api/useConversation';
-import { ArtistCard } from '../studio/ArtistCard';
+import { ArtistCard, sketchSrc } from '../studio/ArtistCard';
 import { BriefBox } from '../scout/BriefBox';
 import { BranchDialog } from '../studio/BranchDialog';
 import { LivingSketch, sketchProgress } from '../studio/LivingSketch';
@@ -202,7 +202,7 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
       </div>
       {view.mode === 'hotseat' && st === 'completed' && <VerdictCard view={view} setView={setView} toast={toast} />}
       {view.artist && (
-        <ArtistCard notes={view.artist} speakers={sp} conversationId={id} toast={toast}
+        <ArtistCard notes={view.artist} speakers={sp} conversationId={id} toast={toast} setView={setView}
           onAgain={() => { api.askIris(id).catch(e => toast((e as Error).message)); /* her progress arrives over the live stream */ }}
           onJump={seq => document.getElementById(`turn-${seq}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })} />
       )}
@@ -233,8 +233,10 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
             {/* While the episode plays, Iris draws in the corner, finishing on the turn she chose. */}
             {play.state !== 'idle' && view.artist?.state === 'done' && view.artist.sketchSvg && (
               <div className="iris-pip" aria-hidden="true">
-                <LivingSketch ghost className="living" svg={view.artist.sketchSvg} progress={sketchProgress(view, play)} label="" />
-                <span className="tag">Iris · drawing</span>
+                {paintStyleOf(view.artist.artStyle) !== 'sketch' && sketchProgress(view, play) >= 1
+                  ? <img className="living paint-in" src={sketchSrc(artworkSvg(view.artist)!)} alt="" />
+                  : <LivingSketch ghost className="living" svg={view.artist.sketchSvg} progress={sketchProgress(view, play)} label="" />}
+                <span className="tag">Iris · {sketchProgress(view, play) >= 1 ? 'done' : 'drawing'}</span>
               </div>
             )}
             {onAir && <button className="btn sm leave-air" onClick={leaveAir}>Leave On air</button>}
@@ -272,6 +274,7 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
                 <details className="export-menu">
                   <summary className="btn ghost">Export</summary>
                   <div className="menu" role="menu">
+                    <a role="menuitem" href={`/api/conversations/${id}/export.html`} download>Episode page<small>One file to keep or send: art, transcript, Play</small></a>
                     <a role="menuitem" href={`/api/conversations/${id}/export.md`} download>Markdown script<small>Readable transcript with cues and Iris</small></a>
                     <a role="menuitem" href={`/api/conversations/${id}/export.json`} download>JSON<small>Schema v1: models, turns, cues, branches</small></a>
                   </div>

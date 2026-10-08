@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { ARTIST, episodeLabel, hostSubtitle, type ConversationView, type SpeakerId } from '@crosstalk/shared';
+import { ARTIST, artworkSvg, episodeLabel, hostSubtitle, paintStyleOf, type ConversationView, type SpeakerId } from '@crosstalk/shared';
 import type { Playback } from '../speech/usePlayback';
 import { sketchSrc } from './ArtistCard';
 import { LivingSketch, sketchProgress } from './LivingSketch';
@@ -18,7 +18,9 @@ export function ListenView({ view, play, rate, setRate }: Props) {
   const on = play.state !== 'idle';
   const seq = play.seq ?? 0;
   const who: SpeakerId | null = play.speakerId;
-  const cover = view.artist?.state === 'done' && view.artist.sketchSvg ? sketchSrc(view.artist.sketchSvg) : null;
+  const art = view.artist?.state === 'done' ? artworkSvg(view.artist) : null;
+  const cover = art ? sketchSrc(art) : null;
+  const painted = paintStyleOf(view.artist?.artStyle) !== 'sketch';
   const speed = clock ? clock.rate : rate;
 
   const toggle = () => {
@@ -35,12 +37,15 @@ export function ListenView({ view, play, rate, setRate }: Props) {
 
   if (!turns.length) return <div className="empty-stage"><p>Nothing to listen to yet. Start the episode from Watch, then come back here.</p></div>;
 
+  // She sketches along with the episode; once she reaches her moment, her painting (if she painted it) takes over.
+  const drawn = sketchProgress(view, play);
   const progress = clock ? clock.position / Math.max(1, clock.duration) : seq ? (seq - 1) / turns.length : 0;
 
   return (
     <section className="listen-view" aria-label="Listen">
       <div className="cover">
-        {cover && view.artist?.sketchSvg ? <LivingSketch ghost className="living" svg={view.artist.sketchSvg} progress={sketchProgress(view, play)} label={`${ARTIST.name}'s sketch for this episode: ${view.artist.artTitle}. It draws itself as the episode plays.`} />
+        {cover && painted && drawn >= 1 ? <img className="living paint-in" src={cover} alt={`${ARTIST.name}'s art for this episode: ${view.artist!.artTitle}`} />
+          : cover && view.artist?.sketchSvg ? <LivingSketch ghost className="living" svg={view.artist.sketchSvg} progress={drawn} label={`${ARTIST.name}'s sketch for this episode: ${view.artist.artTitle}. It draws itself as the episode plays.`} />
           : <div className="cover-blank" aria-hidden="true"><span className="brand-mark"><i /><i /></span></div>}
       </div>
       <div className="listen-meta">

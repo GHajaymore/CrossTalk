@@ -2,7 +2,7 @@ import { createReadStream, existsSync, readFileSync, rmSync, statSync } from 'no
 import { dirname, join } from 'node:path';
 import Fastify, { type FastifyServerOptions } from 'fastify';
 import { randomUUID } from 'node:crypto';
-import { BranchInput, CreateConversation, CueInput, DEFAULT_RULES, isSensitive, NoteInput, RenameInput, Rules, SCOUT_CATS, ScoutPrefs, type Overview, IrisFeedbackInput, MockSettings, type AppConfig, type ConversationView, type EpisodeAudio, type StreamEvent } from '@crosstalk/shared';
+import { BranchInput, CreateConversation, CueInput, DEFAULT_RULES, isSensitive, NoteInput, PAINT_STYLES, RenameInput, Rules, SCOUT_CATS, ScoutPrefs, type Overview, IrisFeedbackInput, MockSettings, type AppConfig, type ConversationView, type EpisodeAudio, type StreamEvent } from '@crosstalk/shared';
 import { Iris, mockArtist, type ArtistBackend } from './artist/iris';
 import { ConversationController, ControllerError, type ControllerEvent } from './controller/controller';
 import { openDb, Repo } from './db/repo';
@@ -13,6 +13,7 @@ import type { Provider } from './providers/types';
 import type { ServerConfig } from './config';
 import { registerAccess, registerAdmin, registerWeb } from './access';
 import { exportJson, exportMarkdown, exportName } from './export';
+import { exportHtml } from './episodePage';
 import { SAMPLE_HN, SAMPLE_RANKING, SAMPLE_RSS, SAMPLE_WIKIPEDIA } from './scout/samples';
 import { Scout, ScoutError } from './scout/scout';
 import { HackerNewsSource, RssSource, SampleSource, WikipediaSource, type TopicSource } from './scout/sources';
@@ -256,6 +257,15 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
     return view(req.params.id);
   });
 
+  // The listener restyles Iris's art (Sketch, Painting, Dreamscape). She remembers their taste for next time.
+  app.put<{ Params: { id: string }; Body: { style?: unknown } }>('/api/conversations/:id/artist/style', async req => {
+    view(req.params.id);
+    const style = PAINT_STYLES.find(s => s === req.body?.style);
+    if (!style) throw new ControllerError('Pick Sketch, Painting or Dreamscape.', 400);
+    if (!repo.setArtStyle(req.params.id, style)) throw new ControllerError("Iris hasn't finished a drawing for this episode yet.", 409);
+    return view(req.params.id);
+  });
+
   // What the listener tells Iris about her work. She reads the latest notes before every drawing.
   app.post('/api/iris/feedback', async (req, reply) => {
     const parsed = IrisFeedbackInput.safeParse(req.body);
@@ -277,7 +287,7 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
     return view(req.params.id);
   });
 
-  // Export: the transcript as JSON (schema v1) or a readable Markdown script.
+  // Export: the transcript as JSON (schema v1), a readable Markdown script, or the episode page to keep or send.
   app.get<{ Params: { id: string; fmt: string } }>('/api/conversations/:id/export.:fmt', async (req, reply) => {
     const v = view(req.params.id);
     if (req.params.fmt === 'json') {
@@ -287,7 +297,10 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
     if (req.params.fmt === 'md') {
       return reply.header('Content-Disposition', `attachment; filename="${exportName(v, 'md')}"`).type('text/markdown; charset=utf-8').send(exportMarkdown(v));
     }
-    throw new ControllerError('Export as json or md.', 404);
+    if (req.params.fmt === 'html') {
+      return reply.header('Content-Disposition', `attachment; filename="${exportName(v, 'html')}"`).type('text/html; charset=utf-8').send(exportHtml(v));
+    }
+    throw new ControllerError('Export as json, md or html.', 404);
   });
 
   // Milestone 8: the Control room. Every action here is written to the audit log.

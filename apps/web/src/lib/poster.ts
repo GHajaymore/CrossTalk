@@ -1,5 +1,5 @@
 // The episode poster: a 1080×1350 image to share, drawn on the device (no server, no cost).
-import { ARTIST, episodeLabel, hostSubtitle, mindChange, MODES, NOTICE, SCOUT_NOTICE, VERDICTS, type ConversationView } from '@crosstalk/shared';
+import { ARTIST, artworkSvg, episodeLabel, hostSubtitle, mindChange, MODES, NOTICE, SCOUT_NOTICE, VERDICTS, type ConversationView } from '@crosstalk/shared';
 
 const W = 1080, H = 1350, PAD = 72;
 // The studio tokens, as plain colours (a canvas can't read CSS variables).
@@ -67,7 +67,7 @@ export async function makePoster(v: ConversationView): Promise<Blob> {
   ctx.beginPath(); ctx.roundRect(PAD, y, W - PAD * 2, boxH, 16); ctx.fill(); ctx.stroke();
   if (art?.sketchSvg) {
     try {
-      const { img, vw, vh } = await loadSketch(art.sketchSvg);
+      const { img, vw, vh } = await loadSketch(artworkSvg(art)!);
       const scale = Math.min((W - PAD * 2 - 40) / vw, (boxH - 40) / vh);
       const w = vw * scale, h = vh * scale;
       ctx.drawImage(img, (W - w) / 2, y + (boxH - h) / 2, w, h);

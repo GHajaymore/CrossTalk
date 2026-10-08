@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ARTIST, AUDIENCES, blockedHit, DEFAULT_RULES, episodeLabel, FORMATS, hostSubtitle, isSensitive, LENS_MAX, MAX_TURNS, MODES, NAME_MAX, PERSONAS, PRESETS, resolveSpeakers, ROLE_MAX,
   TEMPERATURE_ORDER, TEMPERATURES, TOPIC_MAX,
@@ -25,6 +25,16 @@ export function Create({ config, go, refreshConfig, toast }: Props) {
   const [temperature, setTemperature] = useState<Temperature>('lively');
   const [drafts, setDrafts] = useState<{ A: SpeakerDraft; B: SpeakerDraft }>({ A: seatDraft('optimist'), B: seatDraft('skeptic') });
   const [starting, setStarting] = useState(false);
+  // The Start bar follows you down the page until the real Start row comes into view.
+  const startRow = useRef<HTMLDivElement>(null);
+  const [dock, setDock] = useState(false);
+  useEffect(() => {
+    const el = startRow.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return;
+    const io = new IntersectionObserver(([e]) => setDock(!e.isIntersecting && e.boundingClientRect.top > 0));
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
   // A topic from the Today tray brings its brief; editing the question away from it drops the brief.
   const [scoutTopic, setScoutTopic] = useState<ScoutTopic | null>(null);
   const kidsBlocked = !!scoutTopic && audience === 'kids' && isSensitive(scoutTopic);
@@ -193,12 +203,12 @@ export function Create({ config, go, refreshConfig, toast }: Props) {
 
       <div className="booth-note">
         <span className="flag C" aria-hidden="true">I</span>
-        <span><b>{ARTIST.name}, {ARTIST.role},</b> listens from the booth. When the discussion ends, she shares her perspective as a listener and sketches the moment that stayed with her. Tell her what you think and she learns your taste.</span>
+        <span><b>{ARTIST.name}, {ARTIST.role},</b> listens from the booth. When the discussion ends, she shares her perspective as a listener and sketches the moment that stayed with her, then paints it the way the episode felt. Tell her what you think and she learns your taste.</span>
       </div>
 
       <SetupBanner config={config} />
       <BudgetBanner config={config} />
-      <div className="start-row">
+      <div className="start-row" ref={startRow}>
         <button className="btn primary" disabled={!canStart} onClick={start}>● Start recording</button>
         <span className="meta">
           {blocked ? 'Real mode is blocked; see above.' : overBudget ? 'Daily limit reached.' : busy
@@ -209,6 +219,15 @@ export function Create({ config, go, refreshConfig, toast }: Props) {
         </span>
       </div>
       <Footer config={config} />
+      {dock && (
+        <div className="start-dock" role="region" aria-label="Quick start">
+          <div className="wrap">
+            <span className="dock-topic"><b>{topic.trim() || 'Add a topic first'}</b>
+              <span className="hint">{MODES[mode].label} · {TEMPERATURES[temperature].label}{scoutTopic ? ' · from the Scout' : ''}</span></span>
+            <button className="btn primary" disabled={!canStart} onClick={start}>● Record</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
