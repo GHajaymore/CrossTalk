@@ -33,12 +33,14 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
     if (artistModel && (artistModel === models.A || artistModel === models.B)) problems.push('ARTIST_MODEL must differ from both speaker models.');
   }
 
-  // Reachable from other machines (e.g. hosted on Render) means it must be locked with an access code.
+  // Reachable from other machines (e.g. hosted on Render) with real models means it must be locked with an
+  // access code: that's where a key and the free request budget live. Mock mode has neither, so it stays
+  // open (owner's decision, Oct 8, 2026); the lock returns by itself when PROVIDER_MODE=openrouter.
   const host = str(env.HOST) || '127.0.0.1';
-  const accessCode = str(env.ACCESS_CODE);
+  const accessCode = real ? str(env.ACCESS_CODE) : '';
   const local = host === '127.0.0.1' || host === 'localhost' || host === '::1';
-  if (!local && accessCode.length < ACCESS_CODE_MIN) {
-    throw new Error(`HOST=${host} makes CrossTalk reachable from other machines, so ACCESS_CODE must be set (at least ${ACCESS_CODE_MIN} characters).`);
+  if (real && !local && accessCode.length < ACCESS_CODE_MIN) {
+    throw new Error(`HOST=${host} with real models makes CrossTalk reachable from other machines, so ACCESS_CODE must be set (at least ${ACCESS_CODE_MIN} characters).`);
   }
   if (accessCode && accessCode.length < ACCESS_CODE_MIN) throw new Error(`ACCESS_CODE must be at least ${ACCESS_CODE_MIN} characters.`);
 

@@ -15,7 +15,8 @@ services:
         value: "22"
       - key: HOST
         value: 0.0.0.0
-      # Required: the code you type once on each device. At least 8 characters.
+      # The code you type once on each device, at least 8 characters. Only asked for with real models
+      # (PROVIDER_MODE=openrouter); mock mode stays open.
       - key: ACCESS_CODE
         sync: false
       # Starts in mock mode, which needs no key. Switch to openrouter in the dashboard when ready.
