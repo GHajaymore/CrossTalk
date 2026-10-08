@@ -14,7 +14,7 @@ Iris listens to every finished episode and responds like a thoughtful listener: 
 
 1. Under each drawing, the listener taps 👍 or 👎 and can say what to keep or change.
 2. Notes are stored in `iris_feedback`. Her latest 10 go into every new request as `<listener_notes>`: keep what was liked, change what was asked.
-3. Settings → **What Iris has learned** lists the notes; any can be forgotten.
+3. The **Iris** page → **What Iris has learned** lists the notes; any can be forgotten.
 
 ## Growing with the product (standing rule, see CLAUDE.md)
 
