@@ -13,6 +13,15 @@ export type TurnCardProps = {
   speaking?: boolean;
   onCopy?: () => void;
   onPlayFrom?: () => void;
+  /** Queue a Go deeper cue on this turn; the reason it can't is shown instead when given. */
+  onDeeper?: () => void;
+  deeperBlocked?: string | null;
+  onBranch?: () => void;
+  branchBlocked?: string | null;
+  /** In a branch: a turn read from the original episode. */
+  inherited?: boolean;
+  /** Branches cut at this turn (splice marks). */
+  splices?: { id: string; direction: string }[];
 };
 
 /** One spoken turn, landing from its speaker's side of the table. */
@@ -31,7 +40,7 @@ export function TurnCard(p: TurnCardProps) {
   }, [open]);
 
   return (
-    <article ref={ref} className={`turn ${p.speakerId}${p.state === 'failed' ? ' failed' : ''}${p.speaking ? ' speaking' : ''}`} id={`turn-${p.seq}`}>
+    <article ref={ref} className={`turn ${p.speakerId}${p.state === 'failed' ? ' failed' : ''}${p.speaking ? ' speaking' : ''}${p.inherited ? ' inherited' : ''}`} id={`turn-${p.seq}`}>
       <span className={`flag ${p.speakerId}`} aria-hidden="true">{p.speakerId}</span>
       <div className="card">
         <div className="card-head">
@@ -47,13 +56,16 @@ export function TurnCard(p: TurnCardProps) {
         </p>
         <div className="card-foot">
           <span>{p.modelId}</span>
-          <span>{p.state === 'streaming' ? 'streaming…' : p.state === 'failed' ? 'not saved' : 'saved'}</span>
+          <span>{p.state === 'streaming' ? 'streaming…' : p.state === 'failed' ? 'not saved' : p.inherited ? 'from the original' : 'saved'}</span>
         </div>
+        {p.splices?.map(b => (
+          <a key={b.id} className="splice" href={`#/studio/${b.id}/read`}><span aria-hidden="true">✂</span> Branched here: {b.direction} →</a>
+        ))}
       </div>
       {open && (
         <div className="menu" role="menu">
-          <button role="menuitem" disabled>Go deeper on this<small>Arrives in Milestone 4</small></button>
-          <button role="menuitem" disabled>Branch from here<small>Arrives in Milestone 4</small></button>
+          <button role="menuitem" disabled={!!p.deeperBlocked || !p.onDeeper} onClick={() => { setOpen(false); p.onDeeper?.(); }}>Go deeper on this<small>{p.deeperBlocked ?? 'The next host digs into it · uses a cue'}</small></button>
+          <button role="menuitem" disabled={!!p.branchBlocked || !p.onBranch} onClick={() => { setOpen(false); p.onBranch?.(); }}>Branch from here<small>{p.branchBlocked ?? '4 new turns in your direction'}</small></button>
           <button role="menuitem" disabled={!p.onPlayFrom} onClick={() => { setOpen(false); p.onPlayFrom?.(); }}>Play from here<small>{p.onPlayFrom ? 'Read aloud from this turn' : "Speech isn't available in this browser"}</small></button>
           <button role="menuitem" onClick={() => { setOpen(false); p.onCopy?.(); }}>Copy text</button>
         </div>

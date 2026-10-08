@@ -141,3 +141,25 @@ export function mockTurnText(topic: string, seq: number, _speakerId: SpeakerId, 
   const base = scriptFor(topic)[seq - 1] ?? 'Let me pick up where we left off.';
   return (PUSH_BACK_TURNS.has(seq) ? HEAT_LEADS[temperature] : '') + base;
 }
+
+/** Branch turns: the listener steered the show somewhere new. */
+export function mockBranchText(job: string, direction: string) {
+  const d = direction.trim().replace(/[.?!]*$/, '');
+  switch (job) {
+    case 'New direction': return `Okay, let's go where our listener pointed: ${d}. Honestly, that changes how I see a lot of what we just said.`;
+    case 'Pressure test': return "Let me poke at that, though. If we really go that way, what breaks first, and who's the first to notice?";
+    case 'Example': return 'Picture an ordinary Tuesday under this new idea. Some of it runs smoother than you\'d expect, and some of it quietly lands on the people with the least say.';
+    default: return "So that's where this branch took us. I'm glad we followed it; it showed something the first version missed. Thanks for steering us here.";
+  }
+}
+
+/** How a host opens a turn that answers a listener's cue. */
+export function mockCueLead(kind: 'challenge' | 'deeper' | 'guest' | 'temp', text: string | null, targetSeq: number | null, up = true) {
+  const t = (text ?? '').trim();
+  switch (kind) {
+    case 'challenge': return `Fair challenge from a listener: "${t}" Honestly, part of that lands, so let me answer it straight. `;
+    case 'deeper': return `I want to stay on line ${targetSeq} a bit longer, because there's more in it than we gave it. `;
+    case 'guest': return `Thanks for jumping on the mic. "${t}" That's worth taking seriously, and here's my honest reply. `;
+    case 'temp': return up ? "Right, I'll say it more bluntly. " : "Let me take the heat down a notch. ";
+  }
+}

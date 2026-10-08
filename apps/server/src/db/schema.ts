@@ -100,4 +100,24 @@ export const MIGRATIONS: string[] = [
     created_at       TEXT NOT NULL
   );
   `,
+  `
+  -- Milestone 4. Branches read their parent's turns up to branch_seq; they never copy or change them.
+  ALTER TABLE conversations ADD COLUMN branch_seq INTEGER;
+  ALTER TABLE conversations ADD COLUMN branch_direction TEXT;
+
+  -- Listener cues: a note that lands at a turn boundary (challenge, go deeper, temperature, a guest on the mic).
+  CREATE TABLE interventions (
+    id                  TEXT PRIMARY KEY,
+    conversation_id     TEXT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+    kind                TEXT NOT NULL CHECK (kind IN ('challenge', 'deeper', 'temp', 'guest')),
+    text                TEXT,
+    target_seq          INTEGER,
+    from_temp           TEXT,
+    to_temp             TEXT,
+    applies_before_seq  INTEGER NOT NULL,
+    status              TEXT NOT NULL CHECK (status IN ('queued', 'applied', 'cancelled')),
+    created_at          TEXT NOT NULL
+  );
+  CREATE INDEX cues_by_conversation ON interventions(conversation_id, applies_before_seq);
+  `,
 ];

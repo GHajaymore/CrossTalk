@@ -1,5 +1,5 @@
 import type { MockSettings } from '@crosstalk/shared';
-import { mockTurnText } from './mockScripts';
+import { mockBranchText, mockCueLead, mockTurnText } from './mockScripts';
 import { AbortedError, ProviderError, type Provider, type TurnOptions, type TurnRequest } from './types';
 
 export type MockTiming = {
@@ -35,10 +35,13 @@ export class MockProvider implements Provider {
 
   async generateTurn(req: TurnRequest, { onToken, signal }: TurnOptions) {
     const { fast, failOnce } = this.settings();
-    const { conversation: c, seq, speaker } = req;
+    const { conversation: c, seq, speaker, objective, cues = [] } = req;
     await wait(this.timing.thinkMs(fast), signal);
 
-    const words = mockTurnText(c.topic, seq, speaker.id, c.temperature).split(' ');
+    const base = c.branchSeq && seq > c.branchSeq ? mockBranchText(objective, c.branchDirection ?? '') : mockTurnText(c.topic, seq, speaker.id, c.temperature);
+    const leads = cues.filter(x => x.status === 'queued' && x.appliesBeforeSeq <= seq)
+      .map(x => mockCueLead(x.kind, x.text, x.targetSeq, x.toTemp === 'heated' || (x.toTemp === 'lively' && x.fromTemp === 'calm')));
+    const words = (leads.join('') + base).split(' ');
     const failAt = failOnce && seq === MOCK_FAIL_SEQ && !this.failedOnce.has(c.id) ? Math.floor(words.length / 2) : -1;
 
     let text = '';
