@@ -1,7 +1,7 @@
 // The Topic Scout (docs/PLAN.md): a scheduled job with a fixed number of requests, not a free-running agent.
 // Gather → filter → rank and brief (one request) → Today tray, or Autopilot's one episode a day.
 import { randomUUID } from 'node:crypto';
-import { AUTOPILOT_REQUESTS, blockedHit, DEFAULT_RULES, DEFAULT_SCOUT_PREFS, ScoutPrefs, scoutPicks, type Rules, type ScoutStatus, type ScoutTopic } from '@crosstalk/shared';
+import { AUTOPILOT_REQUESTS, blockedHit, DEFAULT_RULES, DEFAULT_SCOUT_PREFS, SCOUT_REFRESH_WAIT_MIN, ScoutPrefs, scoutPicks, type Rules, type ScoutStatus, type ScoutTopic } from '@crosstalk/shared';
 import type { Repo } from '../db/repo';
 import { isNoGo } from './filter';
 import { buildRankPrompt, MAX_CANDIDATES, parseRanking } from './rank';
@@ -53,7 +53,18 @@ export class Scout {
 
   status(): ScoutStatus {
     const last = this.repo.latestScoutRun();
-    return { time: this.opts.time, running: !!this.running, lastRun: last && { ...last } };
+    const after = this.refreshAfter();
+    return { time: this.opts.time, running: !!this.running, refreshAfter: after && after.toISOString(), lastRun: last && { ...last } };
+  }
+
+  /** Real mode: a manual Refresh uses a request, so it waits SCOUT_REFRESH_WAIT_MIN after the last one. */
+  private refreshAfter(): Date | null {
+    if (!this.opts.counts) return null;
+    // Only after a refresh that worked: a failed one may be retried straight away.
+    const last = this.repo.latestScoutRun();
+    if (!last || last.scheduled || last.state !== 'ok') return null;
+    const at = new Date(new Date(last.startedAt).getTime() + SCOUT_REFRESH_WAIT_MIN * 60_000);
+    return at > this.now() ? at : null;
   }
 
   /** The latest successful run's topics (they stay until the next one works). */
@@ -68,6 +79,11 @@ export class Scout {
   /** One Scout run. Refused while another is going. */
   run(scheduled = false): Promise<void> {
     if (this.running) throw new ScoutError('The Scout is already looking. Give it a moment.', 409);
+    const after = scheduled ? null : this.refreshAfter();
+    if (after) {
+      const min = Math.max(1, Math.ceil((after.getTime() - this.now().getTime()) / 60_000));
+      throw new ScoutError(`You can refresh again in ${min} min. Each refresh uses one free request; Show more is free.`, 429);
+    }
     const p = this.doRun(scheduled).finally(() => { this.running = null; this.opts.onChange?.(); });
     this.running = p;
     this.opts.onChange?.();
@@ -80,20 +96,28 @@ export class Scout {
     const ok: string[] = [], failed: string[] = [];
     const finish = (state: 'ok' | 'failed', error: string | null) => this.repo.finishScoutRun(id, { state, error, sourcesOk: ok, sourcesFailed: failed });
     try {
-      // 1. Gather: every source on its own; one failing never stops the others.
-      const results = await Promise.allSettled(this.opts.sources.map(s => s.gather(AbortSignal.timeout(SOURCE_TIMEOUT_MS))));
-      const candidates: Candidate[] = [];
+      // 1. Gather: the sources you've switched on, each on its own; one failing never stops the others.
+      const on = this.prefs().sources;
+      const sources = this.opts.sources.filter(s => on.includes(s.key));
+      if (!sources.length) return finish('failed', 'Every source is switched off. Turn at least one on under Sources.');
+      const results = await Promise.allSettled(sources.map(s => s.gather(AbortSignal.timeout(SOURCE_TIMEOUT_MS))));
+      const bySource: Candidate[][] = [];
       results.forEach((r, i) => {
-        const name = this.opts.sources[i].name;
-        if (r.status === 'fulfilled') { ok.push(name); candidates.push(...r.value); } else failed.push(name);
+        const name = sources[i].name;
+        if (r.status === 'fulfilled') { ok.push(name); bySource.push(r.value); } else failed.push(name);
       });
-      if (!ok.length) return finish('failed', 'No source could be read. The Scout will try again tomorrow, or press Run Scout now.');
+      if (!ok.length) return finish('failed', 'No source could be read. The Scout will try again tomorrow, or press Refresh.');
 
       // 2. Filter: no tragedies, crime, health scares or private lives; one candidate per link.
       const seen = new Set<string>();
       const rules = this.opts.rules?.() ?? DEFAULT_RULES;
-      const kept = candidates.filter(c => !isNoGo(`${c.title} ${c.excerpt}`) && !blockedHit(`${c.title} ${c.excerpt}`, rules.blocked) && !seen.has(c.url) && !!seen.add(c.url))
-        .sort((a, b) => score(b) - score(a)).slice(0, MAX_CANDIDATES);
+      const usable = (c: Candidate) => !isNoGo(`${c.title} ${c.excerpt}`) && !blockedHit(`${c.title} ${c.excerpt}`, rules.blocked) && !seen.has(c.url) && !!seen.add(c.url);
+      // Take from each source in turn (its best first), so news without vote counts isn't crowded out.
+      const queues = bySource.map(list => list.filter(usable).sort((a, b) => score(b) - score(a)));
+      const kept: Candidate[] = [];
+      for (let i = 0; kept.length < MAX_CANDIDATES && queues.some(q => i < q.length); i++) {
+        for (const q of queues) if (i < q.length && kept.length < MAX_CANDIDATES) kept.push(q[i]);
+      }
       if (!kept.length) return finish('failed', 'Nothing usable today: every story was filtered out.');
 
       // 3. Rank and brief: one request.

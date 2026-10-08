@@ -14,9 +14,9 @@ import type { ServerConfig } from './config';
 import { registerAccess, registerAdmin, registerWeb } from './access';
 import { exportJson, exportMarkdown, exportName } from './export';
 import { exportHtml } from './episodePage';
-import { SAMPLE_HN, SAMPLE_RANKING, SAMPLE_RSS, SAMPLE_WIKIPEDIA } from './scout/samples';
+import { SAMPLE_HN, SAMPLE_NEWS, SAMPLE_RANKING, SAMPLE_REDDIT, SAMPLE_RSS, SAMPLE_SOCIAL, SAMPLE_TRENDS, SAMPLE_WIKIPEDIA } from './scout/samples';
 import { Scout, ScoutError } from './scout/scout';
-import { HackerNewsSource, RssSource, SampleSource, WikipediaSource, type TopicSource } from './scout/sources';
+import { GoogleTrendsSource, HackerNewsSource, newsSource, OpenSocialSource, redditSource, RssSource, SampleSource, WikipediaSource, type TopicSource } from './scout/sources';
 
 export type AppOptions = {
   timing?: MockTiming;
@@ -78,10 +78,18 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
   controllerRef = controller;
 
   // Topic Scout. Mock mode reads saved samples and never touches the network.
-  const scout = new Scout(repo, {
+  const scoutRegions = () => scout.prefs().regions;
+  const scout: Scout = new Scout(repo, {
     sources: opts.scoutSources ?? (real
-      ? [new HackerNewsSource(f), new WikipediaSource(f, () => new Date()), ...(cfg.scoutFeeds.length ? [new RssSource(f, cfg.scoutFeeds)] : [])]
-      : [new SampleSource('Hacker News', SAMPLE_HN), new SampleSource('Wikipedia most-read', SAMPLE_WIKIPEDIA), new SampleSource('RSS', SAMPLE_RSS)]),
+      ? [
+          newsSource(f, () => scoutRegions()), new GoogleTrendsSource(f, () => scoutRegions()), redditSource(f), new OpenSocialSource(f),
+          new HackerNewsSource(f), new WikipediaSource(f, () => new Date()), ...(cfg.scoutFeeds.length ? [new RssSource(f, cfg.scoutFeeds)] : []),
+        ]
+      : [
+          new SampleSource('News sites', SAMPLE_NEWS, false, 'news'), new SampleSource('Google Trends', SAMPLE_TRENDS, false, 'trends'),
+          new SampleSource('Reddit', SAMPLE_REDDIT, false, 'reddit'), new SampleSource('Bluesky & Mastodon', SAMPLE_SOCIAL, false, 'social'),
+          new SampleSource('Hacker News', SAMPLE_HN), new SampleSource('Wikipedia most-read', SAMPLE_WIKIPEDIA, false, 'wikipedia'), new SampleSource('RSS', SAMPLE_RSS, false, 'news'),
+        ]),
     rank: real
       ? ({ system, user }) => (provider as OpenRouterProvider).complete(cfg.models.A, system, user, 3000)
       : async () => JSON.stringify(SAMPLE_RANKING),

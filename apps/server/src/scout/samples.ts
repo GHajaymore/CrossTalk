@@ -22,6 +22,20 @@ export const SAMPLE_RSS: Candidate[] = [
   { id: 'rss:city:1', source: 'RSS: sample local news', title: 'Measles outbreak closes two schools', url: sample('rss-health'), excerpt: 'Health officials confirmed new cases.' },
 ];
 
+export const SAMPLE_NEWS: Candidate[] = [
+  { id: 'news:0:0', source: 'Sample World News', title: 'Countries weigh a shorter school year to save energy', url: sample('news-school-year'), excerpt: 'Several governments are considering trimming the school calendar. Parents and teachers are divided.', kind: 'news' },
+  { id: 'news:1:0', source: 'Sample Tech News', title: 'Phone bans in classrooms spread to more schools', url: sample('news-phone-ban'), excerpt: 'More schools now collect phones at the door. Some students say it helps them focus; others call it unfair.', kind: 'news' },
+];
+export const SAMPLE_TRENDS: Candidate[] = [
+  { id: 'trends:US:0', source: 'Google Trends (US)', title: 'People are searching for "remote work return to office"', url: sample('trends-rto'), excerpt: 'In the news: Big employers ask staff back four days a week', views: 500_000, kind: 'search' },
+];
+export const SAMPLE_REDDIT: Candidate[] = [
+  { id: 'reddit:0:0', source: 'Reddit r/changemyview', title: 'CMV: Tipping culture has gone too far', url: sample('reddit-tipping'), excerpt: 'A popular post argues that tip prompts at self-checkout have gone too far; hundreds of replies disagree.', kind: 'social' },
+];
+export const SAMPLE_SOCIAL: Candidate[] = [
+  { id: 'bsky:0', source: 'Bluesky trending', title: 'Trending on Bluesky: four-day week', url: sample('bsky-four-day'), excerpt: 'What people are posting about; opinions, not facts.', kind: 'social' },
+];
+
 /** What a model might answer for the samples, in the same JSON shape. Goes through the same checks. */
 export const SAMPLE_RANKING = {
   topics: [
@@ -54,6 +68,21 @@ export const SAMPLE_RANKING = {
         { text: 'A new high-speed line opened after years of delays and cost overruns.', sourceId: 'wp:High-speed rail' },
         { text: 'Riders praise the time saved; taxpayers question the bill.', sourceId: 'wp:High-speed rail' },
         { text: 'Long-term ridership is the number everyone is waiting for.', sourceId: 'invented:source' },
+      ] },
+    { question: 'Should schools ban phones in class?', category: 'society', region: 'world', arguability: 78,
+      bullets: [
+        { text: 'More schools now collect phones at the door.', sourceId: 'news:1:0' },
+        { text: 'Some students say it helps them focus; others call it unfair.', sourceId: 'news:1:0' },
+      ] },
+    { question: 'Should offices bring everyone back four days a week?', category: 'business', region: 'na', arguability: 80,
+      bullets: [
+        { text: 'People are searching for "remote work return to office" today.', sourceId: 'trends:US:0' },
+        { text: 'Big employers are asking staff back four days a week, according to the headlines people are reading.', sourceId: 'trends:US:0' },
+      ] },
+    { question: 'Has tipping culture gone too far?', category: 'culture', region: 'world', arguability: 74,
+      bullets: [
+        { text: 'People on Reddit are arguing that tip prompts at self-checkout have gone too far.', sourceId: 'reddit:0:0' },
+        { text: 'Hundreds of replies push back, saying tips are how many workers get paid.', sourceId: 'reddit:0:0' },
       ] },
   ],
 };

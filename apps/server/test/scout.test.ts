@@ -6,7 +6,7 @@ import { openDb, Repo } from '../src/db/repo';
 import { buildPrompt } from '../src/prompts/buildPrompt';
 import { isNoGo } from '../src/scout/filter';
 import { parseRanking } from '../src/scout/rank';
-import { SAMPLE_HN, SAMPLE_RSS, SAMPLE_WIKIPEDIA } from '../src/scout/samples';
+import { SAMPLE_HN, SAMPLE_NEWS, SAMPLE_REDDIT, SAMPLE_RSS, SAMPLE_SOCIAL, SAMPLE_TRENDS, SAMPLE_WIKIPEDIA } from '../src/scout/samples';
 import { Scout } from '../src/scout/scout';
 import { HackerNewsSource, RssSource, SampleSource, WikipediaSource, type Candidate } from '../src/scout/sources';
 import { draft, INSTANT } from './helpers';
@@ -53,7 +53,7 @@ describe('Topic Scout: filtering and sourcing', () => {
     const { app, scout } = buildApp(mockConfig({ dbPath: ':memory:' }), { timing: INSTANT });
     try {
       await scout.run();
-      const known = new Set([...SAMPLE_HN, ...SAMPLE_WIKIPEDIA, ...SAMPLE_RSS].map(c => c.url));
+      const known = new Set([...SAMPLE_HN, ...SAMPLE_WIKIPEDIA, ...SAMPLE_RSS, ...SAMPLE_NEWS, ...SAMPLE_TRENDS, ...SAMPLE_REDDIT, ...SAMPLE_SOCIAL].map(c => c.url));
       for (const t of scout.tray()) for (const b of t.bullets) expect(known.has(b.url)).toBe(true);
       // The sample ranking cites an invented source for one rail bullet: it is gone, the topic stays with 2.
       expect(scout.tray().find(t => t.question.startsWith('Are high-speed trains'))!.bullets).toHaveLength(2);
@@ -173,7 +173,7 @@ describe('Topic Scout: the brief on air', () => {
       const bad = await app.inject({ method: 'PUT', url: '/api/scout/prefs', payload: { cats: ['gossip'] } });
       expect(bad.statusCode).toBe(400);
       const prefs = { cats: ['tech'], regions: ['world'], rank: 'buzz', place: 'Columbus', autopilot: false };
-      expect((await app.inject({ method: 'PUT', url: '/api/scout/prefs', payload: prefs })).json().prefs).toEqual(prefs);
+      expect((await app.inject({ method: 'PUT', url: '/api/scout/prefs', payload: prefs })).json().prefs).toEqual({ ...prefs, sources: ['news', 'trends', 'reddit', 'social', 'hn', 'wikipedia'] });
       const ran = (await app.inject({ method: 'POST', url: '/api/scout/run' })).json();
       expect(ran.status.lastRun.state).toBe('ok');
       expect(ran.topics.length).toBeGreaterThan(0);
@@ -201,7 +201,7 @@ describe('live sources read the real formats', () => {
       { titles: { normalized: 'High-speed rail' }, extract: 'Trains.', views: 1000, content_urls: { desktop: { page: 'https://en.wikipedia.org/wiki/High-speed_rail' } } },
       { titles: {}, extract: 'no title' }] } } });
     const items = await new WikipediaSource(f, () => new Date('2026-10-08T12:00:00Z')).gather(new AbortController().signal);
-    expect(items).toEqual([{ id: 'wp:High-speed rail', source: 'Wikipedia most-read', title: 'High-speed rail', url: 'https://en.wikipedia.org/wiki/High-speed_rail', excerpt: 'Trains.', views: 1000 }]);
+    expect(items).toEqual([{ id: 'wp:High-speed rail', source: 'Wikipedia most-read', title: 'High-speed rail', url: 'https://en.wikipedia.org/wiki/High-speed_rail', excerpt: 'Trains.', views: 1000, kind: 'reference' }]);
   });
 
   it('RSS and Atom, with entities and CDATA', async () => {
@@ -219,7 +219,7 @@ describe('Topic Scout: review fixes', () => {
   it("a failed run never hides the last good topics", async () => {
     const good = new SampleSource('Hacker News', SAMPLE_HN);
     let fail = false;
-    const flaky = { name: 'Hacker News', gather: async () => { if (fail) throw new Error('down'); return good.gather(); } };
+    const flaky = { key: 'hn' as const, name: 'Hacker News', gather: async () => { if (fail) throw new Error('down'); return good.gather(); } };
     const { app, scout } = buildApp(mockConfig({ dbPath: ':memory:' }), { timing: INSTANT, scoutSources: [flaky] });
     try {
       await scout.run();
@@ -243,7 +243,7 @@ describe('Topic Scout: review fixes', () => {
     const ok = { question: 'Fine?', category: 'tech', region: 'world', arguability: 'high', bullets: [{ text: 'a', sourceId: 'hn:1' }, { text: 'b', sourceId: 'hn:1' }] };
     const topics = parseRanking(JSON.stringify({ topics: [{ nonsense: true }, ok, ...Array(12).fill(ok)] }), cands, meta);
     expect(topics[0]).toMatchObject({ question: 'Fine?', split: 75 });
-    expect(topics).toHaveLength(5);
+    expect(topics).toHaveLength(10);
   });
 
   it('politics and scandals are refused for Kids on the server too', async () => {
