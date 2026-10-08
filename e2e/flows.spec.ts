@@ -258,6 +258,27 @@ test('Scout: Show more is free, sources can be switched, social posts stay opini
   await expect(page.getByText(/Last refreshed just now/)).toBeVisible();
 });
 
+test('Scout: your interests, countries and own sites; briefs show their spread', async ({ page, request }) => {
+  await page.goto('/#/create');
+  await page.getByRole('button', { name: '↻ Refresh topics' }).click().catch(() => {});
+  await page.getByLabel('Your interests').fill('golf, tipping');
+  await page.getByLabel('Your interests').press('Enter');
+  await page.getByLabel('Follow a country').selectOption('IN');
+  await expect(page.getByRole('button', { name: 'Stop following India' })).toBeVisible();
+  const link = page.getByLabel("RSS link of a news site to add");
+  await link.fill('https://localhost/rss');
+  await page.getByRole('group', { name: 'Your news sites' }).getByRole('button', { name: 'Add' }).click();
+  await expect(page.getByRole('status').filter({ hasText: /isn't a public website/ })).toBeVisible();
+  await link.fill('https://news.example/rss');
+  await page.getByRole('group', { name: 'Your news sites' }).getByRole('button', { name: 'Add' }).click();
+  await expect(page.getByRole('button', { name: 'Remove https://news.example/rss' })).toBeVisible();
+  await expect(page.locator('.topic-card .perspectives').first()).toContainText(/\d+ sources?/);
+  const prefs = (await (await request.get('/api/scout')).json()).prefs;
+  expect(prefs).toMatchObject({ interests: 'golf, tipping', countries: ['IN'], feeds: ['https://news.example/rss'] });
+  // Put things back for the other tests.
+  await request.put('/api/scout/prefs', { data: { ...prefs, interests: '', countries: [], feeds: [] } });
+});
+
 test('Scout: run it, pick a topic, and the brief follows the episode', async ({ page, request }) => {
   await page.goto('/#/create');
   await page.getByRole('button', { name: '↻ Refresh topics' }).click();
@@ -333,6 +354,35 @@ test('Hot seat: vote who moved you, then make the episode poster', async ({ page
   const comic = page.locator('.poster-tile', { hasText: 'Comic strip' });
   const [dl2] = await Promise.all([page.waitForEvent('download'), comic.getByRole('link', { name: 'Download' }).click()]);
   expect(dl2.suggestedFilename()).toMatch(/^crosstalk-ep\d+-comic\.png$/);
+});
+
+test('raise your hand: the host invites you in, you speak, they answer', async ({ page, request }) => {
+  await page.goto('/#/create');
+  await page.getByRole('button', { name: /Start recording/ }).click();
+  await expect.poll(() => page.locator('.pip.done').count()).toBeGreaterThanOrEqual(1);
+  await page.getByRole('button', { name: '✋ Raise hand' }).click();
+  const call = page.getByRole('region', { name: "You're invited on air" });
+  await expect(call).toBeVisible({ timeout: 30_000 });
+  await expect(call).toContainText(/go ahead|You're on/i);
+  await expect(page.locator('.set-tile.G')).toContainText('You');
+  const id = page.url().split('/studio/')[1].split('/')[0];
+  const paused = (await (await request.get(`/api/conversations/${id}`)).json()).turns.length;
+  await call.getByLabel('Your words on air').fill('I run a bakery, and Friday is our busiest day.');
+  await call.getByRole('button', { name: 'Go on air' }).click();
+  await expect(page.locator('.status-line')).toContainText('Complete', { timeout: 60_000 });
+  const v = await (await request.get(`/api/conversations/${id}`)).json();
+  expect(v.turns[paused].text).toContain('Friday is our busiest day');
+});
+
+test('raise your hand, then stay quiet: the host carries on after 15 seconds', async ({ page }) => {
+  await page.goto('/#/create');
+  await page.getByRole('button', { name: /Start recording/ }).click();
+  await expect.poll(() => page.locator('.pip.done').count()).toBeGreaterThanOrEqual(1);
+  await page.getByRole('button', { name: '✋ Raise hand' }).click();
+  const call = page.getByRole('region', { name: "You're invited on air" });
+  await expect(call).toContainText(/carries on in \d+ s/, { timeout: 30_000 });
+  await expect(call).toBeHidden({ timeout: 25_000 });
+  await expect(page.locator('.status-line')).toContainText('Complete', { timeout: 60_000 });
 });
 
 test('Call in by voice: talk, check the words, go on air', async ({ page }) => {

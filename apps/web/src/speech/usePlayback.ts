@@ -29,6 +29,8 @@ export type Playback = {
   stop: () => void;
   /** Goes up by one each time the episode plays through to its end (not when it's stopped). */
   finished: number;
+  /** Device voices only: one line in a host's voice, outside the episode (a host inviting a listener in). */
+  say?: (text: string, speakerId: SpeakerId, onDone?: () => void) => void;
   /** Only a rendered recording has a real timeline you can scrub and speed up. */
   clock?: { position: number; duration: number; rate: number; seek: (sec: number) => void; setRate: (r: number) => void };
 };
@@ -82,6 +84,10 @@ export function usePlayback(turns: Turn[], prefs: VoicePrefs): Playback {
   return {
     available: speech.available,
     state, seq, speakerId, caption, pulse, playFrom, finished,
+    say: (text, who, onDone) => {
+      if (!speech.available) { onDone?.(); return; }
+      speech.speak([{ key: 'say', speakerId: who, text }], { onChunk: () => setPulse(0.6), onWord: () => setPulse(0.3 + Math.random() * 0.4), onDone: () => onDone?.() });
+    },
     pause: () => { speech.pause(); setState('paused'); },
     resume: () => { speech.resume(); setState('speaking'); },
     stop: () => { speech.stop(); reset(); },

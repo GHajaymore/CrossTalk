@@ -38,6 +38,10 @@ export const LONG_JOBS = [
 export const DAILY_LIMIT_DEFAULT = 40;
 /** The default listener cue limit; the Control room can set 0–6. */
 export const CUE_LIMIT = 3;
+/** The pause reason when a listener raised their hand: the next host invites them in. */
+export const HAND_RAISED = 'hand raised';
+/** How long the hosts wait for someone they invited in before carrying on. */
+export const HAND_WAIT_S = 15;
 /** Mind-change meter: the jobs where each host says how sure they are (first lines) and whether it moved (last lines). */
 export const STANCE_START_JOBS = ['Hello', 'First take'] as const;
 export const STANCE_END_JOBS = ['Takeaway', 'Sign-off'] as const;
@@ -115,7 +119,21 @@ export const SCOUT_SOURCES = {
 } as const;
 /** In real mode, a manual Refresh (one request) waits this long after the last one. */
 export const SCOUT_REFRESH_WAIT_MIN = 30;
-export const SCOUT_REGIONS = { local: 'Local', na: 'North America', europe: 'Europe', asia: 'Asia', world: 'World' } as const;
+export const SCOUT_REGIONS = {
+  local: 'Local', na: 'North America', latam: 'Latin America', europe: 'Europe', mideast: 'Middle East', africa: 'Africa', asia: 'Asia', oceania: 'Oceania', world: 'World',
+} as const;
+/** Countries you can follow (Google Trends covers each). Codes are ISO 3166. */
+export const SCOUT_COUNTRIES = {
+  US: 'United States', CA: 'Canada', MX: 'Mexico', BR: 'Brazil', AR: 'Argentina', CO: 'Colombia',
+  GB: 'United Kingdom', IE: 'Ireland', FR: 'France', DE: 'Germany', ES: 'Spain', IT: 'Italy', NL: 'Netherlands', PL: 'Poland', UA: 'Ukraine',
+  TR: 'Türkiye', IL: 'Israel', SA: 'Saudi Arabia', AE: 'United Arab Emirates', EG: 'Egypt',
+  NG: 'Nigeria', KE: 'Kenya', ZA: 'South Africa',
+  IN: 'India', PK: 'Pakistan', BD: 'Bangladesh', JP: 'Japan', KR: 'South Korea', SG: 'Singapore', PH: 'Philippines', ID: 'Indonesia',
+  AU: 'Australia', NZ: 'New Zealand',
+} as const;
+/** Your own news sites (RSS links) the Scout also reads. */
+export const SCOUT_MAX_FEEDS = 5;
+export const SCOUT_INTERESTS_MAX = 160;
 /** Sensitive categories: off by default, never for Kids, and always balanced and sourced. */
 export const SENSITIVE_CATS = ['politics', 'scandals'] as const;
 /** A full Autopilot episode: 16 turns, host roles and Iris. */

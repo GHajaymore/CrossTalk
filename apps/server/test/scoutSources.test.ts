@@ -17,7 +17,7 @@ describe('the new free sources read their real formats', () => {
       <item><title></title></item></channel></rss>`;
     const asked: string[] = [];
     const f = (async (url: string) => { asked.push(String(url)); return new Response(rss); }) as unknown as typeof fetch;
-    const items = await new GoogleTrendsSource(f, () => ['na', 'europe', 'local']).gather(signal());
+    const items = await new GoogleTrendsSource(f, () => ({ regions: ['na', 'europe', 'local'], countries: [] })).gather(signal());
     expect(asked.map(u => new URL(u).searchParams.get('geo')).sort()).toEqual(['GB', 'US']);
     expect(items[0]).toMatchObject({ source: 'Google Trends (US)', title: 'People are searching for "return to office"', url: 'https://news.example/rto',
       excerpt: 'In the news: Big employers ask staff back & more', views: 200000, kind: 'search' });
@@ -44,11 +44,13 @@ describe('the new free sources read their real formats', () => {
   });
 
   it('News sites follow the regions you choose, with world news always', () => {
-    const feeds = newsFeedsFor(['europe']);
-    expect(feeds.some(u => u.includes('bbci.co.uk/news/world/rss.xml'))).toBe(true);
-    expect(feeds.some(u => u.includes('europe'))).toBe(true);
-    expect(feeds.some(u => u.includes('npr.org'))).toBe(false);
-    expect(newsFeedsFor(['na']).some(u => u.includes('npr.org'))).toBe(true);
+    const urls = (r: Parameters<typeof newsFeedsFor>[0], c: Parameters<typeof newsFeedsFor>[1] = []) => newsFeedsFor(r, c).map(x => (typeof x === 'string' ? x : x.url));
+    expect(urls(['europe']).some(u => u.includes('bbci.co.uk/news/world/rss.xml'))).toBe(true);
+    expect(urls(['europe']).some(u => u.includes('europe'))).toBe(true);
+    expect(urls(['europe']).some(u => u.includes('npr.org'))).toBe(false);
+    expect(urls(['na']).some(u => u.includes('npr.org'))).toBe(true);
+    // Following a country brings in its region's outlets.
+    expect(urls([], ['IN']).some(u => u.includes('timesofindia'))).toBe(true);
   });
 });
 

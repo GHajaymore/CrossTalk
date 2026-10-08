@@ -572,3 +572,16 @@ img.living{object-fit:cover}
 
 .vq{white-space:nowrap}.vq.natural{color:var(--cue)}
 .voice-tip{border:1px dashed rgba(var(--cue-rgb),.45);border-radius:8px;padding:8px 10px;background:var(--cue-soft);color:var(--text)}
+
+.pref-input{flex:1 1 220px;min-width:0;max-width:420px;padding:6px 10px;font-size:14px}
+.perspectives{display:block;font-size:10.5px}
+.pref-row select{width:auto;flex:0 1 220px;min-width:0;padding:5px 8px;font-size:14px}
+
+/* Raise your hand: the host invites you in */
+.hand-call{border:1px solid var(--cue);border-radius:12px;background:var(--cue-soft);padding:12px 14px;display:grid;gap:10px;margin:-4px 0 14px;animation:hand-in .25s ease-out}
+.hand-invite{display:flex;gap:10px;align-items:flex-start;margin:0;font-family:var(--f-say);font-size:16px}
+.hand-invite .flag{width:24px;height:24px;font-size:11px}
+.hand-call textarea{min-height:64px}
+.hand-btn{border-color:rgba(var(--cue-rgb),.5)}
+@keyframes hand-in{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.hand-call{animation:none}}

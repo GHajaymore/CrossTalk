@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  artworkSvg, AUDIENCES, CUE_LIMIT, LENGTHS, episodeLabel, hideStanceTag, hostSubtitle, jobIn, MODES, paintStyleOf, speakerFor, TEMPERATURES, turnTotal,
+  artworkSvg, AUDIENCES, CUE_LIMIT, HAND_RAISED, LENGTHS, episodeLabel, hideStanceTag, hostSubtitle, jobIn, MODES, paintStyleOf, speakerFor, TEMPERATURES, turnTotal,
   type AppConfig, type ConversationView, type Intervention,
 } from '@crosstalk/shared';
 import { api } from '../api/client';
@@ -12,6 +12,7 @@ import { LivingSketch, sketchProgress } from '../studio/LivingSketch';
 import { MindMeter } from '../studio/MindMeter';
 import { VerdictCard } from '../studio/VerdictCard';
 import { RoundCard } from '../studio/RoundCard';
+import { HandCall } from '../studio/HandCall';
 import { takeAutoplay } from '../studio/UpNext';
 import { BranchList } from '../studio/BranchList';
 import { CueCard } from '../studio/CueCard';
@@ -47,6 +48,10 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
   const [startError, setStartError] = useState<string | null>(null);
   const [onAir, setOnAir] = useState(false);
   const [branchFrom, setBranchFrom] = useState<number | null>(null);
+  // Raise your hand: up until the host on air finishes their line, then the next host invites you in.
+  const [handUp, setHandUp] = useState(false);
+  const [handCaption, setHandCaption] = useState<{ who: 'A' | 'B'; text: string; speaking: boolean } | null>(null);
+  useEffect(() => { if (view?.run?.state !== 'generating') setHandUp(false); }, [view?.run?.state]);
   const setRef = useRef<HTMLDivElement>(null);
   const { voices, prefs, update } = useVoices();
   const browserPlay = usePlayback(view?.turns ?? [], prefs);
@@ -95,6 +100,10 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
   const otherBusy = !!config?.activeConversationId && config.activeConversationId !== id;
   const cantRun = busy || otherBusy || realBlocked(config) || (!!config && config.requestsToday >= config.dailyLimit);
   const reason = view.run?.stopReason;
+  const handCalled = st === 'paused' && reason === HAND_RAISED;
+  const raiseHand = async () => {
+    try { setView(await api.raiseHand(id)); setHandUp(st === 'generating'); } catch (e) { toast((e as Error).message); }
+  };
 
   const act = (fn: (id: string) => Promise<ConversationView>) => async () => {
     setBusy(true);
@@ -130,7 +139,8 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
   // A guest who took the mic keeps the gold seat for the rest of the episode; their words show while they wait to be answered.
   const guests = view.interventions.filter(c => c.kind === 'guest');
   const guestWaiting = guests.find(c => c.status === 'queued');
-  const caption = live && !listening
+  const caption = handCaption ? { who: handCaption.who, text: handCaption.text }
+    : live && !listening
     ? { who: live.speakerId, text: tail(hideStanceTag(live.text)) || '…' }
     : guestWaiting && !listening ? { who: 'G' as const, text: guestWaiting.text ?? '' }
     : listening ? { who: play.speakerId, text: play.caption }
@@ -149,9 +159,9 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
       tags={`${view.round > 1 ? `Round ${view.round} · ` : ''}${view.length !== 'normal' ? `${LENGTHS[view.length].label} · ` : ''}${MODES[view.mode].label} · ${AUDIENCES[view.audience].label} · ${TEMPERATURES[view.temperature].label}`}
       temperature={view.temperature}
       hosts={{ A: { name: sp.A.name, role: hostSubtitle(sp.A) }, B: { name: sp.B.name, role: hostSubtitle(sp.B) } }}
-      guest={guests.length ? { name: 'Guest', role: 'You, on the mic' } : null}
-      speaking={listening ? play.speakerId : live?.speakerId ?? null}
-      voiceLevel={listening ? play.pulse : pulse}
+      guest={handUp || handCalled ? { name: 'You', role: handCalled ? 'Invited on air' : 'Hand up', icon: '✋' } : guests.length ? { name: 'Guest', role: 'You, on the mic' } : null}
+      speaking={handCaption ? (handCaption.speaking ? handCaption.who : null) : listening ? play.speakerId : live?.speakerId ?? null}
+      voiceLevel={handCaption ? browserPlay.pulse : listening ? play.pulse : pulse}
       caption={caption}
       runState={st}
       clock={{ seconds: spokenSeconds(view.turns.map(t => t.text)), running: st === 'generating' }}
@@ -278,6 +288,7 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
         </div>
         {/* Why it stopped, on every tab (Read also shows it on the failed turn's card). */}
         {st === 'failed' && reason && tab !== 'read' && <p className="fail-reason" role="alert">{reason}</p>}
+        {handCalled && <HandCall key={view.run!.id + lastSeq} view={view} setView={setView} toast={toast} say={browserPlay.say} onCaption={setHandCaption} />}
 
         <SetupBanner config={config} />
         <BudgetBanner config={config} />
@@ -297,6 +308,11 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
               {st === 'paused' && <button className="btn primary" disabled={cantRun} onClick={act(api.start)}>Resume</button>}
               {st === 'failed' && <button className="btn primary" disabled={cantRun} onClick={act(api.start)}>Retry turn {lastSeq + 1}</button>}
               {st === 'generating' && <button className="btn" disabled={busy || !!view.run?.pauseRequested} onClick={act(api.pause)}>Pause after this turn</button>}
+              {(st === 'generating' || (st === 'paused' && !handCalled)) && (
+                <button className="btn hand-btn" disabled={handUp || !!cues.blocked} onClick={raiseHand} title={cues.blocked ?? 'The host on air finishes their line, then invites you in'}>
+                  {handUp ? `✋ Hand up · ${sp[speakerFor(lastSeq + 2)].name} will call on you` : '✋ Raise hand'}
+                </button>
+              )}
               {(st === 'generating' || st === 'paused' || st === 'failed') && <button className="btn danger" disabled={busy} onClick={act(api.stop)}>Stop</button>}
               {tab === 'read' && view.turns.length > 0 && (
                 <details className="export-menu">

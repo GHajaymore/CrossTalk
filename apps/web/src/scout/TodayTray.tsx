@@ -6,6 +6,13 @@ import { ScoutPrefsEditor } from './ScoutPrefsEditor';
 
 type Props = { rules: Rules; audience: Audience; selected: string | null; onPick: (t: ScoutTopic) => void; toast: (m: string) => void; real: boolean };
 
+/** How many outlets and places a brief draws on, so you can see its balance at a glance. */
+const perspectives = (t: ScoutTopic) => {
+  const outlets = new Set(t.bullets.map(b => b.source)).size;
+  const places = new Set(t.bullets.map(b => b.home).filter(Boolean)).size;
+  return `${outlets} ${outlets === 1 ? 'source' : 'sources'}${places > 1 ? ` · ${places} regions` : ''}`;
+};
+
 const when = (iso: string) => new Date(iso).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' });
 
 /** Today · from the Scout: what people are arguing about, each with a sourced brief. */
@@ -18,8 +25,10 @@ export function TodayTray({ rules, audience, selected, onPick, toast, real }: Pr
   if (!data) return null;
 
   const save = async (p: ScoutPrefs) => {
+    const before = data.prefs;
     setData({ ...data, prefs: p });
-    try { setData(await api.setScoutPrefs(p)); } catch (e) { toast((e as Error).message); }
+    // A refused change (say, a private link) puts the old settings back.
+    try { setData(await api.setScoutPrefs(p)); } catch (e) { setData({ ...data, prefs: before }); toast((e as Error).message); throw e; }
   };
   const runNow = async () => {
     setRunning(true);
@@ -66,6 +75,7 @@ export function TodayTray({ rules, audience, selected, onPick, toast, real }: Pr
                 </div>
                 <h3>{t.question}</h3>
                 <div className="srcs">{t.sources.map(s => <span key={s} className="src">{s}</span>)}</div>
+                <span className="tag perspectives">{perspectives(t)}</span>
                 <details className="brief"><summary>Brief · {t.bullets.length} points</summary><BriefBox brief={t} /></details>
                 <button className="btn sm" aria-pressed={selected === t.id} onClick={() => onPick(t)}>{selected === t.id ? 'Selected' : 'Discuss this'}</button>
               </article>

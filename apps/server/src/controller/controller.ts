@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import {
-  assertTransition, blockedHit, BRANCH_TURNS, DEFAULT_RULES, extractStance, mindChange, STANCE_END_JOBS, STANCE_START_JOBS, jobIn, resolveSpeakers, turnTotal, speakerFor, stepTemperature, TransitionError,
+  assertTransition, blockedHit, BRANCH_TURNS, DEFAULT_RULES, extractStance, HAND_RAISED, mindChange, STANCE_END_JOBS, STANCE_START_JOBS, jobIn, resolveSpeakers, turnTotal, speakerFor, stepTemperature, TransitionError,
   type BranchInput, type Conversation, type ConversationView, type CreateConversation, type CueInput, type Intervention,
   type LiveTurn, type Rules, type Run, type RunState, type StreamEvent,
 } from '@crosstalk/shared';
@@ -417,6 +417,29 @@ export class ConversationController {
     return run;
   }
 
+  /** Listeners waiting to be invited in: the run pauses at the next boundary with HAND_RAISED. */
+  private hands = new Set<string>();
+
+  /**
+   * Raise your hand: the host on air finishes their line, then the run pauses and the next host invites
+   * you in (the app speaks that invitation). Speaking on air is still a guest cue, so a cue must be left.
+   */
+  raiseHand(conversationId: string) {
+    const conv = this.repo.getConversation(conversationId);
+    if (!conv) throw new ControllerError('Conversation not found.', 404);
+    const run = this.repo.latestRun(conversationId);
+    if (!run || !['generating', 'paused'].includes(run.state)) throw new ControllerError('Raise your hand while the episode is recording.', 409);
+    const last = this.repo.lastSeq(conversationId);
+    const writing = this.active?.conversationId === conversationId && !!this.active.live;
+    if (last + (writing ? 2 : 1) > this.limitFor(conv)) throw new ControllerError("The episode is about to end, so there's no turn left to hear you.", 409);
+    const limit = this.rules().cueLimit;
+    const used = this.repo.listCues(conversationId).filter(x => x.status !== 'cancelled' && x.kind !== 'note').length;
+    if (used >= limit) throw new ControllerError(limit ? `You've used all ${limit} cues for this episode.` : 'Listener cues are switched off in the Control room.', 409);
+    if (run.state === 'paused') this.repo.updateRun(run.id, { stopReason: HAND_RAISED });
+    else { this.hands.add(conversationId); this.repo.updateRun(run.id, { pauseRequested: true }); }
+    this.emit(conversationId, { type: 'changed' });
+  }
+
   /** Pause takes effect at the next turn boundary: the turn being written finishes and is saved first. */
   pause(conversationId: string) {
     const run = this.repo.latestRun(conversationId);
@@ -435,6 +458,7 @@ export class ConversationController {
       throw new ControllerError('There is no run to stop.', 409);
     }
     this.transition(run, 'cancelled', 'by you');
+    this.hands.delete(conversationId);
     if (this.active?.conversationId === conversationId) this.active.abort.abort();
     // Cues still waiting will never land.
     for (const c of this.repo.listCues(conversationId)) if (c.status === 'queued') this.repo.setCueStatus(c.id, 'cancelled');
@@ -530,7 +554,7 @@ export class ConversationController {
         queueMicrotask(() => this.opts.onCompleted?.(conversationId));
         return;
       }
-      if (run.pauseRequested) { this.transition(run, 'paused', 'by you'); return; }
+      if (run.pauseRequested) { this.transition(run, 'paused', this.hands.delete(conversationId) ? HAND_RAISED : 'by you'); return; }
       if (this.requestsToday() >= this.opts.dailyLimit) { this.transition(run, 'paused', 'Daily request limit reached'); return; }
 
       // Cues waiting for this boundary land now. A temperature cue sets the mood for this turn; it's

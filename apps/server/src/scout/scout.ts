@@ -113,7 +113,10 @@ export class Scout {
       const rules = this.opts.rules?.() ?? DEFAULT_RULES;
       const usable = (c: Candidate) => !isNoGo(`${c.title} ${c.excerpt}`) && !blockedHit(`${c.title} ${c.excerpt}`, rules.blocked) && !seen.has(c.url) && !!seen.add(c.url);
       // Take from each source in turn (its best first), so news without vote counts isn't crowded out.
-      const queues = bySource.map(list => list.filter(usable).sort((a, b) => score(b) - score(a)));
+      // Stories about your interests go first within each source.
+      const words = this.prefs().interests.toLowerCase().split(/[,;]+/).map(w => w.trim()).filter(w => w.length > 2);
+      const liked = (c: Candidate) => (words.some(w => `${c.title} ${c.excerpt}`.toLowerCase().includes(w)) ? 1 : 0);
+      const queues = bySource.map(list => list.filter(usable).sort((a, b) => liked(b) - liked(a) || score(b) - score(a)));
       const kept: Candidate[] = [];
       for (let i = 0; kept.length < MAX_CANDIDATES && queues.some(q => i < q.length); i++) {
         for (const q of queues) if (i < q.length && kept.length < MAX_CANDIDATES) kept.push(q[i]);
@@ -129,7 +132,8 @@ export class Scout {
         if (this.opts.requestsLeft() < 1) return finish('failed', 'Daily request limit reached. The Scout will try again tomorrow.');
         this.opts.countRequest();
       }
-      const reply = await this.opts.rank(buildRankPrompt(kept, this.prefs().place));
+      const p = this.prefs();
+      const reply = await this.opts.rank(buildRankPrompt(kept, p.place, { interests: p.interests, countries: p.countries }));
       const topics = parseRanking(reply, kept, { runId: id, date, at });
       if (!topics.length) return finish('failed', 'The ranking came back without any usable, sourced topics.');
       this.repo.insertTopics(topics);
