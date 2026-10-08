@@ -488,3 +488,6 @@ details.brief .brief-box{margin-top:8px}
 .verdict h3{font-family:var(--f-say);font-weight:600;font-size:20px;margin:2px 0 4px}
 .poster-preview{width:100%;border-radius:8px;border:1px solid var(--line);display:block}
 .kit-grid{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+
+/* CALL IN BY VOICE */
+.mic-btn.on{border-color:var(--air);color:var(--text);animation:pulse 1.2s infinite}

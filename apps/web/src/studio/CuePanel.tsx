@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { CUE_LIMIT, CUE_TEXT_MAX, stepTemperature, TEMPERATURES, turnTotal, type ConversationView, type CueInput, type LiveTurn } from '@crosstalk/shared';
 import { api } from '../api/client';
 import { CUE_LABEL } from './CueCard';
+import { useDictation } from '../speech/useDictation';
 
 type Props = { view: ConversationView; live: LiveTurn | null; setView: (v: ConversationView) => void; toast: (m: string) => void; limit: number; allowHeated: boolean };
 
@@ -28,6 +29,7 @@ export function cueState(view: ConversationView, live: LiveTurn | null, limit = 
 export function CuePanel({ view, live, setView, toast, limit: cueLimit, allowHeated }: Props) {
   const [challenge, setChallenge] = useState('');
   const [guest, setGuest] = useState('');
+  const mic = useDictation(t => setGuest(t.slice(0, CUE_TEXT_MAX)));
   const turns = view.turns;
   const [target, setTarget] = useState<number | ''>('');
   const [busy, setBusy] = useState(false);
@@ -66,8 +68,17 @@ export function CuePanel({ view, live, setView, toast, limit: cueLimit, allowHea
     </div>
     <div className="voice-row"><h3>Take the mic</h3>
       <p className="hint">Say your piece on air as a guest. You take the gold seat in the middle and the next host replies to you.</p>
-      <textarea value={guest} maxLength={CUE_TEXT_MAX} disabled={off} onChange={e => setGuest(e.target.value)} placeholder="e.g. I run a bakery, and Friday is our busiest day." />
-      <div className="dock-row"><button className="btn sm" disabled={off || !guest.trim()} onClick={() => send({ kind: 'guest', text: guest }, () => setGuest(''))}>Go on air</button></div>
+      <textarea value={guest} maxLength={CUE_TEXT_MAX} disabled={off} readOnly={mic.listening} onChange={e => setGuest(e.target.value)} placeholder={mic.available ? 'Tap the mic and talk, or type: e.g. I run a bakery, and Friday is our busiest day.' : 'e.g. I run a bakery, and Friday is our busiest day.'} aria-label="Your words on air" />
+      <div className="dock-row">
+        {mic.available && (
+          <button className={`btn sm mic-btn${mic.listening ? ' on' : ''}`} disabled={off && !mic.listening} aria-pressed={mic.listening}
+            onClick={() => (mic.listening ? mic.stop() : mic.start(guest))}>{mic.listening ? '■ Stop' : '🎙 Talk'}</button>
+        )}
+        <button className="btn sm" disabled={off || mic.listening || !guest.trim()} onClick={() => send({ kind: 'guest', text: guest }, () => setGuest(''))}>Go on air</button>
+        {mic.listening && <span className="hint" role="status">Listening… check your words, then Go on air.</span>}
+      </div>
+      {mic.error && <p className="hint" role="alert">{mic.error}</p>}
+      {mic.available && <p className="hint">Talking uses your browser's free speech-to-text; Chrome and Edge send the audio to their speech service. Nothing goes on air until you press Go on air.</p>}
     </div>
     <div className="voice-row"><h3>Temperature <span className="counter">now {TEMPERATURES[view.temperature].label}</span></h3>
       <p className="hint">Cool it down or turn it up from the next turn.</p>

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { comicName, makeComic } from '../lib/comic';
 import { makePoster, posterName } from '../lib/poster';
 import { ARTIST, AUDIENCES, episodeLabel, MODES, NOTICE, TEMPERATURES, type ConversationView } from '@crosstalk/shared';
 
@@ -18,8 +19,10 @@ export function showNotes(c: ConversationView) {
   ].join('\n');
 }
 
-/** The share-ready poster: made on this device, then downloaded or shared straight from the phone. */
-function PosterTile({ c, toast }: { c: ConversationView; toast: (m: string) => void }) {
+type ImageTileProps = { c: ConversationView; toast: (m: string) => void; title: string; blurb: string; button: string; alt: string; make: (c: ConversationView) => Promise<Blob>; name: (c: ConversationView) => string };
+
+/** A share-ready image (poster or comic): made on this device, then downloaded or shared from the phone. */
+function ImageTile({ c, toast, title, blurb, button, alt, make: draw, name }: ImageTileProps) {
   const [url, setUrl] = useState<string | null>(null);
   const [blob, setBlob] = useState<Blob | null>(null);
   const [busy, setBusy] = useState(false);
@@ -29,17 +32,17 @@ function PosterTile({ c, toast }: { c: ConversationView; toast: (m: string) => v
   useEffect(() => { setUrl(null); setBlob(null); }, [stamp]);
   const make = async () => {
     setBusy(true);
-    try { const b = await makePoster(c); setBlob(b); setUrl(URL.createObjectURL(b)); }
+    try { const b = await draw(c); setBlob(b); setUrl(URL.createObjectURL(b)); }
     catch (e) { toast((e as Error).message); } finally { setBusy(false); }
   };
-  const file = useMemo(() => (blob ? new File([blob], posterName(c), { type: 'image/png' }) : null), [blob]); // eslint-disable-line react-hooks/exhaustive-deps
+  const file = useMemo(() => (blob ? new File([blob], name(c), { type: 'image/png' }) : null), [blob]); // eslint-disable-line react-hooks/exhaustive-deps
   const canShare = useMemo(() => !!file && typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] }), [file]);
   return (
-    <div className="kit-tile poster-tile"><b>Episode poster</b>
-      {url ? <img className="poster-preview" src={url} alt={`Poster for ${c.topic}`} /> : <p>The question, the hosts, Iris's sketch and quote, and where each host landed, in one image to share.</p>}
+    <div className="kit-tile poster-tile"><b>{title}</b>
+      {url ? <img className="poster-preview" src={url} alt={`${alt} ${c.topic}`} /> : <p>{blurb}</p>}
       <div className="dock-row">
-        {!url && <button className="btn sm" disabled={busy} onClick={make}>{busy ? 'Drawing…' : 'Make poster'}</button>}
-        {url && <a className="btn sm" href={url} download={posterName(c)}>Download</a>}
+        {!url && <button className="btn sm" disabled={busy} onClick={make}>{busy ? 'Drawing…' : button}</button>}
+        {url && <a className="btn sm" href={url} download={name(c)}>Download</a>}
         {canShare && <button className="btn sm ghost" onClick={() => navigator.share({ files: [file!], title: c.topic }).catch(() => {})}>Share</button>}
       </div>
       <span className="badge ok">Free · made on this device</span>
@@ -60,7 +63,10 @@ export function EpisodeKit({ c, toast }: { c: ConversationView; toast: (m: strin
       </div>
       <div className="kit-grid">
         <div className="kit-tile"><b>Podcast episode</b><p>Title, show notes, {c.turns.length} chapters and the full transcript are ready. {c.audio ? 'Audio with natural voices is ready too.' : 'Audio comes when the episode is voiced.'}</p><span className="badge ok">Text ready</span><span className={`badge ${c.audio ? 'ok' : 'later'}`}>{c.audio ? 'Audio ready' : 'Audio · later'}</span></div>
-        <PosterTile c={c} toast={toast} />
+        <ImageTile c={c} toast={toast} title="Episode poster" button="Make poster" alt="Poster for" make={makePoster} name={posterName}
+          blurb="The question, the hosts, Iris's sketch and quote, and where each host landed, in one image to share." />
+        <ImageTile c={c} toast={toast} title="Comic strip" button="Make comic" alt="Comic strip of" make={makeComic} name={comicName}
+          blurb="The episode in 4 panels: the opening, the clash, the moment Iris drew, and where the hosts landed." />
         <div className="kit-tile"><b>Social clip</b><p>The key moment as a 30–60 second vertical clip: the studio, live captions, and Iris's sketch at the end.</p><span className="badge later">Later</span></div>
         <div className="kit-tile"><b>Iris print</b><p>{c.artist?.state === 'done' ? `“${c.artist.artTitle}”, her sketch of turn ${c.artist.momentSeq}, prepared as a listing for your shop.` : 'Her drawing of the moment that stayed with her, prepared as a listing.'}</p><span className="badge later">Later</span></div>
       </div>

@@ -189,6 +189,40 @@ test('Hot seat: vote who moved you, then make the episode poster', async ({ page
   await expect(page.getByRole('button', { name: 'The challenger won me over' })).toHaveAttribute('aria-pressed', 'true');
   await page.getByRole('button', { name: 'Make poster' }).click({ timeout: 60_000 });
   await expect(page.getByRole('img', { name: /Poster for/ })).toBeVisible();
-  const [dl] = await Promise.all([page.waitForEvent('download'), page.getByRole('link', { name: 'Download' }).click()]);
+  const poster = page.locator('.poster-tile', { hasText: 'Episode poster' });
+  const [dl] = await Promise.all([page.waitForEvent('download'), poster.getByRole('link', { name: 'Download' }).click()]);
   expect(dl.suggestedFilename()).toMatch(/^crosstalk-ep\d+-poster\.png$/);
+
+  // The comic strip, from the same Episode kit.
+  await page.getByRole('button', { name: 'Make comic' }).click();
+  await expect(page.getByRole('img', { name: /Comic strip of/ })).toBeVisible();
+  const comic = page.locator('.poster-tile', { hasText: 'Comic strip' });
+  const [dl2] = await Promise.all([page.waitForEvent('download'), comic.getByRole('link', { name: 'Download' }).click()]);
+  expect(dl2.suggestedFilename()).toMatch(/^crosstalk-ep\d+-comic\.png$/);
+});
+
+test('Call in by voice: talk, check the words, go on air', async ({ page }) => {
+  // No microphone in the test browser: a stand-in recognizer "hears" one sentence.
+  await page.addInitScript(() => {
+    class FakeRecognition {
+      lang = ''; interimResults = false; continuous = false;
+      onresult: ((e: unknown) => void) | null = null; onerror: ((e: unknown) => void) | null = null; onend: (() => void) | null = null;
+      start() {
+        setTimeout(() => this.onresult?.({ resultIndex: 0, results: [{ 0: { transcript: 'I teach at a primary school' }, isFinal: false }] }), 50);
+        setTimeout(() => { this.onresult?.({ resultIndex: 0, results: [{ 0: { transcript: 'I teach at a primary school and homework steals family time.' }, isFinal: true }] }); this.onend?.(); }, 150);
+      }
+      stop() { this.onend?.(); } abort() {}
+    }
+    (window as unknown as { SpeechRecognition: unknown }).SpeechRecognition = FakeRecognition;
+  });
+  await page.goto('/#/create');
+  await page.getByRole('button', { name: /Start recording/ }).click();
+  await expect.poll(() => page.locator('.pip.done').count()).toBeGreaterThanOrEqual(1);
+  await page.getByRole('button', { name: 'Pause after this turn' }).click();
+  await expect(page.locator('.status-line')).toContainText('Paused after turn');
+  await page.getByRole('button', { name: '🎙 Talk' }).click();
+  await expect(page.getByLabel('Your words on air')).toHaveValue('I teach at a primary school and homework steals family time.');
+  await page.getByRole('button', { name: 'Go on air' }).click();
+  await expect(page.locator('.set-tile.G')).toBeVisible();
+  await expect(page.locator('.set-cap')).toContainText('homework steals family time');
 });

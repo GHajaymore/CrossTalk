@@ -32,8 +32,7 @@ CrossTalk is a prototype for one person. These are the honest gaps.
 ## Engine
 
 - **One episode generates at a time**, app-wide.
-- **3 cues per episode, one waiting at a time.** A guest's words are typed; speaking into a microphone
-  comes once the app is hosted for others.
+- **3 cues per episode, one waiting at a time** (the Control room can set 0–6). A guest can type or talk.
 - **A branch always gets 4 new turns.** An episode with branches can't be deleted until its branches are.
 - **The daily limit is the app's own count**, not a billing guarantee. OpenRouter also limits free
   use per day on its side, so a run can pause before the app's limit.
@@ -43,6 +42,11 @@ CrossTalk is a prototype for one person. These are the honest gaps.
 
 - **Hot seat** asks the left host to defend the less popular side. Free models may still drift toward
   agreement; the listener's vote ("who moved you?") is the only verdict, never Iris's.
+- **Call in by voice** uses the browser's own speech-to-text. It works in Chrome, Edge and Safari but not
+  Firefox (the mic button simply doesn't appear). Chrome and Edge send the audio to their maker's speech
+  service to transcribe it. You always see and can edit the words before they go on air.
+- **The comic strip** is built from the episode's own lines and Iris's one sketch; she doesn't draw a new
+  picture for every panel (that would need a request per panel, or an image model).
 - **The episode poster** is drawn on your device. The fonts it uses come from the page, so a poster made
   offline may fall back to plain system fonts.
 

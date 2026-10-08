@@ -3,11 +3,11 @@ import { ARTIST, episodeLabel, hostSubtitle, mindChange, MODES, NOTICE, SCOUT_NO
 
 const W = 1080, H = 1350, PAD = 72;
 // The studio tokens, as plain colours (a canvas can't read CSS variables).
-const C = { bg: '#111214', surface: '#1A1C1F', line: '#2E3238', text: '#ECE8E1', muted: '#A39E96', a: '#E8A55A', b: '#5FB8B0', cue: '#E9D36A', iris: '#B9A4E6' };
-const SAY = '"Source Serif 4", Georgia, serif', UI = '"Schibsted Grotesk", system-ui, sans-serif', TAG = '"JetBrains Mono", ui-monospace, monospace';
+export const C = { bg: '#111214', surface: '#1A1C1F', line: '#2E3238', text: '#ECE8E1', muted: '#A39E96', a: '#E8A55A', b: '#5FB8B0', cue: '#E9D36A', iris: '#B9A4E6' };
+export const SAY = '"Source Serif 4", Georgia, serif', UI = '"Schibsted Grotesk", system-ui, sans-serif', TAG = '"JetBrains Mono", ui-monospace, monospace';
 
 /** Lines that fit a width, at most `max` lines (the last ends in an ellipsis if cut). */
-function wrap(ctx: CanvasRenderingContext2D, text: string, width: number, max: number) {
+export function wrap(ctx: CanvasRenderingContext2D, text: string, width: number, max: number) {
   // A single word wider than the line (a URL, say) is split so it can never run off the poster.
   const words = text.split(/\s+/).flatMap(w => {
     if (ctx.measureText(w).width <= width) return [w];
@@ -31,7 +31,7 @@ function wrap(ctx: CanvasRenderingContext2D, text: string, width: number, max: n
   return lines;
 }
 
-const loadImage = (src: string) => new Promise<HTMLImageElement>((resolve, reject) => {
+export const loadImage = (src: string) => new Promise<HTMLImageElement>((resolve, reject) => {
   const img = new Image();
   img.onload = () => resolve(img);
   img.onerror = () => reject(new Error('image'));
@@ -67,11 +67,7 @@ export async function makePoster(v: ConversationView): Promise<Blob> {
   ctx.beginPath(); ctx.roundRect(PAD, y, W - PAD * 2, boxH, 16); ctx.fill(); ctx.stroke();
   if (art?.sketchSvg) {
     try {
-      // Give the SVG its own size from its viewBox: some browsers won't draw a sizeless SVG on a canvas.
-      const vb = art.sketchSvg.match(/viewBox="\s*[\d.-]+[\s,]+[\d.-]+[\s,]+([\d.]+)[\s,]+([\d.]+)\s*"/);
-      const vw = Number(vb?.[1]) || 600, vh = Number(vb?.[2]) || 360;
-      const sized = art.sketchSvg.replace(/^<svg\b/, `<svg width="${vw}" height="${vh}"`);
-      const img = await loadImage(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(sized)}`);
+      const { img, vw, vh } = await loadSketch(art.sketchSvg);
       const scale = Math.min((W - PAD * 2 - 40) / vw, (boxH - 40) / vh);
       const w = vw * scale, h = vh * scale;
       ctx.drawImage(img, (W - w) / 2, y + (boxH - h) / 2, w, h);
@@ -118,6 +114,14 @@ export async function makePoster(v: ConversationView): Promise<Blob> {
   ctx.fillText(v.brief ? SCOUT_NOTICE : NOTICE, PAD, H - PAD - 10);
 
   return await new Promise<Blob>((resolve, reject) => canvas.toBlob(b => (b ? resolve(b) : reject(new Error("Couldn't draw the poster."))), 'image/png'));
+}
+
+/** Iris's sketch as an image with its own size from its viewBox (some browsers won't draw a sizeless SVG). */
+export async function loadSketch(svg: string) {
+  const vb = svg.match(/viewBox="\s*[\d.-]+[\s,]+[\d.-]+[\s,]+([\d.]+)[\s,]+([\d.]+)\s*"/);
+  const vw = Number(vb?.[1]) || 600, vh = Number(vb?.[2]) || 360;
+  const sized = svg.replace(/^<svg\b/, `<svg width="${vw}" height="${vh}"`);
+  return { img: await loadImage(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(sized)}`), vw, vh };
 }
 
 export const posterName = (v: ConversationView) => `crosstalk-ep${String(v.episode).padStart(2, '0')}-poster.png`;
