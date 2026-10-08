@@ -17,11 +17,17 @@ const locked = () => {
 const cookieOf = (setCookie: unknown) => String(setCookie).split(';')[0];
 
 describe('hosting needs an access code', () => {
-  it('refuses to start on a public address without one', () => {
-    expect(() => loadConfig({ HOST: '0.0.0.0' })).toThrow(/ACCESS_CODE must be set/);
-    expect(() => loadConfig({ HOST: '0.0.0.0', ACCESS_CODE: 'short' })).toThrow(/at least 8/);
-    expect(loadConfig({ HOST: '0.0.0.0', ACCESS_CODE: CODE }).accessCode).toBe(CODE);
+  it('with real models, refuses to start on a public address without one', () => {
+    const real = { PROVIDER_MODE: 'openrouter', HOST: '0.0.0.0' };
+    expect(() => loadConfig(real)).toThrow(/ACCESS_CODE must be set/);
+    expect(() => loadConfig({ ...real, ACCESS_CODE: 'short' })).toThrow(/at least 8/);
+    expect(loadConfig({ ...real, ACCESS_CODE: CODE }).accessCode).toBe(CODE);
     expect(loadConfig({}).accessCode).toBeNull();
+  });
+
+  it('mock mode stays open, even hosted and even with a code set (no key, no budget to protect)', () => {
+    expect(loadConfig({ HOST: '0.0.0.0' }).accessCode).toBeNull();
+    expect(loadConfig({ HOST: '0.0.0.0', ACCESS_CODE: CODE }).accessCode).toBeNull();
   });
 
   it('locks every API route until the code is entered, and the cookie never holds the code', async () => {

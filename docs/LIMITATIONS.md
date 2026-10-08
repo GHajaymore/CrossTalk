@@ -47,7 +47,7 @@ CrossTalk is a prototype for one person. These are the honest gaps.
 
 ## Before opening it to the public
 
-The hosted version is locked with one shared access code for its owner. Letting other people in needs:
+The hosted version is open in mock mode and locked with one shared access code once real models are on. Letting other people in needs:
 
 1. **Accounts and authentication**: per-person sign-in instead of one shared code, with sessions that
    can be revoked.

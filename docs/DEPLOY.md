@@ -12,12 +12,13 @@ domain points at it. Nothing here costs money. Set aside about 15 minutes, plus 
   (for example a Google Cloud always-free VM), which can come later.
 - **Rendered recordings aren't uploaded.** Episodes play with your phone's own voices there.
 
-## It's locked
+## The lock
 
-On a public address, CrossTalk refuses to start without an `ACCESS_CODE`. You type it once on each
-device, and that device stays signed in for 30 days. After 5 wrong tries from one address it waits
-10 minutes. Pick a code of at least 8 characters that you don't use anywhere else, for example
-three random words.
+While it runs in mock mode (sample text, no key), CrossTalk is open: anyone with the link can look,
+and there's nothing to spend or leak. As soon as you switch to real models (`PROVIDER_MODE=openrouter`),
+it asks for your `ACCESS_CODE` and refuses to start without one: you type it once on each device, and
+that device stays signed in for 30 days. After 5 wrong tries from one address it waits 10 minutes.
+Pick a code of at least 8 characters that you don't use anywhere else, for example three random words.
 
 ## Steps
 
