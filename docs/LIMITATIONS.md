@@ -25,8 +25,11 @@ CrossTalk is a prototype for one person. These are the honest gaps.
   Headless browsers have none, so voice playback isn't covered by the automated tests.
 - **Recorded voices** (`tools/voice`) are rendered on your machine, one episode at a time, and aren't
   part of the hosted version yet. There are no emotion or laughter cues yet.
-- **Iris draws simple line sketches.** Picture, Painting and Dreamscape need a free image model on a
-  GPU (next phase). Her picture prompts are saved so past episodes can be redrawn.
+- **Iris paints from her own lines.** Painting and Dreamscape are her sketch with brushwork, light and
+  sky added in the browser, not new pictures, so they are only as rich as her drawing. A full
+  illustration (Picture) needs an image model, and none is free yet. Her picture prompts are saved so
+  past episodes can be redrawn.
+- **Very old browsers** may show the painted styles without their washes (they need SVG filters).
 - **Presenter tiles show initials**, not moving faces. Lifelike presenters are a paid Phase 2 decision.
 
 ## Engine

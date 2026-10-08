@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { episodeLabel, MODES, TITLE_MAX, turnTotal, type AppConfig } from '@crosstalk/shared';
+import { artworkSvg, episodeLabel, MODES, TITLE_MAX, turnTotal, type AppConfig } from '@crosstalk/shared';
 import { api, type ConversationSummary } from '../api/client';
 import { sketchSrc } from '../studio/ArtistCard';
 import { Footer } from './Footer';
@@ -67,7 +67,7 @@ function EpisodeRow({ c, depth, onChanged, toast }: { c: ConversationSummary; de
     <div className={`lib-item${depth ? ' branch' : ''}`}>
       <div className="lib-row">
         {c.artist?.sketchSvg
-          ? <img className="thumb" src={sketchSrc(c.artist.sketchSvg)} alt="" />
+          ? <img className="thumb" src={sketchSrc(artworkSvg(c.artist)!)} alt="" />
           : <span className="thumb thumb-empty" aria-hidden="true">{depth ? '✂' : ''}</span>}
         <div style={{ minWidth: 0 }}>
           {mode === 'rename' ? (

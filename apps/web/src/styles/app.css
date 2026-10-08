@@ -437,6 +437,10 @@ details.brief .brief-box{margin-top:8px}
 .iris-pip .living{aspect-ratio:5/3;height:auto}
 .iris-pip .tag{display:block;padding:3px 7px;color:var(--iris);font-size:10px;background:rgba(0,0,0,.5)}
 .living-wrap{position:relative}
+.paint-in{animation:paint-in .9s ease-out}
+@keyframes paint-in{from{opacity:0;filter:blur(6px)}to{opacity:1;filter:none}}
+@media (prefers-reduced-motion:reduce){.paint-in{animation:none}}
+img.living{object-fit:cover}
 .living-wrap .living{aspect-ratio:5/3;height:auto;border-radius:6px}
 .draw-btn{position:absolute;left:8px;bottom:8px;background:rgba(0,0,0,.55)}
 .cover .living{height:100%}

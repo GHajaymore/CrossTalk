@@ -229,4 +229,8 @@ export const MIGRATIONS: string[] = [
   -- Hot seat: the listener's verdict on who moved them.
   ALTER TABLE conversations ADD COLUMN verdict TEXT;
   `,
+  `
+  -- Iris paints: set when the listener picks the style themselves, so she can learn their taste.
+  ALTER TABLE artist_notes ADD COLUMN style_by_listener INTEGER NOT NULL DEFAULT 0;
+  `,
 ];

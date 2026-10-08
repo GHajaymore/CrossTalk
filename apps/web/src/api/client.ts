@@ -1,5 +1,5 @@
 // Typed calls to the local server. The browser never talks to a model.
-import type { AppConfig, ArtistNotes, BranchInput, Conversation, ConversationView, CreateConversation, CueInput, IrisFeedback, MockSettings, Overview, Rules, Run, ScoutPrefs, ScoutStatus, ScoutTopic } from '@crosstalk/shared';
+import type { AppConfig, ArtistNotes, BranchInput, Conversation, ConversationView, CreateConversation, CueInput, IrisFeedback, MockSettings, PaintStyle, Overview, Rules, Run, ScoutPrefs, ScoutStatus, ScoutTopic } from '@crosstalk/shared';
 
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`/api${path}`, {
@@ -52,6 +52,7 @@ export const api = {
   askIris: (id: string) => call<ConversationView>(`/conversations/${id}/artist`, { method: 'POST' }),
   irisFeedback: () => call<IrisFeedback[]>('/iris/feedback'),
   sendIrisFeedback: (f: { conversationId: string | null; rating: 'up' | 'down'; note: string }) => call<IrisFeedback[]>('/iris/feedback', { method: 'POST', body: JSON.stringify(f) }),
+  setArtStyle: (id: string, style: PaintStyle) => call<ConversationView>(`/conversations/${id}/artist/style`, { method: 'PUT', body: JSON.stringify({ style }) }),
   forgetIrisFeedback: (id: string) => call<IrisFeedback[]>(`/iris/feedback/${id}`, { method: 'DELETE' }),
   eventsUrl: (id: string) => `/api/conversations/${id}/events`,
 };

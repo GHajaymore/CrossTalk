@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { episodeLabel, SCOUT_CATS, SCOUT_REGIONS, turnTotal, type AppConfig, type Overview, type Rules } from '@crosstalk/shared';
+import { artworkSvg, episodeLabel, SCOUT_CATS, SCOUT_REGIONS, turnTotal, type AppConfig, type Overview, type Rules } from '@crosstalk/shared';
 import { api, type ConversationSummary, type ScoutView } from '../api/client';
 import { sketchSrc } from '../studio/ArtistCard';
 import { Footer } from './Footer';
@@ -126,7 +126,7 @@ function PublishTab({ list, reload, toast }: { list: ConversationSummary[]; relo
     <ul className="lib-list">{done.map(c => (
       <li className="lib-item" key={c.id}>
         <div className="lib-row">
-          {c.artist?.sketchSvg ? <img className="thumb" src={sketchSrc(c.artist.sketchSvg)} alt="" /> : <span className="thumb thumb-empty" aria-hidden="true" />}
+          {c.artist?.sketchSvg ? <img className="thumb" src={sketchSrc(artworkSvg(c.artist)!)} alt="" /> : <span className="thumb thumb-empty" aria-hidden="true" />}
           <div style={{ minWidth: 0 }}>
             <a className="lib-title" href={`#/studio/${c.id}/read`}>{c.title}</a>
             <div className="lib-meta">

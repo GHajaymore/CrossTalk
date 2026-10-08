@@ -1,21 +1,23 @@
 import { useState } from 'react';
-import { ARTIST, type ArtistNotes, type Speakers } from '@crosstalk/shared';
+import { ARTIST, artworkSvg, PAINT_STYLE_INFO, PAINT_STYLES, paintStyleOf, type ArtistNotes, type ConversationView, type PaintStyle, type Speakers } from '@crosstalk/shared';
 import { api } from '../api/client';
 import { LivingSketch, useDrawReplay } from './LivingSketch';
 
 /** Her sketch is shown as an image, never as live markup, so even a checked SVG can't run anything. */
 export const sketchSrc = (svg: string) => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 
-const STYLES: [string, boolean][] = [['Sketch', true], ['Picture', false], ['Painting', false], ['Dreamscape', false]];
-
-type Props = { notes: ArtistNotes; speakers: Speakers; conversationId: string; onAgain: () => void; onJump: (seq: number) => void; toast: (m: string) => void };
+type Props = { notes: ArtistNotes; speakers: Speakers; conversationId: string; onAgain: () => void; onJump: (seq: number) => void; toast: (m: string) => void; setView: (v: ConversationView) => void };
 
 /** Iris, the Artist: her perspective as a listener and the titled sketch of the moment that stayed with her. */
-export function ArtistCard({ notes: a, speakers, conversationId, onAgain, onJump, toast }: Props) {
+export function ArtistCard({ notes: a, speakers, conversationId, onAgain, onJump, toast, setView }: Props) {
   const [rating, setRating] = useState<'up' | 'down' | null>(null);
   const [note, setNote] = useState('');
   const [sent, setSent] = useState(false);
   const replay = useDrawReplay();
+  const [restyling, setRestyling] = useState(false);
+  const style = paintStyleOf(a.artStyle);
+  const styleName = PAINT_STYLE_INFO[style].name;
+  const painted = style !== 'sketch';
 
   const head = (
     <div className="artist-head">
@@ -45,6 +47,15 @@ export function ArtistCard({ notes: a, speakers, conversationId, onAgain, onJump
     } catch (e) { toast((e as Error).message); }
   };
   const who = speakers[a.momentSeq % 2 === 1 ? 'A' : 'B'].name;
+  const restyle = async (s: PaintStyle) => {
+    if (s === style || restyling) return;
+    setRestyling(true);
+    try {
+      setView(await api.setArtStyle(conversationId, s));
+      toast(`Now a ${PAINT_STYLE_INFO[s].name.toLowerCase()} · Iris notices what you pick`);
+    } catch (e) { toast((e as Error).message); }
+    setRestyling(false);
+  };
 
   return (
     <section className="artist" aria-label="Iris's perspective">
@@ -53,16 +64,20 @@ export function ArtistCard({ notes: a, speakers, conversationId, onAgain, onJump
         <figure className="art">
           {a.sketchSvg
             ? <div className="sketch living-wrap">
-                <LivingSketch ghost className="living" svg={a.sketchSvg} progress={replay.progress ?? 1} label={`Iris's sketch: ${a.artTitle}`} />
-                <button className="btn sm ghost draw-btn" onClick={replay.start} disabled={replay.playing}>{replay.playing ? 'Drawing…' : '▶ Watch her draw'}</button>
+                {painted && !replay.playing
+                  ? <img key={style} className="living paint-in" src={sketchSrc(artworkSvg(a)!)} alt={`Iris's ${styleName.toLowerCase()}: ${a.artTitle}`} />
+                  : <LivingSketch ghost className="living" svg={a.sketchSvg} progress={replay.progress ?? 1} label={`Iris's sketch: ${a.artTitle}`} />}
+                <button className="btn sm ghost draw-btn" onClick={replay.start} disabled={replay.playing}>{replay.playing ? 'Drawing…' : painted ? '▶ Watch her paint' : '▶ Watch her draw'}</button>
               </div>
             : <div className="sketch-missing"><p className="hint">{a.error}</p><button className="btn sm" onClick={onAgain}>Sketch again</button></div>}
-          <figcaption><span className="art-title">“{a.artTitle}”</span>Iris · sketch of turn {a.momentSeq}</figcaption>
+          <figcaption><span className="art-title">“{a.artTitle}”</span>Iris · {styleName.toLowerCase()} of turn {a.momentSeq}</figcaption>
         </figure>
         <div className="artist-body">
           <div className="styles" role="group" aria-label="Art style">
             <span className="tag">Art style</span>
-            {STYLES.map(([n, on]) => <button key={n} className="chip sm" aria-pressed={on || undefined} disabled={!on} title={on ? undefined : 'Needs a free image model on a GPU · next phase'}>{n}{on ? '' : ' · soon'}</button>)}
+            {PAINT_STYLES.map(s => <button key={s} className="chip sm" aria-pressed={style === s} disabled={!a.sketchSvg || restyling}
+              title={PAINT_STYLE_INFO[s].what} onClick={() => restyle(s)}>{PAINT_STYLE_INFO[s].name}</button>)}
+            <button className="chip sm" disabled title="A full illustration needs an image model, and none is free yet">Picture · soon</button>
           </div>
           <span className="tag">As a listener</span>
           <p className="persp">{a.perspective}</p>

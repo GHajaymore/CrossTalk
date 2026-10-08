@@ -2,7 +2,7 @@ import { createReadStream, existsSync, readFileSync, rmSync, statSync } from 'no
 import { dirname, join } from 'node:path';
 import Fastify, { type FastifyServerOptions } from 'fastify';
 import { randomUUID } from 'node:crypto';
-import { BranchInput, CreateConversation, CueInput, DEFAULT_RULES, isSensitive, NoteInput, RenameInput, Rules, SCOUT_CATS, ScoutPrefs, type Overview, IrisFeedbackInput, MockSettings, type AppConfig, type ConversationView, type EpisodeAudio, type StreamEvent } from '@crosstalk/shared';
+import { BranchInput, CreateConversation, CueInput, DEFAULT_RULES, isSensitive, NoteInput, PAINT_STYLES, RenameInput, Rules, SCOUT_CATS, ScoutPrefs, type Overview, IrisFeedbackInput, MockSettings, type AppConfig, type ConversationView, type EpisodeAudio, type StreamEvent } from '@crosstalk/shared';
 import { Iris, mockArtist, type ArtistBackend } from './artist/iris';
 import { ConversationController, ControllerError, type ControllerEvent } from './controller/controller';
 import { openDb, Repo } from './db/repo';
@@ -253,6 +253,15 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
     const v = view(req.params.id);
     if (v.run?.state !== 'completed') throw new ControllerError('Iris listens once an episode is complete.', 409);
     void iris.listen(req.params.id, true);
+    return view(req.params.id);
+  });
+
+  // The listener restyles Iris's art (Sketch, Painting, Dreamscape). She remembers their taste for next time.
+  app.put<{ Params: { id: string }; Body: { style?: unknown } }>('/api/conversations/:id/artist/style', async req => {
+    view(req.params.id);
+    const style = PAINT_STYLES.find(s => s === req.body?.style);
+    if (!style) throw new ControllerError('Pick Sketch, Painting or Dreamscape.', 400);
+    if (!repo.setArtStyle(req.params.id, style)) throw new ControllerError("Iris hasn't finished a drawing for this episode yet.", 409);
     return view(req.params.id);
   });
 

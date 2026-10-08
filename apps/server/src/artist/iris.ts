@@ -2,7 +2,7 @@
 // One request after each completed run (never during it). Her failure never changes the discussion.
 // She learns: the listener's recent notes on her work go into every new request.
 import { z } from 'zod';
-import type { ArtistNotes, ConversationView, IrisFeedback } from '@crosstalk/shared';
+import { defaultPaintStyle, PAINT_STYLES, type ArtistNotes, type ConversationView, type IrisFeedback, type PaintStyle } from '@crosstalk/shared';
 import type { Repo } from '../db/repo';
 import { buildIrisPrompt } from './prompt';
 import { mockSketch } from './mockSketches';
@@ -11,7 +11,7 @@ import { safeSvg } from './svgSafety';
 /** Whatever answers Iris's request: a model, or the scripted mock. Returns the raw reply text. */
 export interface ArtistBackend {
   readonly modelId: string;
-  draw(prompt: { system: string; user: string }, episode: ConversationView, feedback: IrisFeedback[]): Promise<string>;
+  draw(prompt: { system: string; user: string }, episode: ConversationView, feedback: IrisFeedback[], taste: PaintStyle | null): Promise<string>;
 }
 
 const Reply = z.object({
@@ -21,7 +21,17 @@ const Reply = z.object({
   artTitle: z.string().trim().min(1).max(80),
   sketchSvg: z.string().default(''),
   imagePrompt: z.string().trim().max(500).default(''),
+  // Her pick of style; anything unknown falls back to the listener's taste or the episode's feel.
+  artStyle: z.enum(PAINT_STYLES).optional().catch(undefined),
 });
+
+/** The style the listener keeps choosing, once they've chosen it at least twice lately. */
+export function favouriteStyle(chosen: PaintStyle[]): PaintStyle | null {
+  const counts = new Map<PaintStyle, number>();
+  for (const s of chosen.slice(0, 5)) counts.set(s, (counts.get(s) ?? 0) + 1);
+  const [best] = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+  return best && best[1] >= 2 ? best[0] : null;
+}
 
 const words = (t: string) => t.split(/\s+/).filter(Boolean);
 const norm = (t: string) => t.toLowerCase().replace(/[‘’“”"'.,!?;:—–-]/g, ' ').replace(/\s+/g, ' ').trim();
@@ -86,10 +96,11 @@ export class Iris {
     if (blocked) return fail(blocked);
 
     const feedback = this.repo.listFeedback(10);
+    const taste = favouriteStyle(this.repo.listenerStyles());
     let raw: string;
     try {
       this.opts.countRequest();
-      raw = await this.backend.draw(buildIrisPrompt(view, feedback), view, feedback);
+      raw = await this.backend.draw(buildIrisPrompt(view, feedback, taste), view, feedback, taste);
     } catch (e) {
       return fail(`Iris couldn't finish: ${e instanceof Error ? e.message : 'the model failed'}. Try again.`);
     }
@@ -110,7 +121,7 @@ export class Iris {
     const svg = safeSvg(reply.sketchSvg);
 
     this.repo.saveArtist({
-      ...base, state: 'done', perspective: reply.perspective, momentSeq: turn.seq, caption,
+      ...base, state: 'done', artStyle: reply.artStyle ?? taste ?? defaultPaintStyle(view), perspective: reply.perspective, momentSeq: turn.seq, caption,
       artTitle: reply.artTitle.replace(/^["“]|["”]$/g, ''), sketchSvg: svg.ok ? svg.svg : null, imagePrompt: reply.imagePrompt,
       error: svg.ok ? null : `Her sketch didn't pass the safety check (${svg.reason}), so only her perspective is shown.`,
     });
@@ -118,10 +129,12 @@ export class Iris {
   }
 }
 
+const PAINT_STYLE_NAME: Record<PaintStyle, string> = { sketch: 'sketches', painting: 'paintings', dreamscape: 'dreamscapes' };
+
 /** Mock Iris: no model call. Picks a moment, writes a perspective, draws a scene, and shows she read your notes. */
 export const mockArtist: ArtistBackend = {
   modelId: 'mock/iris-v1',
-  async draw(_prompt, c, feedback) {
+  async draw(_prompt, c, feedback, taste) {
     // Like real Iris: the turn that answered the listener first, then a change of mind.
     const cue = c.interventions.find(x => x.status === 'applied' && x.kind !== 'temp');
     const answered = cue && c.turns.find(t => t.seq === cue.appliesBeforeSeq);
@@ -141,6 +154,7 @@ export const mockArtist: ArtistBackend = {
       opener,
       `I wish they had spent a turn on the people who never get asked about this.`,
       lastNote ? `You told me "${lastNote.note.slice(0, 80)}", so I tried to keep that in mind.` : '',
+      taste ? `You keep choosing ${PAINT_STYLE_NAME[taste]} for my work, so that's how I made this one.` : '',
       `My question for you: what would it take to change your mind?`,
     ].filter(Boolean).join(' ');
     return JSON.stringify({ perspective, momentSeq: pick.seq, caption: firstSentence(pick.text), artTitle: sketch.title, sketchSvg: sketch.svg, imagePrompt: `A painted scene of: ${firstSentence(pick.text)}` });

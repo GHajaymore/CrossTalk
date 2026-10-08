@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react';
-import { ARTIST, episodeLabel, type AppConfig, type IrisFeedback } from '@crosstalk/shared';
+import { ARTIST, artworkSvg, episodeLabel, PAINT_STYLE_INFO, paintStyleOf, type AppConfig, type IrisFeedback } from '@crosstalk/shared';
 import { api, type ConversationSummary } from '../api/client';
 import { sketchSrc } from '../studio/ArtistCard';
 import { Footer } from './Footer';
 
 const STYLES: [string, string, boolean][] = [
   ['Sketch', 'Line drawings she makes herself, checked and safe to show', true],
+  ['Painting', 'Her lines with watercolour washes and paper grain. Her pick for warm or heated talk', true],
+  ['Dreamscape', 'A night sky, a moon and drifting echoes of her lines. Her pick for big open ideas', true],
   ['Picture', 'A full illustration from her saved picture prompt', false],
-  ['Painting', 'The same moment with brushwork and light', false],
-  ['Dreamscape', 'Looser, stranger, for big-idea episodes', false],
 ];
 
 /** Iris, the Artist: everything she has drawn, and everything she has learned from you. */
@@ -32,7 +32,7 @@ export function IrisPage({ config }: { config: AppConfig | null }) {
           <h1>{ARTIST.name}, {ARTIST.role}</h1>
           <p className="hint">She listens to every finished episode, picks the one moment that stayed with her, says how it felt as a listener, and draws it. Before each drawing she reads your latest notes, so she gets better as the show does.</p>
           <div className="iris-stats">
-            <span><b>{items ? drawn.length : '…'}</b> sketches</span>
+            <span><b>{items ? drawn.length : '…'}</b> drawings</span>
             <span><b>{notes ? notes.length : '…'}</b> notes from you</span>
             <span><b>{notes ? liked : '…'}</b> she got right</span>
           </div>
@@ -50,11 +50,11 @@ export function IrisPage({ config }: { config: AppConfig | null }) {
                 <li key={c.id}>
                   <a className="g-card" href={`#/studio/${c.id}/read`}>
                     {a.sketchSvg
-                      ? <img src={sketchSrc(a.sketchSvg)} alt={`Iris's sketch: ${a.artTitle}`} />
+                      ? <img src={sketchSrc(artworkSvg(a)!)} alt={`Iris's ${PAINT_STYLE_INFO[paintStyleOf(a.artStyle)].name.toLowerCase()}: ${a.artTitle}`} />
                       : <div className="g-missing hint">No sketch this time</div>}
                     <span className="g-title">“{a.artTitle}”</span>
                     <span className="g-quote">“{a.caption}”</span>
-                    <span className="tag">{episodeLabel(c.episode)} · turn {a.momentSeq}</span>
+                    <span className="tag">{episodeLabel(c.episode)} · turn {a.momentSeq} · {PAINT_STYLE_INFO[paintStyleOf(a.artStyle)].name}</span>
                     <span className="g-topic">{c.parentId ? <>{c.topic} <span className="lib-branch">✂ {c.title}</span></> : c.title}</span>
                   </a>
                 </li>
@@ -87,7 +87,8 @@ export function IrisPage({ config }: { config: AppConfig | null }) {
             </li>
           ))}
         </ul>
-        <p className="hint">The other styles need a free image model running on a GPU. Iris already saves a picture prompt with every sketch, so past episodes can be redrawn when it's ready.</p>
+        <p className="hint">She paints in your browser from her own lines: no image model, nothing sent anywhere, always free. She picks the style for each episode, and you can switch it on her card under Read. She notices what you choose and leans that way next time.</p>
+        <p className="hint">Picture needs an image model, and none is free yet. She saves a picture prompt with every drawing, so past episodes can be redrawn later.</p>
       </section>
       <Footer config={config} />
     </div>

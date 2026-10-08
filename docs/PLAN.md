@@ -506,7 +506,7 @@ All settled Oct 7, 2026.
 | Look and feel | A real video podcast: studio set, presenter tiles, name bars, REC timer, captions; smooth motion (reduced motion respected) |
 | Formats | Recorded and Live |
 | Personalities | Both speakers: Auto by default (from topic and audience), eight presets, or Custom |
-| Iris's art | Titled; Sketch now, Picture, Painting and Dreamscape next phase |
+| Iris's art | Titled; Sketch, Painting and Dreamscape now (painted in the browser from her lines); Picture waits for a free image model |
 | End goal | Podcast, automatic social posting with your approval, and selling Iris's art; built in phases after the prototype |
 | Real people | Auto host names from region, audience and topic; natural voices first; presenter tiles now; AI-generated humans moving and talking in real time in Phase 2 (paid; invented faces only); Take the mic for guests (typed now, microphone once hosted) |
 | Admin | Control room for you: analytics, live control with producer notes, publishing approvals, topic pin/hide, rules; Milestone 8 |
