@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { sketchSrc } from '../studio/ArtistCard';
-import { MAX_TURNS, MODES, type AppConfig, type MockSettings } from '@crosstalk/shared';
+import { MODES, turnTotal, type AppConfig, type MockSettings } from '@crosstalk/shared';
 import { api, type ConversationSummary } from '../api/client';
 import { SetupBanner } from '../lib/Banners';
 import { Footer } from './Footer';
@@ -25,8 +25,9 @@ export function Library({ config }: { config: AppConfig | null }) {
                   <div className="lib-meta">
                     <span className={`status ${st}`}>{c.run?.stopReason === 'interrupted' ? 'interrupted' : st}</span>
                     <span>Ep. {String(c.episode).padStart(2, '0')}</span>
+                    {c.parentId && <span className="lib-branch">✂ Branch from turn {c.branchSeq}</span>}
                     <span>{MODES[c.mode].label}</span>
-                    <span>{c.turnCount} of {MAX_TURNS} turns</span>
+                    <span>{c.turnCount} of {turnTotal(c)} turns</span>
                     <span>{new Date(c.createdAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>
                     {c.artist?.state === 'done' && <span>“{c.artist.artTitle}”</span>}
                   </div>

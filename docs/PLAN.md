@@ -444,7 +444,7 @@ Eight milestones, each ending in a demo before approving the next. Nothing needs
    - Live format: each finished turn is spoken automatically; booth orbs and captions follow the voice.
    - Natural voices picked first when the device has them.
    - *Demo gate:* listen to a full run while generation is paused, and vice versa.
-4. **Participation**
+4. **Participation** *(built Oct 8, 2026: cues land at the next turn boundary, one waiting at a time, 3 per episode; a guest line is stored as a cue, not a turn, so episodes keep 16 turns; branches read their parent's turns and store only their 4 new ones)*
    - Challenge, Go Deeper, Take the mic (guest turns) and the Temperature knob with queuing ("lands before turn N"), cue cards on the centre line, intervention limit.
    - Branch from any completed turn; parent unchanged; splice marks and return link; branch list in the side panel.
    - Tests: a challenge appears in the next prompt; branching leaves the parent byte-identical.

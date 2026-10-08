@@ -1,8 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import {
-  assertTransition, jobFor, resolveSpeakers, speakerFor, TransitionError,
-  type Conversation, type ConversationView, type CreateConversation, type LiveTurn, type Run, type RunState, type StreamEvent,
+  assertTransition, BRANCH_TURNS, CUE_LIMIT, jobIn, resolveSpeakers, speakerFor, stepTemperature, TransitionError,
+  type BranchInput, type Conversation, type ConversationView, type CreateConversation, type CueInput, type Intervention,
+  type LiveTurn, type Run, type RunState, type StreamEvent,
 } from '@crosstalk/shared';
 import type { Repo } from '../db/repo';
 import { AbortedError, ProviderError, type Provider, type Usage } from '../providers/types';
@@ -119,10 +120,105 @@ export class ConversationController {
       speakers: resolveSpeakers(input.topic, input.audience, input.speakers, this.opts.models, roles),
       parentId: null,
       branchTurnId: null,
+      branchSeq: null,
+      branchDirection: null,
       createdAt: at,
       updatedAt: at,
     };
     this.repo.insertConversation(c);
+    return this.repo.view(c.id)!;
+  }
+
+  /** The last turn a conversation generates: the episode length, or a branch point plus 4. */
+  private limitFor(c: Conversation) {
+    return c.branchSeq ? c.branchSeq + BRANCH_TURNS : this.opts.maxTurns;
+  }
+
+  /**
+   * Queues a listener cue for the next turn boundary. While a turn is being written it lands on the
+   * turn after that, so finished or half-written words never change. Up to CUE_LIMIT per conversation,
+   * one waiting at a time.
+   */
+  addCue(conversationId: string, input: CueInput): Intervention {
+    const conv = this.repo.getConversation(conversationId);
+    if (!conv) throw new ControllerError('Conversation not found.', 404);
+    const run = this.repo.latestRun(conversationId);
+    if (run && (run.state === 'completed' || run.state === 'cancelled')) {
+      throw new ControllerError('This episode has finished. Branch from a turn to take it somewhere new.', 409);
+    }
+    const last = this.repo.lastSeq(conversationId);
+    if (last < 1) throw new ControllerError('Cues land between turns. Start the episode first.', 409);
+    const writing = this.active?.conversationId === conversationId && !!this.active.live;
+    const appliesBeforeSeq = last + (writing ? 2 : 1);
+    if (appliesBeforeSeq > this.limitFor(conv)) throw new ControllerError("The episode is about to end, so there's no turn left for a cue.", 409);
+
+    const cues = this.repo.listCues(conversationId).filter(x => x.status !== 'cancelled');
+    if (cues.length >= CUE_LIMIT) throw new ControllerError(`You've used all ${CUE_LIMIT} cues for this episode.`, 409);
+    const waiting = cues.find(x => x.status === 'queued');
+    if (waiting) throw new ControllerError(`A cue is already waiting for turn ${waiting.appliesBeforeSeq}. Cancel it, or wait until it lands.`, 409);
+
+    const cue: Intervention = {
+      id: randomUUID(), kind: input.kind, text: null, targetSeq: null, fromTemp: null, toTemp: null,
+      appliesBeforeSeq, status: 'queued', createdAt: this.now().toISOString(), fromOriginal: false,
+    };
+    if (input.kind === 'challenge' || input.kind === 'guest') cue.text = input.text;
+    if (input.kind === 'deeper') {
+      if (!this.repo.listTurns(conversationId).some(t => t.seq === input.targetSeq)) throw new ControllerError('Pick a finished turn to go deeper on.', 400);
+      cue.targetSeq = input.targetSeq;
+    }
+    if (input.kind === 'temp') {
+      const to = stepTemperature(conv.temperature, input.direction, conv.audience);
+      if (!to) {
+        throw new ControllerError(input.direction === 'down' ? "It's already at Calm."
+          : conv.audience === 'kids' ? 'Kids episodes stop at Lively.' : "It's already at Heated.", 409);
+      }
+      cue.fromTemp = conv.temperature;
+      cue.toTemp = to;
+    }
+    this.repo.insertCue(conversationId, cue);
+    this.emit(conversationId, { type: 'changed' });
+    return cue;
+  }
+
+  /** Takes back a waiting cue. It doesn't count toward the limit. Too late once its turn is being written. */
+  cancelCue(conversationId: string, cueId: string) {
+    const cue = this.repo.listCues(conversationId).find(x => x.id === cueId);
+    if (!cue) throw new ControllerError('Cue not found.', 404);
+    if (cue.status !== 'queued') throw new ControllerError('That cue has already landed.', 409);
+    const live = this.liveTurn(conversationId);
+    if (live && live.seq >= cue.appliesBeforeSeq) throw new ControllerError("Too late: that cue is already on air.", 409);
+    this.repo.setCueStatus(cueId, 'cancelled');
+    this.emit(conversationId, { type: 'changed' });
+  }
+
+  /**
+   * A branch is a new conversation that reads this one's turns up to `fromSeq` and generates 4 new
+   * turns in the listener's direction. The original is never changed.
+   */
+  branch(conversationId: string, input: BranchInput): ConversationView {
+    const parent = this.repo.getConversation(conversationId);
+    if (!parent) throw new ControllerError('Conversation not found.', 404);
+    if (this.active?.conversationId === conversationId || this.repo.latestRun(conversationId)?.state === 'generating') {
+      throw new ControllerError('Pause or stop the episode before branching.', 409);
+    }
+    const turn = this.repo.listTurns(conversationId).find(t => t.seq === input.fromSeq);
+    if (!turn) throw new ControllerError('Pick a finished turn to branch from.', 400);
+    const at = this.now().toISOString();
+    const c: Conversation = {
+      ...parent,
+      id: randomUUID(),
+      title: `${parent.topic} · ${input.direction}`,
+      // The mood at the cut, not wherever the original ended up.
+      temperature: this.repo.temperatureAt(conversationId, input.fromSeq),
+      parentId: parent.id,
+      branchTurnId: turn.id,
+      branchSeq: input.fromSeq,
+      branchDirection: input.direction,
+      createdAt: at,
+      updatedAt: at,
+    };
+    this.repo.insertConversation(c);
+    this.emit(conversationId, { type: 'changed' });
     return this.repo.view(c.id)!;
   }
 
@@ -162,7 +258,7 @@ export class ConversationController {
     }
     const run = this.repo.latestRun(conversationId);
     if (run && (run.state === 'completed' || run.state === 'cancelled')) {
-      throw new ControllerError(`This run is ${run.state} and can't be restarted. Branching arrives in Milestone 4.`, 409);
+      throw new ControllerError(`This run is ${run.state} and can't be restarted. Branch from a turn to continue it.`, 409);
     }
   }
 
@@ -173,7 +269,7 @@ export class ConversationController {
         assertTransition('idle', 'generating');
         run = {
           id: randomUUID(), conversationId, state: 'generating',
-          fromSeq: this.repo.lastSeq(conversationId) + 1, toSeq: this.opts.maxTurns,
+          fromSeq: this.repo.lastSeq(conversationId) + 1, toSeq: this.limitFor(this.repo.getConversation(conversationId)!),
           startedAt: this.now().toISOString(), endedAt: null, stopReason: null, pauseRequested: false,
         };
         this.repo.insertRun(run);
@@ -181,7 +277,7 @@ export class ConversationController {
         run = this.transition(run, 'generating', null);
       }
     } catch (e) {
-      if (e instanceof TransitionError) throw new ControllerError(`This run is ${e.from} and can't be restarted. Branching arrives in Milestone 4.`, 409);
+      if (e instanceof TransitionError) throw new ControllerError(`This run is ${e.from} and can't be restarted. Branch from a turn to continue it.`, 409);
       throw e;
     }
 
@@ -217,6 +313,8 @@ export class ConversationController {
     }
     this.transition(run, 'cancelled', 'by you');
     if (this.active?.conversationId === conversationId) this.active.abort.abort();
+    // Cues still waiting will never land.
+    for (const c of this.repo.listCues(conversationId)) if (c.status === 'queued') this.repo.setCueStatus(c.id, 'cancelled');
     this.emit(conversationId, { type: 'changed' });
   }
 
@@ -227,7 +325,7 @@ export class ConversationController {
    */
   private async generateWithRetry(
     conversationId: string, runId: string, conv: Conversation, seq: number,
-    speaker: Conversation['speakers']['A'], objective: string, signal: AbortSignal,
+    speaker: Conversation['speakers']['A'], objective: string, cues: Intervention[], signal: AbortSignal,
   ): Promise<{ text: string } | null> {
     const sleep = this.opts.sleep ?? abortableSleep;
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
@@ -248,7 +346,7 @@ export class ConversationController {
 
       try {
         const res = await this.provider.generateTurn(
-          { conversation: conv, seq, speaker, objective, history: this.repo.listTurns(conversationId) },
+          { conversation: conv, seq, speaker, objective, history: this.repo.listTurns(conversationId), cues },
           { signal, onToken: t => { live.text += t; this.emit(conversationId, { type: 'token', seq, text: t }); } },
         );
         log('ok', res.usage, null);
@@ -295,24 +393,36 @@ export class ConversationController {
       const run = this.repo.latestRun(conversationId);
       if (!run || run.id !== runId || run.state !== 'generating' || signal.aborted) return;
 
+      const conv = this.repo.getConversation(conversationId)!;
       const seq = this.repo.lastSeq(conversationId) + 1;
-      if (seq > this.opts.maxTurns) { this.transition(run, 'completed', null); queueMicrotask(() => this.opts.onCompleted?.(conversationId)); return; }
+      if (seq > this.limitFor(conv)) { this.transition(run, 'completed', null); queueMicrotask(() => this.opts.onCompleted?.(conversationId)); return; }
       if (run.pauseRequested) { this.transition(run, 'paused', 'by you'); return; }
       if (this.requestsToday() >= this.opts.dailyLimit) { this.transition(run, 'paused', 'Daily request limit reached'); return; }
 
-      const conv = this.repo.getConversation(conversationId)!;
+      // Cues waiting for this boundary land now. A temperature cue sets the mood for this turn; it's
+      // saved with the turn, so a turn that fails or is stopped leaves the mood as it was.
+      const cues = this.repo.cuesFor(conversationId).filter(x => x.status !== 'cancelled');
+      const landing = cues.filter(x => !x.fromOriginal && x.status === 'queued' && x.appliesBeforeSeq <= seq);
+      const temp = landing.filter(x => x.kind === 'temp').at(-1)?.toTemp;
+      if (temp) conv.temperature = temp;
+
       const speaker = conv.speakers[speakerFor(seq)];
-      const objective = jobFor(seq);
-      const out = await this.generateWithRetry(conversationId, runId, conv, seq, speaker, objective, signal);
+      const objective = jobIn(conv, seq);
+      const out = await this.generateWithRetry(conversationId, runId, conv, seq, speaker, objective, cues, signal);
       if (!out || signal.aborted) return;
       const { text } = out;
 
       const at = this.now().toISOString();
-      this.repo.saveTurn({
-        id: randomUUID(), conversationId, seq, speakerId: speaker.id, modelId: speaker.modelId,
-        objective, text, status: 'completed', createdAt: at,
-      });
-      this.repo.touchConversation(conversationId, at);
+      // The turn, the cues it answered and any new mood are saved together, or not at all.
+      this.repo.db.transaction(() => {
+        this.repo.saveTurn({
+          id: randomUUID(), conversationId, seq, speakerId: speaker.id, modelId: speaker.modelId,
+          objective, text, status: 'completed', createdAt: at,
+        });
+        for (const c of landing) this.repo.setCueStatus(c.id, 'applied');
+        if (temp) this.repo.setTemperature(conversationId, temp);
+        this.repo.touchConversation(conversationId, at);
+      })();
       if (this.active?.runId === runId) this.active.live = null;
       this.emit(conversationId, { type: 'turn-end', seq });
       this.emit(conversationId, { type: 'changed' });

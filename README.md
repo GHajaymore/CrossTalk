@@ -25,7 +25,7 @@ The key stays on the local server and is never sent to the browser. Only models 
 
 ## Put it online
 
-Free hosting on Render at ajailabs.app, locked with an access code: see [docs/DEPLOY.md](docs/DEPLOY.md).
+Free hosting on Render at crosstalk.ajailabs.app, locked with an access code: see [docs/DEPLOY.md](docs/DEPLOY.md).
 
 ## Other commands
 

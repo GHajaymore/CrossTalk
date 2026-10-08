@@ -118,13 +118,23 @@ export class Iris {
 export const mockArtist: ArtistBackend = {
   modelId: 'mock/iris-v1',
   async draw(_prompt, c, feedback) {
-    const pick = c.turns.find(t => t.objective === 'Rethink') ?? c.turns.find(t => t.objective === 'Catch') ?? c.turns[Math.floor(c.turns.length / 2)];
+    // Like real Iris: the turn that answered the listener first, then a change of mind.
+    const cue = c.interventions.find(x => x.status === 'applied' && x.kind !== 'temp');
+    const answered = cue && c.turns.find(t => t.seq === cue.appliesBeforeSeq);
+    const steered = !answered && c.branchSeq ? c.turns.find(t => t.seq === c.branchSeq! + 1) : undefined;
+    const pick = answered ?? steered ?? c.turns.find(t => t.objective === 'Rethink') ?? c.turns.find(t => t.objective === 'Catch') ?? c.turns[Math.floor(c.turns.length / 2)];
     const who = c.speakers[pick.speakerId].name;
     const other = c.speakers[pick.speakerId === 'A' ? 'B' : 'A'].name;
+    const opener = answered
+      ? cue!.kind === 'guest' ? `What stayed with me was ${who} answering our guest straight away, without a script to hide behind.`
+        : cue!.kind === 'challenge' ? `What stayed with me was ${who} taking your challenge head on instead of talking around it.`
+        : `What stayed with me was ${who} going back to turn ${cue!.targetSeq} when you asked, and finding more in it.`
+      : steered ? `What stayed with me was the moment you steered the show and ${who} went with it, picking up a road the first version never took.`
+      : `What stayed with me was the moment ${who} gave ground to ${other}. The talk got honest right there, because someone changed their mind out loud.`;
     const lastNote = feedback.find(f => f.note);
     const sketch = mockSketch(c.topic);
     const perspective = [
-      `What stayed with me was the moment ${who} gave ground to ${other}. The talk got honest right there, because someone changed their mind out loud.`,
+      opener,
       `I wish they had spent a turn on the people who never get asked about this.`,
       lastNote ? `You told me "${lastNote.note.slice(0, 80)}", so I tried to keep that in mind.` : '',
       `My question for you: what would it take to change your mind?`,

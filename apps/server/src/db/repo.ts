@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3';
-import { ArtistNotes, Conversation, Run, type ConversationView, type IrisFeedback, type RunState, type Speakers, type Turn } from '@crosstalk/shared';
+import { ArtistNotes, Conversation, Intervention, Run, type BranchSummary, type ConversationView, type IrisFeedback, type RunState, type Speakers, type Turn } from '@crosstalk/shared';
 import { MIGRATIONS } from './schema';
 
 export type DB = Database.Database;
@@ -26,7 +26,12 @@ export function openDb(file: string): DB {
 
 type ConvRow = {
   id: string; title: string; topic: string; mode: string; format: string; audience: string; temperature: string;
-  episode: number; speakers_json: string; parent_id: string | null; branch_turn_id: string | null; created_at: string; updated_at: string;
+  episode: number; speakers_json: string; parent_id: string | null; branch_turn_id: string | null;
+  branch_seq: number | null; branch_direction: string | null; created_at: string; updated_at: string;
+};
+type CueRow = {
+  id: string; conversation_id: string; kind: string; text: string | null; target_seq: number | null; from_temp: string | null;
+  to_temp: string | null; applies_before_seq: number; status: string; created_at: string;
 };
 type TurnRow = {
   id: string; conversation_id: string; seq: number; speaker_id: string; model_id: string; objective: string;
@@ -40,7 +45,12 @@ type RunRow = {
 const toConversation = (r: ConvRow): Conversation => Conversation.parse({
   id: r.id, title: r.title, topic: r.topic, mode: r.mode, format: r.format, audience: r.audience,
   temperature: r.temperature, episode: r.episode, speakers: JSON.parse(r.speakers_json) as Speakers,
-  parentId: r.parent_id, branchTurnId: r.branch_turn_id, createdAt: r.created_at, updatedAt: r.updated_at,
+  parentId: r.parent_id, branchTurnId: r.branch_turn_id, branchSeq: r.branch_seq, branchDirection: r.branch_direction,
+  createdAt: r.created_at, updatedAt: r.updated_at,
+});
+const toCue = (r: CueRow): Intervention => Intervention.parse({
+  id: r.id, kind: r.kind, text: r.text, targetSeq: r.target_seq, fromTemp: r.from_temp, toTemp: r.to_temp,
+  appliesBeforeSeq: r.applies_before_seq, status: r.status, createdAt: r.created_at,
 });
 const toTurn = (r: TurnRow): Turn => ({
   id: r.id, conversationId: r.conversation_id, seq: r.seq, speakerId: r.speaker_id as Turn['speakerId'],
@@ -57,8 +67,8 @@ export class Repo {
 
   insertConversation(c: Conversation) {
     this.db.prepare(`INSERT INTO conversations
-      (id, title, topic, mode, format, audience, temperature, episode, speakers_json, parent_id, branch_turn_id, created_at, updated_at)
-      VALUES (@id, @title, @topic, @mode, @format, @audience, @temperature, @episode, @speakers, @parentId, @branchTurnId, @createdAt, @updatedAt)`)
+      (id, title, topic, mode, format, audience, temperature, episode, speakers_json, parent_id, branch_turn_id, branch_seq, branch_direction, created_at, updated_at)
+      VALUES (@id, @title, @topic, @mode, @format, @audience, @temperature, @episode, @speakers, @parentId, @branchTurnId, @branchSeq, @branchDirection, @createdAt, @updatedAt)`)
       .run({ ...c, speakers: JSON.stringify(c.speakers) });
   }
 
@@ -69,6 +79,10 @@ export class Repo {
 
   listConversations(): Conversation[] {
     return (this.db.prepare('SELECT * FROM conversations ORDER BY updated_at DESC').all() as ConvRow[]).map(toConversation);
+  }
+
+  setTemperature(id: string, temperature: Conversation['temperature']) {
+    this.db.prepare('UPDATE conversations SET temperature = ? WHERE id = ?').run(temperature, id);
   }
 
   touchConversation(id: string, at: string) {
@@ -88,14 +102,65 @@ export class Repo {
     return res.changes === 1;
   }
 
+  /**
+   * Every turn this conversation plays, in order. A branch reads its parent's turns up to the branch
+   * point (they keep their parent's conversationId), then its own. Nothing is copied.
+   */
   listTurns(conversationId: string): Turn[] {
-    return (this.db.prepare(`SELECT * FROM turns WHERE conversation_id = ? AND status = 'completed' ORDER BY seq`)
+    const c = this.getConversation(conversationId);
+    const inherited = c?.parentId && c.branchSeq ? this.listTurns(c.parentId).filter(t => t.seq <= c.branchSeq!) : [];
+    const own = (this.db.prepare(`SELECT * FROM turns WHERE conversation_id = ? AND status = 'completed' ORDER BY seq`)
       .all(conversationId) as TurnRow[]).map(toTurn);
+    return [...inherited, ...own];
   }
 
   lastSeq(conversationId: string): number {
     const r = this.db.prepare(`SELECT MAX(seq) AS s FROM turns WHERE conversation_id = ? AND status = 'completed'`).get(conversationId) as { s: number | null };
-    return r.s ?? 0;
+    return r.s ?? this.getConversation(conversationId)?.branchSeq ?? 0;
+  }
+
+  // ---- cues ----
+  insertCue(conversationId: string, c: Intervention) {
+    this.db.prepare(`INSERT INTO interventions (id, conversation_id, kind, text, target_seq, from_temp, to_temp, applies_before_seq, status, created_at)
+      VALUES (@id, @conversationId, @kind, @text, @targetSeq, @fromTemp, @toTemp, @appliesBeforeSeq, @status, @createdAt)`).run({ ...c, conversationId });
+  }
+
+  /** All cues, oldest first. */
+  listCues(conversationId: string): Intervention[] {
+    return (this.db.prepare('SELECT * FROM interventions WHERE conversation_id = ? ORDER BY created_at, rowid')
+      .all(conversationId) as CueRow[]).map(toCue);
+  }
+
+  /**
+   * The cues a conversation plays with: in a branch, the original's applied cues up to the cut
+   * (marked fromOriginal), then its own. Limits and queueing only ever look at its own (listCues).
+   */
+  cuesFor(conversationId: string): Intervention[] {
+    const c = this.getConversation(conversationId);
+    const inherited = c?.parentId && c.branchSeq
+      ? this.cuesFor(c.parentId).filter(x => x.status === 'applied' && x.appliesBeforeSeq <= c.branchSeq!).map(x => ({ ...x, fromOriginal: true }))
+      : [];
+    return [...inherited, ...this.listCues(conversationId)];
+  }
+
+  /** The Temperature in effect for turn `seq`, following any temperature cues that landed (in the original too, for a branch). */
+  temperatureAt(conversationId: string, seq: number): Conversation['temperature'] {
+    const c = this.getConversation(conversationId)!;
+    if (c.parentId && c.branchSeq && seq <= c.branchSeq) return this.temperatureAt(c.parentId, seq);
+    const temps = this.listCues(conversationId).filter(x => x.kind === 'temp' && x.status === 'applied').sort((a, b) => a.appliesBeforeSeq - b.appliesBeforeSeq);
+    const landed = temps.filter(x => x.appliesBeforeSeq <= seq).at(-1);
+    return landed?.toTemp ?? temps[0]?.fromTemp ?? c.temperature;
+  }
+
+  setCueStatus(id: string, status: Intervention['status']) {
+    this.db.prepare('UPDATE interventions SET status = ? WHERE id = ?').run(status, id);
+  }
+
+  /** Branches cut from a conversation, newest first. */
+  listBranches(parentId: string): BranchSummary[] {
+    return (this.db.prepare('SELECT * FROM conversations WHERE parent_id = ? ORDER BY created_at DESC').all(parentId) as ConvRow[])
+      .map(toConversation)
+      .map(c => ({ id: c.id, title: c.title, branchSeq: c.branchSeq ?? 0, direction: c.branchDirection ?? '', state: this.latestRun(c.id)?.state ?? 'idle', createdAt: c.createdAt }));
   }
 
   insertRun(r: Run) {
@@ -127,7 +192,14 @@ export class Repo {
   view(id: string): ConversationView | null {
     const c = this.getConversation(id);
     if (!c) return null;
-    return { ...c, turns: this.listTurns(id), run: this.latestRun(id), interventions: [], artist: this.getArtist(id) };
+    const parent = c.parentId ? this.getConversation(c.parentId) : null;
+    return {
+      ...c, turns: this.listTurns(id), run: this.latestRun(id),
+      interventions: this.cuesFor(id).filter(x => x.status !== 'cancelled'),
+      parent: parent && { id: parent.id, title: parent.title, episode: parent.episode },
+      branches: this.listBranches(id),
+      artist: this.getArtist(id),
+    };
   }
 
   getArtist(conversationId: string): ArtistNotes | null {

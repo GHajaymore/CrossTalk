@@ -20,6 +20,11 @@ export const JOBS = [
 export const MAX_TURNS = 16;
 export const DAILY_LIMIT_DEFAULT = 40;
 export const CUE_LIMIT = 3;
+/** A challenge or a guest line: a sentence or two. */
+export const CUE_TEXT_MAX = 200;
+/** A branch always generates this many new turns, with these jobs. */
+export const BRANCH_TURNS = 4;
+export const BRANCH_JOBS = ['New direction', 'Pressure test', 'Example', 'Close'] as const;
 export const TOPIC_MAX = 200;
 export const NAME_MAX = 28;
 export const LENS_MAX = 120;

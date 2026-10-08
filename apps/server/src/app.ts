@@ -2,7 +2,7 @@ import { createReadStream, existsSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import Fastify, { type FastifyServerOptions } from 'fastify';
 import { randomUUID } from 'node:crypto';
-import { CreateConversation, IrisFeedbackInput, MockSettings, type AppConfig, type ConversationView, type EpisodeAudio, type StreamEvent } from '@crosstalk/shared';
+import { BranchInput, CreateConversation, CueInput, IrisFeedbackInput, MockSettings, type AppConfig, type ConversationView, type EpisodeAudio, type StreamEvent } from '@crosstalk/shared';
 import { Iris, mockArtist, type ArtistBackend } from './artist/iris';
 import { ConversationController, ControllerError, type ControllerEvent } from './controller/controller';
 import { openDb, Repo } from './db/repo';
@@ -12,6 +12,7 @@ import { OpenRouterProvider } from './providers/openrouter';
 import type { Provider } from './providers/types';
 import type { ServerConfig } from './config';
 import { registerAccess, registerWeb } from './access';
+import { exportJson, exportMarkdown, exportName } from './export';
 
 export type AppOptions = {
   timing?: MockTiming;
@@ -200,6 +201,36 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
   app.post<{ Params: { id: string } }>('/api/conversations/:id/stop', async req => {
     controller.stop(req.params.id);
     return view(req.params.id);
+  });
+
+  // Export: the transcript as JSON (schema v1) or a readable Markdown script.
+  app.get<{ Params: { id: string; fmt: string } }>('/api/conversations/:id/export.:fmt', async (req, reply) => {
+    const v = view(req.params.id);
+    if (req.params.fmt === 'json') {
+      return reply.header('Content-Disposition', `attachment; filename="${exportName(v, 'json')}"`).type('application/json')
+        .send(JSON.stringify(exportJson(v, repo.listUsage(v.id)), null, 2));
+    }
+    if (req.params.fmt === 'md') {
+      return reply.header('Content-Disposition', `attachment; filename="${exportName(v, 'md')}"`).type('text/markdown; charset=utf-8').send(exportMarkdown(v));
+    }
+    throw new ControllerError('Export as json or md.', 404);
+  });
+
+  // Milestone 4: listener cues and branches.
+  app.post<{ Params: { id: string } }>('/api/conversations/:id/cues', async req => {
+    const parsed = CueInput.safeParse(req.body);
+    if (!parsed.success) throw new ControllerError(parsed.error.issues[0]?.message ?? 'Invalid cue.', 400);
+    controller.addCue(req.params.id, parsed.data);
+    return view(req.params.id);
+  });
+  app.delete<{ Params: { id: string; cueId: string } }>('/api/conversations/:id/cues/:cueId', async req => {
+    controller.cancelCue(req.params.id, req.params.cueId);
+    return view(req.params.id);
+  });
+  app.post<{ Params: { id: string } }>('/api/conversations/:id/branch', async req => {
+    const parsed = BranchInput.safeParse(req.body);
+    if (!parsed.success) throw new ControllerError(parsed.error.issues[0]?.message ?? 'Invalid branch.', 400);
+    return withAudio(controller.branch(req.params.id, parsed.data));
   });
 
   // Server-Sent Events: a snapshot on connect and after every change, plus live tokens in between.

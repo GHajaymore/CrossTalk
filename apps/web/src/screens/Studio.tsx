@@ -1,12 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  AUDIENCES, CUE_LIMIT, episodeLabel, hostSubtitle, jobFor, MAX_TURNS, MODES, speakerFor, TEMPERATURES,
-  type AppConfig, type ConversationView,
+  AUDIENCES, CUE_LIMIT, episodeLabel, hostSubtitle, jobIn, MODES, speakerFor, TEMPERATURES, turnTotal,
+  type AppConfig, type ConversationView, type Intervention,
 } from '@crosstalk/shared';
 import { api } from '../api/client';
 import { useConversation } from '../api/useConversation';
 import { ArtistCard } from '../studio/ArtistCard';
+import { BranchDialog } from '../studio/BranchDialog';
+import { BranchList } from '../studio/BranchList';
 import { CueCard } from '../studio/CueCard';
+import { cueState, CuePanel } from '../studio/CuePanel';
 import { EpisodeKit } from '../studio/EpisodeKit';
 import { ListenView } from '../studio/ListenView';
 import { SidePanel } from '../studio/SidePanel';
@@ -37,6 +40,7 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
   const [busy, setBusy] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
   const [onAir, setOnAir] = useState(false);
+  const [branchFrom, setBranchFrom] = useState<number | null>(null);
   const setRef = useRef<HTMLDivElement>(null);
   const { voices, prefs, update } = useVoices();
   const browserPlay = usePlayback(view?.turns ?? [], prefs);
@@ -91,7 +95,7 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
 
   const statusWord = {
     idle: 'Ready',
-    generating: live ? `${sp[live.speakerId].name} is on air · turn ${live.seq} of ${MAX_TURNS}` : 'Starting',
+    generating: live ? `${sp[live.speakerId].name} is on air · turn ${live.seq} of ${turnTotal(view)}` : 'Starting',
     paused: reason === 'interrupted' ? `Interrupted after turn ${lastSeq} · the server restarted` : reason && reason !== 'by you' ? `Paused after turn ${lastSeq} · ${reason}` : `Paused after turn ${lastSeq}`,
     completed: 'Complete',
     cancelled: `Stopped after turn ${lastSeq}`,
@@ -100,8 +104,12 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
 
   const lastTurn = view.turns[view.turns.length - 1];
   const listening = play.state !== 'idle' && play.speakerId;
+  // A guest who took the mic keeps the gold seat for the rest of the episode; their words show while they wait to be answered.
+  const guests = view.interventions.filter(c => c.kind === 'guest');
+  const guestWaiting = guests.find(c => c.status === 'queued');
   const caption = live && !listening
     ? { who: live.speakerId, text: tail(live.text) || '…' }
+    : guestWaiting && !listening ? { who: 'G' as const, text: guestWaiting.text ?? '' }
     : listening ? { who: play.speakerId, text: play.caption }
     : st === 'failed' ? { who: null, text: 'The connection dropped on this turn. Everything before it is saved.' }
     : lastTurn && st !== 'idle' && st !== 'generating' ? { who: lastTurn.speakerId, text: lastSentence(lastTurn.text) }
@@ -118,7 +126,7 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
       tags={`${MODES[view.mode].label} · ${AUDIENCES[view.audience].label} · ${TEMPERATURES[view.temperature].label}`}
       temperature={view.temperature}
       hosts={{ A: { name: sp.A.name, role: hostSubtitle(sp.A) }, B: { name: sp.B.name, role: hostSubtitle(sp.B) } }}
-      guest={null}
+      guest={guests.length ? { name: 'Guest', role: 'You, on the mic' } : null}
       speaking={listening ? play.speakerId : live?.speakerId ?? null}
       voiceLevel={listening ? play.pulse : pulse}
       caption={caption}
@@ -130,6 +138,30 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
     />
   );
 
+  const cues = cueState(view, live);
+  const branchBlocked = st === 'generating' ? 'Pause or stop the episode first' : null;
+  const deeper = async (seq: number) => {
+    try { setView(await api.addCue(id, { kind: 'deeper', targetSeq: seq })); toast(`Go deeper on turn ${seq} · lands before turn ${cues.landsBefore}`); }
+    catch (e) { toast((e as Error).message); }
+  };
+  const cancelCue = (c: Intervention) => async () => {
+    try { setView(await api.cancelCue(id, c.id)); toast('Cue taken back'); } catch (e) { toast((e as Error).message); }
+  };
+  // Each cue card sits on the centre line just before the turn it lands on.
+  // A waiting cue can be taken back until its turn starts being written.
+  const canCancel = (c: Intervention) => c.status === 'queued' && !c.fromOriginal && !(live && live.seq >= c.appliesBeforeSeq);
+  const cuesBefore = (seq: number) => view.interventions.filter(c => c.appliesBeforeSeq === seq)
+    .map(c => <CueCard key={c.id} cue={c} onCancel={canCancel(c) ? cancelCue(c) : undefined} />);
+  const shown = new Set([...view.turns.map(t => t.seq), ...(live ? [live.seq] : []), ...(failedSeq ? [failedSeq] : [])]);
+  const createBranch = async (direction: string) => {
+    try {
+      const child = await api.branch(id, { fromSeq: branchFrom!, direction });
+      setBranchFrom(null);
+      toast('Branch ready. Press Start for 4 new turns.');
+      location.hash = `#/studio/${child.id}/watch`;
+    } catch (e) { toast((e as Error).message); }
+  };
+
   const transcript = (
     <>
       <div className="table">
@@ -137,19 +169,29 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
           <div className="empty-stage"><p>Both seats are ready. Press Start to hear {sp.A.name} open.</p></div>
         )}
         {view.turns.map(t => (
-          <TurnCard key={t.seq} seq={t.seq} speakerId={t.speakerId} name={sp[t.speakerId].name} objective={t.objective}
-            modelId={t.modelId} text={t.text} state="completed" onCopy={() => copy(t.text)}
-            speaking={play.state !== 'idle' && play.seq === t.seq} onPlayFrom={play.available ? () => play.playFrom(t.seq) : undefined} />
+          <div key={t.seq} className="turn-slot">
+            {cuesBefore(t.seq)}
+            <TurnCard seq={t.seq} speakerId={t.speakerId} name={sp[t.speakerId].name} objective={t.objective}
+              modelId={t.modelId} text={t.text} state="completed" onCopy={() => copy(t.text)}
+              speaking={play.state !== 'idle' && play.seq === t.seq} onPlayFrom={play.available ? () => play.playFrom(t.seq) : undefined}
+              onDeeper={() => deeper(t.seq)} deeperBlocked={cues.blocked}
+              onBranch={() => setBranchFrom(t.seq)} branchBlocked={branchBlocked}
+              inherited={t.conversationId !== view.id}
+              splices={view.branches.filter(b => b.branchSeq === t.seq).map(b => ({ id: b.id, direction: b.direction }))} />
+            {view.branchSeq === t.seq && <div className="cut-line" role="separator"><span>✂ Your branch starts here: “{view.branchDirection}”</span></div>}
+          </div>
         ))}
-        {live && !view.turns.some(t => t.seq === live.seq) && (
+        {live && !view.turns.some(t => t.seq === live.seq) && <>
+          {cuesBefore(live.seq)}
           <TurnCard seq={live.seq} speakerId={live.speakerId} name={sp[live.speakerId].name} objective={live.objective}
             modelId={live.modelId} text={live.text} state="streaming" />
-        )}
-        {failedSeq && (
-          <TurnCard seq={failedSeq} speakerId={speakerFor(failedSeq)} name={sp[speakerFor(failedSeq)].name} objective={jobFor(failedSeq)}
+        </>}
+        {failedSeq && <>
+          {cuesBefore(failedSeq)}
+          <TurnCard seq={failedSeq} speakerId={speakerFor(failedSeq)} name={sp[speakerFor(failedSeq)].name} objective={jobIn(view, failedSeq)}
             modelId={sp[speakerFor(failedSeq)].modelId} text={reason ?? 'This turn failed.'} state="failed" />
-        )}
-        {view.interventions.map(c => <CueCard key={c.id} cue={c} />)}
+        </>}
+        {view.interventions.filter(c => !shown.has(c.appliesBeforeSeq)).map(c => <CueCard key={c.id} cue={c} onCancel={canCancel(c) ? cancelCue(c) : undefined} />)}
       </div>
       {view.artist && (
         <ArtistCard notes={view.artist} speakers={sp} conversationId={id} toast={toast}
@@ -170,17 +212,24 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
             </a>
           ))}
         </nav>
+        {view.parent && (
+          <div className="branch-banner">
+            <span><span aria-hidden="true">✂ </span>Branch from turn {view.branchSeq} of <b>{view.parent.title}</b>: “{view.branchDirection}”</span>
+            <a className="btn sm ghost" href={`#/studio/${view.parent.id}/read`}>← Back to the original</a>
+          </div>
+        )}
 
         {tab === 'watch' && <>
           <div ref={setRef} className={onAir ? 'on-air' : undefined}>
             {set}
             {onAir && <button className="btn sm leave-air" onClick={leaveAir}>Leave On air</button>}
           </div>
-          <TurnRail turns={view.turns} liveSeq={live?.seq ?? null} failedSeq={failedSeq} speakers={sp} />
+          <TurnRail turns={view.turns} liveSeq={live?.seq ?? null} failedSeq={failedSeq} speakers={sp}
+            branchSeq={view.branchSeq} cueSeqs={view.interventions.filter(c => c.status === 'queued').map(c => c.appliesBeforeSeq)} />
         </>}
         <div className="status-line" aria-live="polite">
           <span><b>{statusWord}</b>{view.run?.pauseRequested ? ' · pausing after this turn' : ''}</span>
-          <span>{view.interventions.length} of {CUE_LIMIT} cues used</span>
+          <span>{view.interventions.filter(c => !c.fromOriginal).length} of {CUE_LIMIT} cues used</span>
         </div>
 
         <SetupBanner config={config} />
@@ -202,7 +251,15 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
               {st === 'failed' && <button className="btn primary" disabled={cantRun} onClick={act(api.start)}>Retry turn {lastSeq + 1}</button>}
               {st === 'generating' && <button className="btn" disabled={busy || !!view.run?.pauseRequested} onClick={act(api.pause)}>Pause after this turn</button>}
               {(st === 'generating' || st === 'paused' || st === 'failed') && <button className="btn danger" disabled={busy} onClick={act(api.stop)}>Stop</button>}
-              {tab === 'read' && <button className="btn ghost" disabled title="Export arrives in Milestone 6">Export</button>}
+              {tab === 'read' && view.turns.length > 0 && (
+                <details className="export-menu">
+                  <summary className="btn ghost">Export</summary>
+                  <div className="menu" role="menu">
+                    <a role="menuitem" href={`/api/conversations/${id}/export.md`} download>Markdown script<small>Readable transcript with cues and Iris</small></a>
+                    <a role="menuitem" href={`/api/conversations/${id}/export.json`} download>JSON<small>Schema v1: models, turns, cues, branches</small></a>
+                  </div>
+                </details>
+              )}
               {tab === 'watch' && <button className="btn ghost" onClick={goOnAir} title="Full screen, just the set">On air ⛶</button>}
               <button className="btn ghost panel-toggle" onClick={() => setPanelOpen(o => !o)}>Cues &amp; voices</button>
             </div>
@@ -222,7 +279,10 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
         </div>
         <Footer config={config} />
       </section>
+      {branchFrom && <BranchDialog seq={branchFrom} who={sp[speakerFor(branchFrom)].name} onClose={() => setBranchFrom(null)} onCreate={createBranch} />}
       <SidePanel open={panelOpen} onClose={() => setPanelOpen(false)}
+        cue={<CuePanel view={view} live={live} setView={setView} toast={toast} />}
+        branches={<BranchList view={view} />}
         voices={<VoicePicker speakers={sp} voices={voices} prefs={prefs} update={update}
           preview={k => new BrowserSpeech(() => prefs).speak([{ key: 'p', speakerId: k, text: `Hi, I'm ${sp[k].name}. This is how I'll sound on the show.` }], {})} />} />
     </div>

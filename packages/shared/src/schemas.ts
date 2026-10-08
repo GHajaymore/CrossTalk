@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { AUDIENCES, FORMATS, LENS_MAX, MODES, NAME_MAX, PERSONAS, ROLE_MAX, TEMPERATURES, TOPIC_MAX } from './constants';
+import { AUDIENCES, CUE_TEXT_MAX, FORMATS, LENS_MAX, MODES, NAME_MAX, PERSONAS, ROLE_MAX, TEMPERATURES, TOPIC_MAX } from './constants';
 
 const keys = <T extends Record<string, unknown>>(o: T) => Object.keys(o) as [keyof T & string, ...(keyof T & string)[]];
 
@@ -82,14 +82,45 @@ export const Run = z.object({
 });
 export type Run = z.infer<typeof Run>;
 
+export const CueKind = z.enum(['challenge', 'deeper', 'temp', 'guest']);
+export type CueKind = z.infer<typeof CueKind>;
+
+/** A listener's cue: a note passed across the desk that lands at the next turn boundary. */
 export const Intervention = z.object({
   id: z.string(),
-  kind: z.enum(['challenge', 'deeper', 'temp', 'guest']),
+  kind: CueKind,
+  /** The challenge, or the guest's words on the mic. */
   text: z.string().nullable(),
+  /** Go deeper: the turn to dig into. */
+  targetSeq: z.number().int().nullable(),
+  /** Temperature: the move from one setting to the next. */
+  fromTemp: Temperature.nullable(),
+  toTemp: Temperature.nullable(),
   appliesBeforeSeq: z.number().int(),
   status: z.enum(['queued', 'applied', 'cancelled']),
+  createdAt: z.string(),
+  /** In a branch: a cue that landed in the original episode, before the cut. Read-only here. */
+  fromOriginal: z.boolean().default(false),
 });
 export type Intervention = z.infer<typeof Intervention>;
+
+// Cue text is a line said on air: kept on one line.
+const cueText = z.string().transform(s => s.replace(/\s+/g, ' ').trim()).pipe(z.string().min(1, 'Write your cue first.').max(CUE_TEXT_MAX, `Keep it under ${CUE_TEXT_MAX} characters.`));
+/** What the Cue panel sends. */
+export const CueInput = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('challenge'), text: cueText }),
+  z.object({ kind: z.literal('guest'), text: cueText }),
+  z.object({ kind: z.literal('deeper'), targetSeq: z.number().int().min(1) }),
+  z.object({ kind: z.literal('temp'), direction: z.enum(['up', 'down']) }),
+]);
+export type CueInput = z.infer<typeof CueInput>;
+
+/** Branch from a finished turn in a new direction. */
+export const BranchInput = z.object({
+  fromSeq: z.number().int().min(1),
+  direction: z.string().transform(s => s.replace(/\s+/g, ' ').trim()).pipe(z.string().min(1, 'Say where the branch should go.').max(CUE_TEXT_MAX, `Keep it under ${CUE_TEXT_MAX} characters.`)),
+});
+export type BranchInput = z.infer<typeof BranchInput>;
 
 export const Conversation = z.object({
   id: z.string(),
@@ -103,6 +134,10 @@ export const Conversation = z.object({
   speakers: z.object({ A: Speaker, B: Speaker }),
   parentId: z.string().nullable(),
   branchTurnId: z.string().nullable(),
+  /** A branch continues from this turn of its parent, which it reads but never changes. */
+  branchSeq: z.number().int().nullable(),
+  /** The new direction the listener gave the branch. */
+  branchDirection: z.string().nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -143,12 +178,18 @@ export const IrisFeedbackInput = z.object({
 });
 export type IrisFeedback = z.infer<typeof IrisFeedbackInput> & { id: string; artTitle: string | null; createdAt: string };
 
+export type BranchSummary = { id: string; title: string; branchSeq: number; direction: string; state: RunState | 'idle'; createdAt: string };
+
 /** A conversation with everything the Studio needs to draw it. */
 export type ConversationView = Conversation & {
   turns: Turn[];
   run: Run | null;
-  /** Cue cards. Always empty until Milestone 4. */
+  /** Cue cards, in the order they were given (cancelled ones left out). */
   interventions: Intervention[];
+  /** The original this branch was cut from. */
+  parent: { id: string; title: string; episode: number } | null;
+  /** Branches cut from this conversation. */
+  branches: BranchSummary[];
   /** The rendered recording, when tools/voice has made one. */
   audio?: EpisodeAudio | null;
   /** Iris's notes for this episode, once she has listened. */

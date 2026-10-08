@@ -9,6 +9,7 @@ Iris listens to every finished episode and responds like a thoughtful listener: 
 - **Output:** JSON with `perspective`, `momentSeq`, `caption` (a real quote of 20 words or fewer from that turn; replaced with one if she invents it), `artTitle`, `sketchSvg`, `imagePrompt` (saved for painted versions later).
 - **Safety:** her SVG passes a strict allowlist (shapes and paths only, her palette only, no text, scripts, links, styles or entities) and is shown as an image. If it fails, her perspective shows alone with "Sketch again".
 - **Never breaks an episode:** her failure leaves the discussion untouched.
+- **Hears your cues (Milestone 4):** challenges, guests on the mic, go-deeper requests and temperature changes appear in her episode where they landed, and she prefers to draw the turn that answered you. In a branch she knows where you steered the show.
 
 ## How she learns
 
@@ -23,4 +24,4 @@ Whenever CrossTalk changes, review her notes and improve her where they point: t
 ## Next for Iris
 
 - **Picture, Painting, Dreamscape:** a free open-source image model (e.g. FLUX or Stable Diffusion) on a free GPU, using her saved `imagePrompt`.
-- An Iris page: her gallery across episodes, her styles, and prints for the shop (each waits for the owner's OK).
+- Prints for the shop from her gallery (each waits for the owner's OK). Her own page with the gallery and styles is done.

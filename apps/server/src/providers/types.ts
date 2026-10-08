@@ -1,4 +1,4 @@
-import type { Conversation, Speaker, Turn } from '@crosstalk/shared';
+import type { Conversation, Intervention, Speaker, Turn } from '@crosstalk/shared';
 
 export type TurnRequest = {
   conversation: Conversation;
@@ -6,6 +6,8 @@ export type TurnRequest = {
   speaker: Speaker;
   objective: string;
   history: Turn[];
+  /** Listener cues: queued ones land on this turn; applied guest lines are part of the history. */
+  cues?: Intervention[];
 };
 
 export type TurnOptions = {

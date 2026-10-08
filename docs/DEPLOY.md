@@ -1,4 +1,4 @@
-# Put CrossTalk online at ajailabs.app (free, on Render)
+# Put CrossTalk online at crosstalk.ajailabs.app (free, on Render)
 
 CrossTalk runs as one small server that also serves the app. Render's free plan hosts it, and your
 domain points at it. Nothing here costs money. Set aside about 15 minutes, plus DNS waiting time.
@@ -28,26 +28,26 @@ three random words.
 4. It asks for **ACCESS_CODE**. Type your code there, in Render's page only. Never put it in chat,
    in a file or in the repo.
 5. Wait for the first deploy to say **Live**. Open the `crosstalk-….onrender.com` link it shows,
-   type your code, and check the app opens in **Mock mode**.
+   type your code, and check the app opens in **Mock## Point crosstalk.ajailabs.app at it
 
-## Point ajailabs.app at it
+ajailabs.app is the Ajai Labs parent site, so CrossTalk lives on a subdomain. Only one record is
+added; the existing `@` and `www` records stay as they are.
 
-6. In Render, open the service, then **Settings → Custom Domains → Add**. Enter `ajailabs.app`
-   (Render also offers `www.ajailabs.app`; add it too). Render then shows the exact DNS records to
-   add. **Use the values Render shows you.** At the time of writing they are:
+6. In Render, open the **crosstalk** service, then **Settings → Custom Domains → Add Custom
+   Domain**, and enter `crosstalk.ajailabs.app`.
+7. In GoDaddy: **My Products → ajailabs.app → DNS → Add New Record**:
 
    | Type | Name | Value |
    |---|---|---|
-   | A (or ALIAS / ANAME if your registrar has it) | `@` | `216.24.57.1` |
-   | CNAME | `www` | `crosstalk-….onrender.com` (your service's address) |
+   | CNAME | `crosstalk` | your service's address, e.g. `crosstalk-ij27.onrender.com` |
 
-7. Add those records where you bought **ajailabs.app** (its DNS settings page). Remove any old
-   `A` or `AAAA` record on `@` that points somewhere else.
-8. Back in Render, click **Verify**. DNS can take from a few minutes to a few hours. Render then
+8. Back in Render, click **Verify**. DNS usually takes minutes, sometimes an hour. Render then
    issues the HTTPS certificate automatically. `.app` domains only work over HTTPS, so wait for
    the green certificate tick before opening it.
-9. Open **https://ajailabs.app** on your phone, type the code, then use **Share → Add to Home
-   Screen** (iPhone) or **⋮ → Install app** (Android). It opens full screen like an app.
+9. Open **https://crosstalk.ajailabs.app** on your phone, type the code, then use **Share → Add
+   to Home Screen** (iPhone) or **⋮ → Install app** (Android). It opens full screen like an app.
+
+ an app.
 
 ## Real models later (still free)
 

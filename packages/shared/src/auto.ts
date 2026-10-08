@@ -1,7 +1,7 @@
 // Auto personalities and auto host names (docs/PLAN.md, "Speakers" and "Real people").
 // Pure keyword rules, no model call, so the server and the Create screen always agree.
-import { JOBS, PERSONAS } from './constants';
-import type { Audience, PersonaKey, SpeakerDraft, SpeakerId, Speakers } from './schemas';
+import { BRANCH_JOBS, BRANCH_TURNS, JOBS, MAX_TURNS, PERSONAS } from './constants';
+import type { Audience, PersonaKey, SpeakerDraft, SpeakerId, Speakers, Temperature } from './schemas';
 
 type Pair = [PersonaKey, PersonaKey];
 
@@ -82,6 +82,18 @@ export function resolveSpeakers(
 
 export const speakerFor = (seq: number): SpeakerId => (seq % 2 === 1 ? 'A' : 'B');
 export const jobFor = (seq: number) => JOBS[seq - 1] ?? 'Continue';
+/** How many turns this conversation has when finished: 16, or a branch point plus its 4 new turns. */
+export const turnTotal = (c: { branchSeq: number | null }) => (c.branchSeq ? c.branchSeq + BRANCH_TURNS : MAX_TURNS);
+/** A turn's job: the episode's 16 jobs, or the branch jobs after a branch point. */
+export const jobIn = (c: { branchSeq: number | null }, seq: number) =>
+  c.branchSeq && seq > c.branchSeq ? BRANCH_JOBS[seq - c.branchSeq - 1] ?? 'Continue' : jobFor(seq);
+const TEMP_ORDER: Temperature[] = ['calm', 'lively', 'heated'];
+/** One step up or down the Temperature dial. Kids stop at Lively. Null at either end. */
+export function stepTemperature(t: Temperature, direction: 'up' | 'down', audience: Audience): Temperature | null {
+  const next = TEMP_ORDER[TEMP_ORDER.indexOf(t) + (direction === 'up' ? 1 : -1)];
+  if (!next || (audience === 'kids' && next === 'heated')) return null;
+  return next;
+}
 export const personaLabel = (s: { persona: PersonaKey; lens: string }) =>
   s.persona === 'custom' ? s.lens : PERSONAS[s.persona].label;
 /** What the name bar shows under a host's name: their role, else their personality. */

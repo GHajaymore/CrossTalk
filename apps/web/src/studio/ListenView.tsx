@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { ARTIST, episodeLabel, hostSubtitle, JOBS, type ConversationView, type SpeakerId } from '@crosstalk/shared';
+import { ARTIST, episodeLabel, hostSubtitle, type ConversationView, type SpeakerId } from '@crosstalk/shared';
 import type { Playback } from '../speech/usePlayback';
 import { sketchSrc } from './ArtistCard';
 
@@ -51,7 +51,7 @@ export function ListenView({ view, play, rate, setRate }: Props) {
       <div className="now" aria-live="polite">
         {on && who ? <>
           <span className={`flag ${who}`} aria-hidden="true">{who}</span>
-          <div><b>{sp[who].name}</b> <span className="hint">· {JOBS[seq - 1] ?? ''} · turn {seq}</span>
+          <div><b>{sp[who].name}</b> <span className="hint">· {turns.find(t => t.seq === seq)?.objective ?? ''} · turn {seq}</span>
             <p className="now-line">{play.caption}</p></div>
         </> : <p className="hint">Press play. The screen can go dark; {clock ? 'the episode keeps playing.' : 'keep this page open while it reads.'}</p>}
       </div>
@@ -60,7 +60,7 @@ export function ListenView({ view, play, rate, setRate }: Props) {
         {clock
           ? <input type="range" min={0} max={Math.round(clock.duration)} step={1} value={Math.round(clock.position)}
               onChange={e => clock.seek(Number(e.target.value))} aria-label="Position in the episode" />
-          : <div className="turn-steps" role="img" aria-label={`Turn ${seq || 0} of ${turns.length}`}>
+          : <div className="turn-steps" style={{ gridTemplateColumns: `repeat(${turns.length}, 1fr)` }} role="img" aria-label={`Turn ${seq || 0} of ${turns.length}`}>
               {turns.map(t => <i key={t.seq} className={`${t.speakerId}${t.seq < seq ? ' done' : t.seq === seq ? ' here' : ''}`} />)}
             </div>}
         <div className="scrub-times"><span>{clock ? mmss(clock.position) : `Turn ${seq || 0}`}</span><span>{clock ? mmss(clock.duration) : `of ${turns.length}`}</span></div>
@@ -86,7 +86,7 @@ export function ListenView({ view, play, rate, setRate }: Props) {
           <li key={t.seq}>
             <button onClick={() => play.playFrom(t.seq)} aria-current={on && t.seq === seq ? 'true' : undefined}>
               <span className={`flag ${t.speakerId}`} aria-hidden="true">{t.speakerId}</span>
-              <span className="ch-text"><b>{JOBS[t.seq - 1] ?? `Turn ${t.seq}`}</b><span className="hint">{sp[t.speakerId].name} · {hostSubtitle(sp[t.speakerId])}</span></span>
+              <span className="ch-text"><b>{t.objective}</b><span className="hint">{sp[t.speakerId].name} · {hostSubtitle(sp[t.speakerId])}</span></span>
               <span className="tag">{clock ? mmss(view.audio?.timings.find(x => x.seq === t.seq)?.start ?? 0) : t.seq}</span>
             </button>
           </li>

@@ -337,3 +337,41 @@ label.fld{display:grid;gap:6px}
 .lock-card{width:min(100%,360px);display:grid;gap:14px;border:1px solid var(--line);border-radius:12px;padding:24px;background:var(--surface)}
 .lock-card input{background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:10px 12px;width:100%;font-size:16px}
 .lock-error{margin:0;color:var(--bad);font-size:14px}
+
+/* PARTICIPATION (Milestone 4): cues on the centre line, the guest seat, branches */
+.turn-slot{display:contents}
+.cue.guest{background:#211f12;border-width:2px;padding:12px 16px}
+.cue.guest p{font-family:var(--f-say);font-size:16.5px}
+.cue.temp p,.cue.deeper p{font-family:var(--f-tag);font-size:12.5px;letter-spacing:.04em}
+.cue .link-btn{margin:6px 0 0}
+.cue-status{display:grid;gap:4px;border:1px solid rgba(var(--cue-rgb),.4);background:var(--cue-soft);border-radius:8px;padding:10px 12px;font-size:13.5px}
+.cue-status.blocked{border-color:var(--line);background:var(--bg);color:var(--muted)}
+.pip.inherited .bar{opacity:.45}
+.pip.cut .bar{box-shadow:4px 0 0 -1px var(--cue)}
+.pip.cued .tag b::before{content:"◆ ";color:var(--cue)}
+.turn.inherited .card{opacity:.72}
+.turn.inherited .say{color:var(--muted)}
+.splice{display:inline-flex;gap:6px;margin-top:8px;font-size:13px;color:var(--cue);text-decoration:none}
+.splice:hover{text-decoration:underline}
+.cut-line{justify-self:stretch;display:grid;place-items:center;position:relative;z-index:1}
+.cut-line span{background:var(--bg);border:1px dashed var(--cue);border-radius:999px;padding:5px 14px;font-size:13px;color:var(--cue);max-width:100%;text-align:center}
+.branch-banner{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;border:1px dashed rgba(var(--cue-rgb),.5);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:14px}
+.branch-banner b{font-weight:600}
+.branch-link{color:var(--text);font-weight:600;text-decoration:none}.branch-link:hover{text-decoration:underline}
+.branch-list{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.branch-list a{display:grid;gap:2px;border:1px solid var(--line);border-radius:8px;padding:8px 10px;text-decoration:none;color:var(--text);font-size:14px}
+.branch-list a:hover{border-color:var(--cue)}
+.modal-back{position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.6);display:grid;place-items:center;padding:16px}
+.modal{width:min(100%,520px);display:grid;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.modal h2{font-family:var(--f-say);font-weight:600;font-size:22px;margin:0}
+.panel select{background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:7px 8px;flex:1;min-width:0}
+.lib-branch{color:var(--cue);font-family:var(--f-tag);font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+@media (max-width: 680px){
+  .cut-line span{font-size:12px}
+}
+.export-menu{position:relative}
+.export-menu summary{list-style:none}
+.export-menu summary::-webkit-details-marker{display:none}
+.export-menu .menu{top:auto;bottom:44px;left:0}
+.export-menu .menu a{display:block;padding:8px 10px;border-radius:5px;color:var(--text);text-decoration:none}
+.export-menu .menu a:hover{background:var(--surface)}
