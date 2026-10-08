@@ -10,7 +10,7 @@ Last full run (Oct 8, 2026): `npm test` 16 files, 121 tests passed · `npm run e
 |---|---|---|
 | 1 | Starts locally with documented commands | `docs/SETUP.md` (`npm install`, `npm run dev:mock`). **E2E:** every run builds and starts the app with `npm run build && npm start` before testing. |
 | 2 | Mock mode works without credentials | **E2E:** the whole suite runs in mock mode with no key. **Unit:** every controller, cue and branch test uses the mock provider. |
-| 3 | Real mode uses two distinct configured models | **Unit:** `realMode.test.ts` "runs a full discussion with two free models"; `config` refuses the same model in both seats. **Manual:** real 16-turn episode recorded Oct 8 with two different free models. |
+| 3 | Real mode uses two distinct configured models | **Unit:** `realMode.test.ts` "runs a full discussion with two free models"; the same model in both seats is reported as a problem and blocks real runs ("reports what is missing instead of crashing"). **Manual:** real 16-turn episode recorded Oct 8 with two different free models. |
 | 4 | A normal run ends after its last turn | Episodes have **16 short turns** since Oct 8 (owner's decision, `docs/PLAN.md`), not 8. **Unit:** `controller.test.ts` "ends a run after 16 completed turns"; branches end after their 4 new turns (`participation.test.ts`). |
 | 5 | Stop prevents further scheduled turns | **Unit:** "Stop prevents any further turns" (and Stop cancels a waiting cue). **E2E:** "create → run → stop → refresh keeps every finished turn". |
 | 6 | Partial failures don't erase completed turns | **Unit:** "a failed turn saves nothing, keeps earlier turns, and Retry continues"; a stopped turn never half-saves. |
@@ -22,6 +22,6 @@ Last full run (Oct 8, 2026): `npm test` 16 files, 121 tests passed · `npm run e
 | 12 | Export includes models, turns, interventions and branch metadata | **Unit:** `export.test.ts` (JSON schema v1 and Markdown). **E2E:** "export downloads Markdown and JSON with models, turns and cues". |
 | 13 | API keys don't appear in frontend assets or normal logs | **Unit:** `webBundle.test.ts` (source and a fresh build with the key set), `realMode.test.ts` "never appears in logs or in any response", `export.test.ts` (not in exports). |
 | 14 | Paid models are blocked by the free-only guard | **Unit:** `guard.test.ts` (paid, unknown, `:free`-only, routers, unreadable price list) and `realMode.test.ts` "blocks a paid model by name, before any chat request". |
-| 15 | Request limits block generation with a clear message | **Unit:** "pauses when the daily request limit is reached"; retries never pass the limit. The Studio shows "Daily request limit reached. It resets tomorrow." |
+| 15 | Request limits block generation with a clear message | **Unit:** "pauses when the daily request limit is reached"; retries never pass the limit. The Studio shows a "Daily limit reached" banner with the count and when turns can start again, and Start is disabled. |
 | 16 | The mobile interface stays usable | **E2E:** phone viewport (Pixel 7): every screen without sideways scroll, the Listen player, and the cue sheet. |
 | 17 | Critical flows pass automated tests | `npm test` and `npm run e2e`, plus **E2E** accessibility (axe, no serious or critical WCAG 2.1 A/AA issues on any screen), keyboard-only use and reduced motion. |
