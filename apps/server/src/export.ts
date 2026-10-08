@@ -25,7 +25,7 @@ export function exportJson(c: ConversationView, usage: UsageRow[]) {
     })),
     interventions: c.interventions.map(x => ({
       kind: x.kind, text: x.text, targetSeq: x.targetSeq, fromTemperature: x.fromTemp, toTemperature: x.toTemp,
-      appliesBeforeSeq: x.appliesBeforeSeq, status: x.status, createdAt: x.createdAt,
+      appliesBeforeSeq: x.appliesBeforeSeq, status: x.status, createdAt: x.createdAt, fromOriginal: x.fromOriginal,
     })),
     cueLimit: CUE_LIMIT,
     artist: c.artist?.state === 'done' ? {
@@ -43,9 +43,12 @@ export function exportJson(c: ConversationView, usage: UsageRow[]) {
   };
 }
 
+/** Listener text on one line, with inline Markdown escaped. Mid-line, # and list marks can't start a block, so it can't change the document's structure. */
+const safe = (s: string | null) => (s ?? '').replace(/\s+/g, ' ').trim().replace(/([\\`*_[\]<>|])/g, '\\$1');
+
 const CUE_LINE: Record<string, (x: ConversationView['interventions'][number]) => string> = {
-  challenge: x => `> **Listener's challenge:** ${x.text}`,
-  guest: x => `> **Guest on the mic:** “${x.text}”`,
+  challenge: x => `> **Listener's challenge:** ${safe(x.text)}`,
+  guest: x => `> **Guest on the mic:** “${safe(x.text)}”`,
   deeper: x => `> **Listener:** go deeper on turn ${x.targetSeq}`,
   temp: x => `> **Listener:** temperature ${x.fromTemp && TEMPERATURES[x.fromTemp].label} → ${x.toTemp && TEMPERATURES[x.toTemp].label}`,
 };
@@ -59,7 +62,7 @@ export function exportMarkdown(c: ConversationView) {
     `CrossTalk · ${episodeLabel(c.episode)} · ${MODES[c.mode].label} · ${AUDIENCES[c.audience].label} · ${TEMPERATURES[c.temperature].label}`,
     '',
     `Hosts: ${host('A')} and ${host('B')}`,
-    c.parentId ? `\n✂ Branch of “${c.parent?.title ?? c.parentId}” from turn ${c.branchSeq}: “${c.branchDirection}”` : '',
+    c.parentId ? `\n✂ Branch of “${c.parent?.title ?? c.parentId}” from turn ${c.branchSeq}: “${safe(c.branchDirection)}”` : '',
     '',
     '---',
     '',
@@ -67,13 +70,13 @@ export function exportMarkdown(c: ConversationView) {
   for (const t of c.turns) {
     for (const x of c.interventions.filter(i => i.appliesBeforeSeq === t.seq && i.status === 'applied')) lines.push(CUE_LINE[x.kind](x), '');
     lines.push(`**${sp[t.speakerId].name}** · turn ${t.seq} · ${t.objective}${t.conversationId !== c.id ? ' · from the original' : ''}`, '', t.text, '');
-    if (c.branchSeq === t.seq) lines.push(`*✂ The branch starts here: “${c.branchDirection}”*`, '');
+    if (c.branchSeq === t.seq) lines.push(`*✂ The branch starts here: “${safe(c.branchDirection)}”*`, '');
   }
   if (c.artist?.state === 'done') {
     lines.push('---', '', `## From the booth: ${ARTIST.name}, ${ARTIST.role}`, '', c.artist.perspective, '',
       `Her sketch, “${c.artist.artTitle}”, is of turn ${c.artist.momentSeq}: “${c.artist.caption}”`, '');
   }
-  if (c.branches.length) lines.push('## Branches', '', ...c.branches.map(b => `- From turn ${b.branchSeq}: ${b.direction}`), '');
+  if (c.branches.length) lines.push('## Branches', '', ...c.branches.map(b => `- From turn ${b.branchSeq}: ${safe(b.direction)}`), '');
   lines.push('---', '', `*${NOTICE}*`);
   return lines.filter((l, i, a) => !(l === '' && a[i - 1] === '')).join('\n') + '\n';
 }

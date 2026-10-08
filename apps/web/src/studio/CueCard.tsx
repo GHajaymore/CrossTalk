@@ -10,7 +10,7 @@ export function CueCard({ cue, onCancel }: { cue: Intervention; onCancel?: () =>
     : cue.text;
   return (
     <div className={`cue ${cue.kind}${queued ? ' queued' : ''}`}>
-      <div className="tag">{cue.kind === 'guest' ? 'Guest · you' : 'Your cue'} · {CUE_LABEL[cue.kind]} · {queued ? 'lands' : 'landed'} before turn {cue.appliesBeforeSeq}</div>
+      <div className="tag">{cue.kind === 'guest' ? 'Guest · you' : 'Your cue'} · {CUE_LABEL[cue.kind]} · {queued ? 'lands' : 'landed'} before turn {cue.appliesBeforeSeq}{cue.fromOriginal ? ' · in the original' : ''}</div>
       {body && <p>{cue.kind === 'guest' ? `“${body}”` : body}</p>}
       {queued && onCancel && <button className="link-btn" onClick={onCancel}>Take it back</button>}
     </div>

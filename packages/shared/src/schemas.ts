@@ -99,10 +99,13 @@ export const Intervention = z.object({
   appliesBeforeSeq: z.number().int(),
   status: z.enum(['queued', 'applied', 'cancelled']),
   createdAt: z.string(),
+  /** In a branch: a cue that landed in the original episode, before the cut. Read-only here. */
+  fromOriginal: z.boolean().default(false),
 });
 export type Intervention = z.infer<typeof Intervention>;
 
-const cueText = z.string().trim().min(1, 'Write your cue first.').max(CUE_TEXT_MAX, `Keep it under ${CUE_TEXT_MAX} characters.`);
+// Cue text is a line said on air: kept on one line.
+const cueText = z.string().transform(s => s.replace(/\s+/g, ' ').trim()).pipe(z.string().min(1, 'Write your cue first.').max(CUE_TEXT_MAX, `Keep it under ${CUE_TEXT_MAX} characters.`));
 /** What the Cue panel sends. */
 export const CueInput = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('challenge'), text: cueText }),
@@ -115,7 +118,7 @@ export type CueInput = z.infer<typeof CueInput>;
 /** Branch from a finished turn in a new direction. */
 export const BranchInput = z.object({
   fromSeq: z.number().int().min(1),
-  direction: z.string().trim().min(1, 'Say where the branch should go.').max(CUE_TEXT_MAX, `Keep it under ${CUE_TEXT_MAX} characters.`),
+  direction: z.string().transform(s => s.replace(/\s+/g, ' ').trim()).pipe(z.string().min(1, 'Say where the branch should go.').max(CUE_TEXT_MAX, `Keep it under ${CUE_TEXT_MAX} characters.`)),
 });
 export type BranchInput = z.infer<typeof BranchInput>;
 

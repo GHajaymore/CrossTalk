@@ -9,8 +9,9 @@ type Props = { view: ConversationView; live: LiveTurn | null; setView: (v: Conve
 export function cueState(view: ConversationView, live: LiveTurn | null) {
   const last = view.turns.reduce((m, t) => Math.max(m, t.seq), 0);
   const st = view.run?.state ?? 'idle';
-  const used = view.interventions.length;
-  const waiting = view.interventions.find(c => c.status === 'queued');
+  const own = view.interventions.filter(c => !c.fromOriginal);
+  const used = own.length;
+  const waiting = own.find(c => c.status === 'queued');
   const landsBefore = last + (live ? 2 : 1);
   const blocked = st === 'completed' || st === 'cancelled' ? 'This episode has finished. Branch from any turn to take it somewhere new.'
     : !last ? 'Cues land between turns. Start the episode first.'

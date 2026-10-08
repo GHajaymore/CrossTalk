@@ -10,12 +10,15 @@ export function BranchDialog({ seq, who, onClose, onCreate }: Props) {
   const [direction, setDirection] = useState('');
   const [busy, setBusy] = useState(false);
   const box = useRef<HTMLTextAreaElement>(null);
+  // The latest onClose, so re-renders of the Studio never re-run the effect and steal focus.
+  const close = useRef(onClose);
+  close.current = onClose;
   useEffect(() => {
     box.current?.focus();
-    const key = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    const key = (e: KeyboardEvent) => { if (e.key === 'Escape') close.current(); };
     addEventListener('keydown', key);
     return () => removeEventListener('keydown', key);
-  }, [onClose]);
+  }, []);
   const go = async () => { setBusy(true); try { await onCreate(direction.trim()); } finally { setBusy(false); } };
   return (
     <div className="modal-back" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>

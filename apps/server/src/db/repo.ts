@@ -131,6 +131,27 @@ export class Repo {
       .all(conversationId) as CueRow[]).map(toCue);
   }
 
+  /**
+   * The cues a conversation plays with: in a branch, the original's applied cues up to the cut
+   * (marked fromOriginal), then its own. Limits and queueing only ever look at its own (listCues).
+   */
+  cuesFor(conversationId: string): Intervention[] {
+    const c = this.getConversation(conversationId);
+    const inherited = c?.parentId && c.branchSeq
+      ? this.cuesFor(c.parentId).filter(x => x.status === 'applied' && x.appliesBeforeSeq <= c.branchSeq!).map(x => ({ ...x, fromOriginal: true }))
+      : [];
+    return [...inherited, ...this.listCues(conversationId)];
+  }
+
+  /** The Temperature in effect for turn `seq`, following any temperature cues that landed (in the original too, for a branch). */
+  temperatureAt(conversationId: string, seq: number): Conversation['temperature'] {
+    const c = this.getConversation(conversationId)!;
+    if (c.parentId && c.branchSeq && seq <= c.branchSeq) return this.temperatureAt(c.parentId, seq);
+    const temps = this.listCues(conversationId).filter(x => x.kind === 'temp' && x.status === 'applied').sort((a, b) => a.appliesBeforeSeq - b.appliesBeforeSeq);
+    const landed = temps.filter(x => x.appliesBeforeSeq <= seq).at(-1);
+    return landed?.toTemp ?? temps[0]?.fromTemp ?? c.temperature;
+  }
+
   setCueStatus(id: string, status: Intervention['status']) {
     this.db.prepare('UPDATE interventions SET status = ? WHERE id = ?').run(status, id);
   }
@@ -174,7 +195,7 @@ export class Repo {
     const parent = c.parentId ? this.getConversation(c.parentId) : null;
     return {
       ...c, turns: this.listTurns(id), run: this.latestRun(id),
-      interventions: this.listCues(id).filter(x => x.status !== 'cancelled'),
+      interventions: this.cuesFor(id).filter(x => x.status !== 'cancelled'),
       parent: parent && { id: parent.id, title: parent.title, episode: parent.episode },
       branches: this.listBranches(id),
       artist: this.getArtist(id),

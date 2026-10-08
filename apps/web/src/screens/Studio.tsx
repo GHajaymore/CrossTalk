@@ -148,8 +148,10 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
     try { setView(await api.cancelCue(id, c.id)); toast('Cue taken back'); } catch (e) { toast((e as Error).message); }
   };
   // Each cue card sits on the centre line just before the turn it lands on.
+  // A waiting cue can be taken back until its turn starts being written.
+  const canCancel = (c: Intervention) => c.status === 'queued' && !c.fromOriginal && !(live && live.seq >= c.appliesBeforeSeq);
   const cuesBefore = (seq: number) => view.interventions.filter(c => c.appliesBeforeSeq === seq)
-    .map(c => <CueCard key={c.id} cue={c} onCancel={cancelCue(c)} />);
+    .map(c => <CueCard key={c.id} cue={c} onCancel={canCancel(c) ? cancelCue(c) : undefined} />);
   const shown = new Set([...view.turns.map(t => t.seq), ...(live ? [live.seq] : []), ...(failedSeq ? [failedSeq] : [])]);
   const createBranch = async (direction: string) => {
     try {
@@ -189,7 +191,7 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
           <TurnCard seq={failedSeq} speakerId={speakerFor(failedSeq)} name={sp[speakerFor(failedSeq)].name} objective={jobIn(view, failedSeq)}
             modelId={sp[speakerFor(failedSeq)].modelId} text={reason ?? 'This turn failed.'} state="failed" />
         </>}
-        {view.interventions.filter(c => !shown.has(c.appliesBeforeSeq)).map(c => <CueCard key={c.id} cue={c} onCancel={cancelCue(c)} />)}
+        {view.interventions.filter(c => !shown.has(c.appliesBeforeSeq)).map(c => <CueCard key={c.id} cue={c} onCancel={canCancel(c) ? cancelCue(c) : undefined} />)}
       </div>
       {view.artist && (
         <ArtistCard notes={view.artist} speakers={sp} conversationId={id} toast={toast}
@@ -223,11 +225,11 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
             {onAir && <button className="btn sm leave-air" onClick={leaveAir}>Leave On air</button>}
           </div>
           <TurnRail turns={view.turns} liveSeq={live?.seq ?? null} failedSeq={failedSeq} speakers={sp}
-            branchSeq={view.branchSeq} cueSeqs={view.interventions.map(c => c.appliesBeforeSeq)} />
+            branchSeq={view.branchSeq} cueSeqs={view.interventions.filter(c => c.status === 'queued').map(c => c.appliesBeforeSeq)} />
         </>}
         <div className="status-line" aria-live="polite">
           <span><b>{statusWord}</b>{view.run?.pauseRequested ? ' · pausing after this turn' : ''}</span>
-          <span>{view.interventions.length} of {CUE_LIMIT} cues used</span>
+          <span>{view.interventions.filter(c => !c.fromOriginal).length} of {CUE_LIMIT} cues used</span>
         </div>
 
         <SetupBanner config={config} />

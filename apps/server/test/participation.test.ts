@@ -141,7 +141,47 @@ describe('listener cues', () => {
   });
 });
 
+describe('cue edge cases (from review)', () => {
+  it('a temperature cue changes the mood only when its turn is saved', async () => {
+    const { controller, repo } = setup(QUICK);
+    const c = controller.create(draft());
+    await runTo(controller, c.id, 2);
+    controller.addCue(c.id, { kind: 'temp', direction: 'up' });
+    const off = controller.subscribe(c.id, e => { if (e.type === 'turn-start' && e.seq === 3) { off(); controller.stop(c.id); } });
+    await controller.start(c.id);
+    await controller.settled(c.id);
+    expect(repo.lastSeq(c.id)).toBe(2);
+    expect(repo.getConversation(c.id)!.temperature).toBe('lively');
+    expect(repo.listCues(c.id)[0].status).toBe('cancelled');
+  });
+});
+
 describe('branching', () => {
+  it('starts in the mood of the turn it was cut from, and carries the original guest lines', async () => {
+    const { controller, repo, prompt } = setup();
+    const p = controller.create(draft());
+    await runTo(controller, p.id, 2);
+    controller.addCue(p.id, { kind: 'guest', text: 'I teach nights at a college.' });
+    await runTo(controller, p.id, 4);
+    controller.addCue(p.id, { kind: 'temp', direction: 'up' });
+    await finish(controller, p.id);
+    expect(repo.getConversation(p.id)!.temperature).toBe('heated');
+
+    expect(controller.branch(p.id, { fromSeq: 4, direction: 'Calmer take' }).temperature).toBe('lively');
+    const hot = controller.branch(p.id, { fromSeq: 6, direction: 'Keep it spicy' });
+    expect(hot.temperature).toBe('heated');
+    expect(hot.interventions).toEqual([
+      expect.objectContaining({ kind: 'guest', fromOriginal: true, appliesBeforeSeq: 3 }),
+      expect.objectContaining({ kind: 'temp', fromOriginal: true, appliesBeforeSeq: 5 }),
+    ]);
+    await runTo(controller, hot.id, 7);
+    expect(prompt(hot.id, 7).user).toContain('<guest>Guest on the mic: I teach nights at a college.</guest>');
+    expect(prompt(hot.id, 7).system).toMatch(/Mood: Passionate/);
+    // The original's cues don't use up the branch's own 3.
+    expect(controller.addCue(hot.id, { kind: 'challenge', text: 'And students?' }).appliesBeforeSeq).toBe(8);
+  });
+
+
   it('leaves the parent byte-identical and generates exactly 4 new turns in the new direction', async () => {
     const { controller, repo, prompt } = setup();
     const p = controller.create(draft());

@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import {
-  assertTransition, BRANCH_TURNS, CUE_LIMIT, jobIn, resolveSpeakers, speakerFor, stepTemperature, TEMPERATURES, TransitionError,
+  assertTransition, BRANCH_TURNS, CUE_LIMIT, jobIn, resolveSpeakers, speakerFor, stepTemperature, TransitionError,
   type BranchInput, type Conversation, type ConversationView, type CreateConversation, type CueInput, type Intervention,
   type LiveTurn, type Run, type RunState, type StreamEvent,
 } from '@crosstalk/shared';
@@ -159,7 +159,7 @@ export class ConversationController {
 
     const cue: Intervention = {
       id: randomUUID(), kind: input.kind, text: null, targetSeq: null, fromTemp: null, toTemp: null,
-      appliesBeforeSeq, status: 'queued', createdAt: this.now().toISOString(),
+      appliesBeforeSeq, status: 'queued', createdAt: this.now().toISOString(), fromOriginal: false,
     };
     if (input.kind === 'challenge' || input.kind === 'guest') cue.text = input.text;
     if (input.kind === 'deeper') {
@@ -208,6 +208,8 @@ export class ConversationController {
       ...parent,
       id: randomUUID(),
       title: `${parent.topic} · ${input.direction}`,
+      // The mood at the cut, not wherever the original ended up.
+      temperature: this.repo.temperatureAt(conversationId, input.fromSeq),
       parentId: parent.id,
       branchTurnId: turn.id,
       branchSeq: input.fromSeq,
@@ -397,11 +399,12 @@ export class ConversationController {
       if (run.pauseRequested) { this.transition(run, 'paused', 'by you'); return; }
       if (this.requestsToday() >= this.opts.dailyLimit) { this.transition(run, 'paused', 'Daily request limit reached'); return; }
 
-      // Cues waiting for this boundary land now. A temperature cue changes the mood from this turn on.
-      const cues = this.repo.listCues(conversationId).filter(x => x.status !== 'cancelled');
-      const landing = cues.filter(x => x.status === 'queued' && x.appliesBeforeSeq <= seq);
+      // Cues waiting for this boundary land now. A temperature cue sets the mood for this turn; it's
+      // saved with the turn, so a turn that fails or is stopped leaves the mood as it was.
+      const cues = this.repo.cuesFor(conversationId).filter(x => x.status !== 'cancelled');
+      const landing = cues.filter(x => !x.fromOriginal && x.status === 'queued' && x.appliesBeforeSeq <= seq);
       const temp = landing.filter(x => x.kind === 'temp').at(-1)?.toTemp;
-      if (temp && temp in TEMPERATURES && temp !== conv.temperature) { this.repo.setTemperature(conversationId, temp); conv.temperature = temp; }
+      if (temp) conv.temperature = temp;
 
       const speaker = conv.speakers[speakerFor(seq)];
       const objective = jobIn(conv, seq);
@@ -410,12 +413,16 @@ export class ConversationController {
       const { text } = out;
 
       const at = this.now().toISOString();
-      this.repo.saveTurn({
-        id: randomUUID(), conversationId, seq, speakerId: speaker.id, modelId: speaker.modelId,
-        objective, text, status: 'completed', createdAt: at,
-      });
-      for (const c of landing) this.repo.setCueStatus(c.id, 'applied');
-      this.repo.touchConversation(conversationId, at);
+      // The turn, the cues it answered and any new mood are saved together, or not at all.
+      this.repo.db.transaction(() => {
+        this.repo.saveTurn({
+          id: randomUUID(), conversationId, seq, speakerId: speaker.id, modelId: speaker.modelId,
+          objective, text, status: 'completed', createdAt: at,
+        });
+        for (const c of landing) this.repo.setCueStatus(c.id, 'applied');
+        if (temp) this.repo.setTemperature(conversationId, temp);
+        this.repo.touchConversation(conversationId, at);
+      })();
       if (this.active?.runId === runId) this.active.live = null;
       this.emit(conversationId, { type: 'turn-end', seq });
       this.emit(conversationId, { type: 'changed' });
