@@ -65,7 +65,7 @@ function EpisodeRow({ c, depth, onChanged, toast }: { c: ConversationSummary; de
     <div className={`lib-item${depth ? ' branch' : ''}`}>
       <div className="lib-row">
         {c.artist?.sketchSvg
-          ? <a href={`#/studio/${c.id}/read`} tabIndex={-1}><img className="thumb" src={sketchSrc(c.artist.sketchSvg)} alt="" /></a>
+          ? <img className="thumb" src={sketchSrc(c.artist.sketchSvg)} alt="" />
           : <span className="thumb thumb-empty" aria-hidden="true">{depth ? '✂' : ''}</span>}
         <div style={{ minWidth: 0 }}>
           {mode === 'rename' ? (

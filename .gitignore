@@ -10,3 +10,8 @@ apps/server/data/
 .DS_Store
 tools/voice/node_modules/
 *.mp3
+
+# Playwright output
+test-results/
+playwright-report/
+e2e/.data/

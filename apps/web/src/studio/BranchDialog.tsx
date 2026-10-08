@@ -14,11 +14,13 @@ export function BranchDialog({ seq, who, onClose, onCreate }: Props) {
   const close = useRef(onClose);
   close.current = onClose;
   useEffect(() => {
+    // Focus goes back to the turn's menu button when the dialog closes.
+    const opener = document.querySelector<HTMLElement>(`[aria-label="Actions for turn ${seq}"]`);
     box.current?.focus();
     const key = (e: KeyboardEvent) => { if (e.key === 'Escape') close.current(); };
     addEventListener('keydown', key);
-    return () => removeEventListener('keydown', key);
-  }, []);
+    return () => { removeEventListener('keydown', key); opener?.focus(); };
+  }, [seq]);
   const go = async () => { setBusy(true); try { await onCreate(direction.trim()); } finally { setBusy(false); } };
   return (
     <div className="modal-back" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>

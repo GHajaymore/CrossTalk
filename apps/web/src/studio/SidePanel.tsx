@@ -12,7 +12,7 @@ export function SidePanel({ open, onClose, cue, voices, branches }: { open: bool
           <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)}>{l}</button>
         ))}
       </div>
-      <div className="panel-body">
+      <div className="panel-body" tabIndex={0} aria-label="Studio controls content">
         {tab === 'cue' && cue}
         {tab === 'voices' && voices}
         {tab === 'branches' && branches}
