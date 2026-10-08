@@ -1,7 +1,9 @@
 import { createReadStream, existsSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import Fastify, { type FastifyServerOptions } from 'fastify';
-import { CreateConversation, MockSettings, type AppConfig, type ConversationView, type EpisodeAudio, type StreamEvent } from '@crosstalk/shared';
+import { randomUUID } from 'node:crypto';
+import { CreateConversation, IrisFeedbackInput, MockSettings, type AppConfig, type ConversationView, type EpisodeAudio, type StreamEvent } from '@crosstalk/shared';
+import { Iris, mockArtist, type ArtistBackend } from './artist/iris';
 import { ConversationController, ControllerError, type ControllerEvent } from './controller/controller';
 import { openDb, Repo } from './db/repo';
 import { FreeModelGuard } from './guard/freeModelGuard';
@@ -31,14 +33,34 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
   const guardedModels = [cfg.models.A, cfg.models.B, ...(cfg.artistModel ? [cfg.artistModel] : [])].filter(Boolean);
   const checkModels = async () => (guard ? guard.check(guardedModels) : []);
 
+  // Iris, the Artist. Real mode uses ARTIST_MODEL (a free model, checked like the speakers'); mock mode draws from a script.
+  const artistBackend: ArtistBackend | null = real
+    ? (cfg.artistModel
+      ? { modelId: cfg.artistModel, draw: ({ system, user }) => (provider as OpenRouterProvider).complete(cfg.artistModel!, system, user, 3000) }
+      : null)
+    : mockArtist;
+  let controllerRef: ConversationController | null = null;
+  const iris = new Iris(repo, artistBackend, {
+    canRequest: () => !!controllerRef && controllerRef.requestsToday() < cfg.dailyLimit,
+    countRequest: () => controllerRef?.countRequest(),
+    preflight: real ? async () => {
+      if (cfg.problems.length) return `Real mode isn't set up yet: ${cfg.problems.join(' ')}`;
+      const v = (await checkModels()).find(x => x.modelId === cfg.artistModel);
+      return v && !v.ok ? `Blocked by the free-model check: ${v.modelId}: ${v.reason}` : null;
+    } : undefined,
+    onChange: id => controllerRef?.notify(id),
+  });
+
   const controller = new ConversationController(repo, provider, {
     maxTurns: cfg.maxTurns, dailyLimit: cfg.dailyLimit, models: cfg.models, sleep: opts.sleep,
+    onCompleted: id => { void iris.listen(id); },
     // Before every real run: settings must be complete, and every model must pass the free-model guard.
     preflight: real ? async () => {
       if (cfg.problems.length) return `Real mode isn't set up yet: ${cfg.problems.join(' ')}`;
       return FreeModelGuard.blockMessage(await checkModels());
     } : undefined,
   });
+  controllerRef = controller;
   const interrupted = controller.recoverInterrupted();
 
   // Never log request headers or bodies: the key travels only from this server to OpenRouter.
@@ -106,7 +128,7 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
   });
 
   app.get('/api/conversations', async () =>
-    repo.listConversations().map(c => ({ ...c, run: repo.latestRun(c.id), turnCount: repo.lastSeq(c.id) })));
+    repo.listConversations().map(c => ({ ...c, run: repo.latestRun(c.id), turnCount: repo.lastSeq(c.id), artist: repo.getArtist(c.id) })));
 
   app.post('/api/conversations', async (req, reply) => {
     const parsed = CreateConversation.safeParse(req.body);
@@ -138,6 +160,26 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
     await controller.start(req.params.id);
     return view(req.params.id);
   });
+  // Ask Iris again: a fresh listen and drawing for a completed episode (one more request).
+  app.post<{ Params: { id: string } }>('/api/conversations/:id/artist', async req => {
+    const v = view(req.params.id);
+    if (v.run?.state !== 'completed') throw new ControllerError('Iris listens once an episode is complete.', 409);
+    void iris.listen(req.params.id, true);
+    return view(req.params.id);
+  });
+
+  // What the listener tells Iris about her work. She reads the latest notes before every drawing.
+  app.post('/api/iris/feedback', async (req, reply) => {
+    const parsed = IrisFeedbackInput.safeParse(req.body);
+    if (!parsed.success) throw new ControllerError('Invalid feedback.', 400);
+    const f = parsed.data;
+    const art = f.conversationId ? repo.getArtist(f.conversationId) : null;
+    repo.addFeedback({ ...f, id: randomUUID(), artTitle: art?.artTitle ?? null, createdAt: new Date().toISOString() });
+    return reply.status(201).send(repo.listFeedback(20));
+  });
+  app.get('/api/iris/feedback', async () => repo.listFeedback(20));
+  app.delete<{ Params: { id: string } }>('/api/iris/feedback/:id', async req => { repo.deleteFeedback(req.params.id); return repo.listFeedback(20); });
+
   app.post<{ Params: { id: string } }>('/api/conversations/:id/pause', async req => {
     controller.pause(req.params.id);
     return view(req.params.id);
@@ -162,5 +204,5 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
     req.raw.on('close', () => { off(); clearInterval(ping); });
   });
 
-  return { app, controller, repo, guard, setMock: (m: MockSettings) => { mock = m; } };
+  return { app, controller, repo, guard, iris, setMock: (m: MockSettings) => { mock = m; } };
 }

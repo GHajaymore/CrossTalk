@@ -175,7 +175,7 @@ export function Create({ config, go, refreshConfig, toast }: Props) {
 
       <div className="booth-note">
         <span className="flag C" aria-hidden="true">I</span>
-        <span><b>{ARTIST.name}, {ARTIST.role},</b> listens from the booth. When the discussion ends, she shares her perspective as a listener and sketches the moment that stayed with her. <span className="soon">Milestone 5</span></span>
+        <span><b>{ARTIST.name}, {ARTIST.role},</b> listens from the booth. When the discussion ends, she shares her perspective as a listener and sketches the moment that stayed with her. Tell her what you think and she learns your taste.</span>
       </div>
 
       <SetupBanner config={config} />

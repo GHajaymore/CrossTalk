@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3';
-import { Conversation, Run, type ConversationView, type RunState, type Speakers, type Turn } from '@crosstalk/shared';
+import { ArtistNotes, Conversation, Run, type ConversationView, type IrisFeedback, type RunState, type Speakers, type Turn } from '@crosstalk/shared';
 import { MIGRATIONS } from './schema';
 
 export type DB = Database.Database;
@@ -127,7 +127,41 @@ export class Repo {
   view(id: string): ConversationView | null {
     const c = this.getConversation(id);
     if (!c) return null;
-    return { ...c, turns: this.listTurns(id), run: this.latestRun(id), interventions: [] };
+    return { ...c, turns: this.listTurns(id), run: this.latestRun(id), interventions: [], artist: this.getArtist(id) };
+  }
+
+  getArtist(conversationId: string): ArtistNotes | null {
+    const r = this.db.prepare('SELECT * FROM artist_notes WHERE conversation_id = ?').get(conversationId) as Record<string, unknown> | undefined;
+    if (!r) return null;
+    return ArtistNotes.parse({
+      conversationId: r.conversation_id, state: r.state, modelId: r.model_id, perspective: r.perspective, momentSeq: r.moment_seq,
+      caption: r.caption, artTitle: r.art_title, artStyle: r.art_style, sketchSvg: r.sketch_svg ?? null, imagePrompt: r.image_prompt,
+      error: r.error ?? null, version: r.version, createdAt: r.created_at,
+    });
+  }
+
+  saveArtist(a: ArtistNotes) {
+    this.db.prepare(`INSERT INTO artist_notes (conversation_id, state, model_id, perspective, moment_seq, caption, art_title, art_style, sketch_svg, image_prompt, error, version, created_at)
+      VALUES (@conversationId, @state, @modelId, @perspective, @momentSeq, @caption, @artTitle, @artStyle, @sketchSvg, @imagePrompt, @error, @version, @createdAt)
+      ON CONFLICT (conversation_id) DO UPDATE SET state = excluded.state, model_id = excluded.model_id, perspective = excluded.perspective,
+        moment_seq = excluded.moment_seq, caption = excluded.caption, art_title = excluded.art_title, art_style = excluded.art_style,
+        sketch_svg = excluded.sketch_svg, image_prompt = excluded.image_prompt, error = excluded.error, version = excluded.version,
+        created_at = excluded.created_at`).run(a);
+  }
+
+  addFeedback(f: IrisFeedback) {
+    this.db.prepare(`INSERT INTO iris_feedback (id, conversation_id, rating, note, art_title, created_at)
+      VALUES (@id, @conversationId, @rating, @note, @artTitle, @createdAt)`).run(f);
+  }
+
+  /** Most recent first. */
+  listFeedback(limit = 20): IrisFeedback[] {
+    return (this.db.prepare(`SELECT id, conversation_id AS conversationId, rating, note, art_title AS artTitle, created_at AS createdAt
+      FROM iris_feedback ORDER BY created_at DESC, rowid DESC LIMIT ?`).all(limit) as IrisFeedback[]);
+  }
+
+  deleteFeedback(id: string) {
+    this.db.prepare('DELETE FROM iris_feedback WHERE id = ?').run(id);
   }
 
   requestsOn(date: string): number {

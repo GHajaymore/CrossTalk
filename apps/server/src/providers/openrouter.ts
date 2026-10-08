@@ -57,23 +57,38 @@ export class OpenRouterProvider implements Provider {
    * Two invented host roles that fit the topic (one short, non-streaming request).
    * Returns null on any problem, so the caller falls back to the keyword rule.
    */
-  async generateRoles(topic: string, audience: Audience, modelId: string): Promise<[string, string] | null> {
-    const { system, user } = rolesPrompt(topic, audience);
+  /** One non-streaming request; returns the reply text. Throws ProviderError on failure. */
+  async complete(modelId: string, system: string, user: string, maxTokens: number, timeoutMs = 90_000): Promise<string> {
+    let res: Response;
     try {
-      const res = await this.f(CHAT_URL, {
+      res = await this.f(CHAT_URL, {
         method: 'POST',
-        signal: AbortSignal.timeout(Math.min(this.opts.timeoutMs, 45_000)),
+        signal: AbortSignal.timeout(Math.min(this.opts.timeoutMs * 2, timeoutMs)),
         headers: { Authorization: `Bearer ${this.opts.apiKey}`, 'Content-Type': 'application/json', 'X-Title': 'CrossTalk (local prototype)' },
         body: JSON.stringify({
           model: modelId,
           messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
-          max_tokens: 600,
+          max_tokens: maxTokens,
           reasoning: { effort: 'low', exclude: true },
         }),
       });
-      if (!res.ok) return null;
-      const body = (await res.json()) as { choices?: { message?: { content?: string } }[] };
-      const text = body.choices?.[0]?.message?.content ?? '';
+    } catch (e) {
+      throw new ProviderError((e as Error).name === 'TimeoutError' ? 'OpenRouter timed out.' : "Couldn't reach OpenRouter.", true);
+    }
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      let detail = '';
+      try { detail = (JSON.parse(body) as { error?: { message?: string } }).error?.message ?? ''; } catch { /* not JSON */ }
+      throw httpError(res.status, detail, res.headers.get('retry-after'));
+    }
+    const body = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+    return body.choices?.[0]?.message?.content ?? '';
+  }
+
+  async generateRoles(topic: string, audience: Audience, modelId: string): Promise<[string, string] | null> {
+    const { system, user } = rolesPrompt(topic, audience);
+    try {
+      const text = await this.complete(modelId, system, user, 600, 45_000);
       const json = text.match(/\{[\s\S]*\}/)?.[0];
       if (!json) return null;
       const parsed = RoleReply.safeParse(JSON.parse(json));

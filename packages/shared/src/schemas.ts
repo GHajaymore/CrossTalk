@@ -113,6 +113,36 @@ export type AudioTiming = { seq: number; speakerId: SpeakerId; start: number; en
 /** A rendered episode recording (natural voices), if one exists. */
 export type EpisodeAudio = { url: string; durationSec: number; voices: { A: string; B: string }; timings: AudioTiming[] };
 
+/** Iris, the Artist: a listener's perspective and a titled sketch, made after an episode ends. */
+export const ArtistNotes = z.object({
+  conversationId: z.string(),
+  state: z.enum(['listening', 'done', 'failed']),
+  modelId: z.string(),
+  perspective: z.string(),
+  momentSeq: z.number().int(),
+  /** A quote of 20 words or fewer from the turn she drew. */
+  caption: z.string(),
+  artTitle: z.string(),
+  artStyle: z.enum(['sketch', 'picture', 'painting', 'dreamscape']),
+  /** Checked SVG line art, or null if her drawing failed the safety check. */
+  sketchSvg: z.string().nullable(),
+  /** Saved for a painted version later. */
+  imagePrompt: z.string(),
+  error: z.string().nullable(),
+  /** How many times she has drawn this episode. */
+  version: z.number().int(),
+  createdAt: z.string(),
+});
+export type ArtistNotes = z.infer<typeof ArtistNotes>;
+
+/** What the listener told Iris about her work. She reads recent notes before every drawing. */
+export const IrisFeedbackInput = z.object({
+  conversationId: z.string().nullable(),
+  rating: z.enum(['up', 'down']),
+  note: z.string().trim().max(300),
+});
+export type IrisFeedback = z.infer<typeof IrisFeedbackInput> & { id: string; artTitle: string | null; createdAt: string };
+
 /** A conversation with everything the Studio needs to draw it. */
 export type ConversationView = Conversation & {
   turns: Turn[];
@@ -121,6 +151,8 @@ export type ConversationView = Conversation & {
   interventions: Intervention[];
   /** The rendered recording, when tools/voice has made one. */
   audio?: EpisodeAudio | null;
+  /** Iris's notes for this episode, once she has listened. */
+  artist?: ArtistNotes | null;
 };
 
 /** Events sent from the server over Server-Sent Events. */

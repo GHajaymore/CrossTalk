@@ -52,6 +52,8 @@ export type ControllerOptions = {
   now?: () => Date;
   /** Checked before every run (config problems, free-model guard). Returns why the run is blocked, or null. */
   preflight?: () => Promise<string | null>;
+  /** Called once when a run completes (Iris listens then). */
+  onCompleted?: (conversationId: string) => void;
   /** Waiting before a retry. Replaceable in tests. */
   sleep?: (ms: number, signal: AbortSignal) => Promise<void>;
 };
@@ -83,6 +85,8 @@ export class ConversationController {
     return () => { this.bus.off(conversationId, fn); };
   }
   private emit(conversationId: string, e: ControllerEvent) { this.bus.emit(conversationId, e); }
+  /** Something else about this conversation changed (e.g. Iris finished); subscribers re-read it. */
+  notify(conversationId: string) { this.emit(conversationId, { type: 'changed' }); }
 
   // ---- queries ----
   get activeConversationId() { return this.active?.conversationId ?? null; }
@@ -292,7 +296,7 @@ export class ConversationController {
       if (!run || run.id !== runId || run.state !== 'generating' || signal.aborted) return;
 
       const seq = this.repo.lastSeq(conversationId) + 1;
-      if (seq > this.opts.maxTurns) { this.transition(run, 'completed', null); return; }
+      if (seq > this.opts.maxTurns) { this.transition(run, 'completed', null); queueMicrotask(() => this.opts.onCompleted?.(conversationId)); return; }
       if (run.pauseRequested) { this.transition(run, 'paused', 'by you'); return; }
       if (this.requestsToday() >= this.opts.dailyLimit) { this.transition(run, 'paused', 'Daily request limit reached'); return; }
 

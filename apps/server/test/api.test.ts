@@ -23,8 +23,10 @@ describe('HTTP API', () => {
     expect(got.run.state).toBe('completed');
     expect(got.turns).toHaveLength(16);
 
+    // 16 turns + 1 request for Iris, who listens once the episode is complete.
+    await new Promise(r => setTimeout(r, 20));
     const config = (await app.inject({ url: '/api/config' })).json();
-    expect(config).toMatchObject({ providerMode: 'mock', requestsToday: 16, nextEpisode: 2 });
+    expect(config).toMatchObject({ providerMode: 'mock', requestsToday: 17, nextEpisode: 2 });
   });
 
   it('rejects an empty topic with a readable message', async () => {

@@ -5,7 +5,9 @@ import {
 } from '@crosstalk/shared';
 import { api } from '../api/client';
 import { useConversation } from '../api/useConversation';
+import { ArtistCard } from '../studio/ArtistCard';
 import { CueCard } from '../studio/CueCard';
+import { EpisodeKit } from '../studio/EpisodeKit';
 import { SidePanel } from '../studio/SidePanel';
 import { StudioSet } from '../studio/StudioSet';
 import { TurnCard } from '../studio/TurnCard';
@@ -95,7 +97,9 @@ export function Studio({ id, config, refreshConfig, toast }: Props) {
           caption={caption}
           runState={st}
           clock={{ seconds: spokenSeconds(view.turns.map(t => t.text)), running: st === 'generating' }}
-          iris={st === 'generating' ? { text: 'Iris · listening', active: true } : { text: 'Iris · in the booth', active: false }}
+          iris={view.artist?.state === 'listening' ? { text: 'Iris · sketching…', active: true }
+            : view.artist?.state === 'done' ? { text: 'Iris · notes ready', active: false }
+            : st === 'generating' ? { text: 'Iris · listening', active: true } : { text: 'Iris · in the booth', active: false }}
         />
 
         <TurnRail turns={view.turns} liveSeq={live?.seq ?? null} failedSeq={failedSeq} speakers={sp} />
@@ -127,6 +131,12 @@ export function Studio({ id, config, refreshConfig, toast }: Props) {
           {view.interventions.map(c => <CueCard key={c.id} cue={c} />)}
         </div>
 
+        {view.artist && (
+          <ArtistCard notes={view.artist} speakers={sp} conversationId={id} toast={toast}
+            onAgain={() => { api.askIris(id).catch(e => toast((e as Error).message)); /* her progress arrives over the live stream */ }}
+            onJump={seq => document.getElementById(`turn-${seq}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })} />
+        )}
+        {st === 'completed' && view.artist?.state === 'done' && <EpisodeKit c={view} toast={toast} />}
         <div className="dock">
           <div className="dock-group">
             <span className="tag">Generation</span>
