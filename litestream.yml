@@ -1,0 +1,14 @@
+# Litestream copies the database (episodes, transcripts and Iris's sketches) to S3-compatible storage
+# as it changes. Every value comes from the environment; nothing secret lives here. See docs/DEPLOY.md.
+dbs:
+  - path: ${DB_PATH}
+    replicas:
+      - type: s3
+        bucket: ${BACKUP_BUCKET}
+        path: crosstalk
+        endpoint: ${BACKUP_ENDPOINT}
+        region: ${BACKUP_REGION}
+        access-key-id: ${BACKUP_KEY_ID}
+        secret-access-key: ${BACKUP_SECRET}
+        sync-interval: 10s
+        retention: 168h

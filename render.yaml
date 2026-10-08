@@ -6,8 +6,9 @@ services:
     runtime: node
     plan: free
     region: oregon
-    buildCommand: npm ci --include=dev && npm run build
-    startCommand: npm start
+    buildCommand: npm ci --include=dev && npm run build && bash scripts/install-litestream.sh
+    # Brings back saved episodes from the backup (when set up), then keeps backing up while it runs.
+    startCommand: bash scripts/start.sh
     healthCheckPath: /api/access
     autoDeploy: true
     envVars:
@@ -29,3 +30,15 @@ services:
         value: America/New_York
       - key: SCOUT_TIME
         value: "07:00"
+      # Keep episodes for good (optional, free): a private Backblaze B2 bucket. Steps: docs/DEPLOY.md.
+      # Without these, the app still works but forgets everything on restart.
+      - key: BACKUP_BUCKET
+        sync: false
+      - key: BACKUP_ENDPOINT
+        sync: false
+      - key: BACKUP_REGION
+        sync: false
+      - key: BACKUP_KEY_ID
+        sync: false
+      - key: BACKUP_SECRET
+        sync: false

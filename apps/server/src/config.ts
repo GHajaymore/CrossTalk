@@ -53,6 +53,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
     accessCode: accessCode || null,
     /** Reachable from other machines (hosted). */
     hosted: !local,
+    /** Set by scripts/start.sh while Litestream is backing up the database. */
+    backup: str(env.CROSSTALK_BACKUP) === 'on',
     adminCode,
     // The built web app, served by this server when it exists (one process to host).
     webDir: str(env.WEB_DIR) || new URL('../../web/dist', import.meta.url).pathname,

@@ -13,6 +13,8 @@ export type UsageRow = {
 export function openDb(file: string): DB {
   const db = new Database(file);
   db.pragma('journal_mode = WAL');
+  // Wait rather than fail if the backup (Litestream) briefly holds the database.
+  db.pragma('busy_timeout = 5000');
   db.pragma('foreign_keys = ON');
   const version = db.pragma('user_version', { simple: true }) as number;
   for (let v = version; v < MIGRATIONS.length; v++) {

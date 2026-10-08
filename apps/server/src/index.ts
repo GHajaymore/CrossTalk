@@ -16,7 +16,7 @@ try {
   process.exit(1);
 }
 mkdirSync(dirname(cfg.dbPath), { recursive: true });
-const { app } = buildApp(cfg, { logger: true, scheduler: true });
+const { app, repo } = buildApp(cfg, { logger: true, scheduler: true });
 // Binds to localhost only by default; the prototype is not meant to be reachable from other machines.
 try {
   await app.listen({ host: cfg.host, port: cfg.port });
@@ -29,3 +29,5 @@ try {
 }
 console.log(`CrossTalk server · ${cfg.providerMode} mode · http://${cfg.host}:${cfg.port}`);
 for (const p of cfg.problems) console.warn(`Real mode is blocked: ${p}`);
+// A host (or the backup wrapper) asks us to stop with SIGTERM: finish what's open and close the database cleanly.
+for (const sig of ['SIGTERM', 'SIGINT'] as const) process.once(sig, () => { app.close().finally(() => { repo.db.close(); process.exit(0); }); });
