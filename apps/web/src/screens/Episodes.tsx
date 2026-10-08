@@ -85,7 +85,7 @@ function EpisodeRow({ c, depth, onChanged, toast }: { c: ConversationSummary; de
               <button type="button" className="btn sm ghost" onClick={() => { setMode('view'); setTitle(c.title); }}>Cancel</button>
             </form>
           ) : (
-            <a className="lib-title" href={`#/studio/${c.id}/read`}>{depth > 0 && <span className="lib-branch">✂ Turn {c.branchSeq} · </span>}{c.title}</a>
+            <a className="lib-title" href={`#/studio/${c.id}/read`}>{depth > 0 && <span className="lib-branch">✂ Turn {c.branchSeq} · </span>}{c.title}{c.round > 1 && <span className="lib-round">Round {c.round}</span>}</a>
           )}
           <div className="lib-meta">
             <span className={`status ${st}`}>{c.run?.stopReason === 'interrupted' ? 'interrupted' : STATUS[st]}</span>

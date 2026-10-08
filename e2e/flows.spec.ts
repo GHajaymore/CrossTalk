@@ -87,6 +87,23 @@ test("Iris's card shows her sketch, perspective, and learns from feedback", asyn
   await expect(page.locator('.learned')).toContainText('Love the warm colours');
 });
 
+test('round two: same hosts pick up where they ended, linked both ways', async ({ page, request }) => {
+  const id = await finishedEpisode(request);
+  await page.goto(`/#/studio/${id}/read`);
+  const card = page.getByRole('region', { name: 'Round 2' });
+  await expect(card).toContainText('They pick up where they ended');
+  await card.getByRole('button', { name: /Start round 2/ }).click();
+  await expect(page).not.toHaveURL(new RegExp(id));
+  const two = page.url().split('/studio/')[1].split('/')[0];
+  await expect(page.locator('.status-line')).toContainText('Complete', { timeout: 60_000 });
+  await expect(page.locator('.round-banner')).toContainText('Round 2');
+  const v = await (await request.get(`/api/conversations/${two}`)).json();
+  expect(v).toMatchObject({ round: 2, roundOf: id });
+  expect(v.turns[0].text).toMatch(/^Round 2!/);
+  await page.getByRole('link', { name: '← Round 1' }).click();
+  await expect(page.getByRole('region', { name: 'Round 2' }).getByRole('button', { name: 'Open round 2 →' })).toBeVisible();
+});
+
 test('where do you stand: before and after, next to the hosts', async ({ page, request }) => {
   const id = await finishedEpisode(request);
   await page.goto(`/#/studio/${id}/read`);

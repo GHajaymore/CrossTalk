@@ -30,10 +30,11 @@ export function buildIrisPrompt(c: ConversationView, feedback: IrisFeedback[], t
     : x.kind === 'challenge' ? `Listener's challenge: ${clean(x.text ?? '')}`
     : x.kind === 'deeper' ? `Listener asked to go deeper on turn ${x.targetSeq}`
     : `Listener changed the mood: ${x.fromTemp} to ${x.toTemp}`);
+  const roundNote = c.round > 1 ? `\nThis is round ${c.round}: the same two hosts picking the question back up where they left off last time.` : '';
   const branchNote = c.branchSeq ? `\nThis is a branch: from turn ${c.branchSeq + 1} the listener steered the show this way: ${clean(c.branchDirection ?? '')}` : '';
   const user = [
     `<episode>\nTopic: ${clean(c.topic)}\nHosts: ${c.speakers.A.name}${c.speakers.A.role ? ` (${clean(c.speakers.A.role)})` : ''} and ${c.speakers.B.name}${c.speakers.B.role ? ` (${clean(c.speakers.B.role)})` : ''}\n\n` +
-      c.turns.flatMap(t => [...cueBefore(t.seq), `Turn ${t.seq} · ${c.speakers[t.speakerId].name}: ${clean(t.text)}`]).join('\n') + branchNote + '\n</episode>',
+      c.turns.flatMap(t => [...cueBefore(t.seq), `Turn ${t.seq} · ${c.speakers[t.speakerId].name}: ${clean(t.text)}`]).join('\n') + branchNote + roundNote + '\n</episode>',
     notes.length
       ? `<listener_notes>\nWhat the listener has told you about your past work. Learn from it: keep what they liked, change what they asked you to change.\n${notes.join('\n')}\n</listener_notes>`
       : '',

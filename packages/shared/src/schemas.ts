@@ -229,6 +229,9 @@ export const Conversation = z.object({
   /** Where do you stand? The listener's own 0 (no) to 100 (yes), before listening and after. */
   youStart: z.number().int().min(0).max(100).nullable().default(null),
   youEnd: z.number().int().min(0).max(100).nullable().default(null),
+  /** Round two: the episode this one follows (same hosts, same question), and which round it is. */
+  roundOf: z.string().nullable().default(null),
+  round: z.number().int().min(1).default(1),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -281,6 +284,9 @@ export type ConversationView = Conversation & {
   parent: { id: string; title: string; episode: number } | null;
   /** Branches cut from this conversation. */
   branches: BranchSummary[];
+  /** Round two: the round this follows, and the round that follows it (if made yet). */
+  prevRound: { id: string; title: string; episode: number; round: number } | null;
+  nextRound: { id: string; title: string; episode: number; round: number } | null;
   /** The Scout's brief, when the topic came from the Today tray. */
   brief: ScoutTopic | null;
   /** The rendered recording, when tools/voice has made one. */

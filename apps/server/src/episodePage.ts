@@ -26,7 +26,7 @@ export function exportHtml(c: ConversationView): string {
   const style = PAINT_STYLE_INFO[paintStyleOf(art?.artStyle)].name;
   const mc = mindChange(c.turns);
   const notice = c.brief ? SCOUT_NOTICE : NOTICE;
-  const tags = [episodeLabel(c.episode), MODES[c.mode].label, AUDIENCES[c.audience].label, TEMPERATURES[c.temperature].label].map(esc).join(' · ');
+  const tags = [episodeLabel(c.episode), ...(c.round > 1 ? [`Round ${c.round}`] : []), MODES[c.mode].label, AUDIENCES[c.audience].label, TEMPERATURES[c.temperature].label].map(esc).join(' · ');
 
   const host = (k: 'A' | 'B') => `<span class="host"><span class="flag ${k}" aria-hidden="true">${k}</span><b>${esc(sp[k].name)}</b>${sp[k].role ? ` <span class="muted">${esc(sp[k].role)}</span>` : ''}</span>`;
 
