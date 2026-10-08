@@ -1,0 +1,85 @@
+/* The studio set: a video-podcast look drawn in CSS. Self-contained; uses only design tokens.
+   Class names are prefixed "set-" so no other screen's styles can reach in (the prototype's
+   Control room ".tiles" rule squeezed the presenters into two thirds of the set). */
+.set{position:relative;height:clamp(380px,46vw,480px);border-radius:14px;overflow:hidden;background:var(--set-bg);border:1px solid #2a2622;isolation:isolate;--warm:var(--set-warm)}
+.set[data-temp="calm"]{--warm:var(--set-calm)}
+.set[data-temp="heated"]{--warm:var(--set-heated)}
+.set-wall{position:absolute;inset:0;background:
+  radial-gradient(38% 55% at 14% 0%,var(--warm),transparent 70%),
+  radial-gradient(38% 55% at 86% 0%,var(--warm),transparent 70%),
+  radial-gradient(120% 80% at 50% 120%,rgba(0,0,0,.85),transparent 60%),
+  linear-gradient(45deg,rgba(255,235,210,.035) 25%,transparent 25%),
+  linear-gradient(-45deg,rgba(255,235,210,.035) 25%,transparent 25%),
+  linear-gradient(45deg,transparent 75%,rgba(0,0,0,.28) 75%),
+  linear-gradient(-45deg,transparent 75%,rgba(0,0,0,.28) 75%),
+  var(--set-wall);background-size:auto,auto,auto,30px 30px,30px 30px,30px 30px,30px 30px,auto;transition:background 1s ease}
+
+.set-top{position:absolute;z-index:3;top:0;left:0;right:0;display:flex;align-items:center;gap:12px;padding:12px 14px;font-family:var(--f-tag);font-size:11.5px;letter-spacing:.06em;color:var(--set-ink)}
+.set-rec{display:inline-flex;align-items:center;gap:6px;font-weight:600;letter-spacing:.12em}
+.set-rec::before{content:"";width:8px;height:8px;border-radius:50%;background:#55504a}
+.set-rec.on{color:var(--rec-text)}.set-rec.on::before{background:var(--rec);box-shadow:0 0 8px var(--rec);animation:set-pulse 1.2s infinite}
+.set-rec.hold{color:var(--cue)}.set-rec.hold::before{background:var(--cue)}
+.set-rec.done{color:var(--b)}.set-rec.done::before{background:var(--b)}
+.set-rec.warn{color:var(--bad)}.set-rec.warn::before{background:var(--bad)}
+.set-timer{font-variant-numeric:tabular-nums;color:#e9e1d6}
+.set-show{color:var(--set-ink-dim)}
+.set-iris{margin-left:auto;display:flex;align-items:center;gap:7px;color:var(--set-ink-dim);border:1px solid #302c28;background:rgba(20,18,16,.6);border-radius:999px;padding:3px 10px;font-size:10.5px}
+.set-iris i{width:7px;height:7px;border-radius:50%;background:#4a4458}
+.set-iris.on{color:var(--iris);border-color:rgba(185,164,230,.4)}
+.set-iris.on i{background:var(--iris);box-shadow:0 0 8px var(--iris);animation:set-pulse 1.4s infinite}
+
+.set-title{position:absolute;z-index:3;top:40px;left:50%;transform:translateX(-50%);width:min(70%,640px);text-align:center}
+.set-title .tag{color:#9c9388}
+.set-title h2{font-family:var(--f-say);font-weight:600;font-size:clamp(16px,1.8vw,21px);line-height:1.25;margin:3px 0 0;color:var(--set-title);text-wrap:balance}
+
+/* Two hosts side by side, filling the set; the guest seat opens between them. */
+.set-tiles{position:absolute;z-index:2;left:16px;right:16px;top:106px;bottom:78px;display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.set.has-guest .set-tiles{grid-template-columns:1fr .7fr 1fr}
+
+.set-tile{position:relative;border-radius:12px;overflow:hidden;box-shadow:inset 0 0 0 1px rgba(255,255,255,.06),0 8px 30px rgba(0,0,0,.45);transition:box-shadow .3s ease;min-width:0;--c:var(--a-rgb)}
+.set-tile.B{--c:var(--b-rgb)} .set-tile.G{--c:var(--cue-rgb)}
+.set-tile.on{box-shadow:0 0 0 2px rgba(var(--c),.9),0 10px 40px rgba(var(--c),.18)}
+.set-cam{position:absolute;inset:0;background:linear-gradient(180deg,#2a241e 0%,#16130f 100%)}
+.set-tile.B .set-cam{background:linear-gradient(180deg,#1f2624 0%,#111414 100%)}
+.set-tile.G .set-cam{background:linear-gradient(180deg,#29261a 0%,#14130d 100%)}
+.set-lamp{position:absolute;inset:0;background:radial-gradient(60% 55% at 30% 18%,rgba(var(--c),.16),transparent 70%)}
+/* The presenter slot: initials now, a live <video> from a PresenterProvider in Phase 2. */
+.set-media{position:absolute;inset:0;display:block}
+.set-media > video,.set-media > img{width:100%;height:100%;object-fit:cover;display:block}
+.set-avatar{position:absolute;left:44%;top:44%;transform:translate(-50%,-50%);width:clamp(58px,8.5vw,104px);aspect-ratio:1;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 35% 30%,rgba(var(--c),.55),rgba(var(--c),.12) 65%,#1a1714 100%);animation:set-breathe 5s ease-in-out infinite}
+.set-halo{position:absolute;inset:-4px;border-radius:50%;box-shadow:0 0 0 calc(1px + var(--lvl,0) * 12px) rgba(var(--c),calc(.12 + var(--lvl,0) * .35));transition:box-shadow .08s linear}
+.set-ini{font-family:var(--f-ui);font-weight:600;font-size:clamp(20px,2.6vw,32px);color:#f6ede0;letter-spacing:.02em}
+.set-mic{position:absolute;left:58%;bottom:-2px;height:52%;opacity:.95}
+.set-camtag{position:absolute;top:9px;left:10px;font-family:var(--f-tag);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:rgba(241,233,221,.55)}
+.set-vidnote{position:absolute;top:26px;left:10px;font-family:var(--f-tag);font-size:9.5px;letter-spacing:.06em;color:rgba(241,233,221,.32)}
+.set-livedot{position:absolute;top:11px;right:11px;width:8px;height:8px;border-radius:50%;background:transparent}
+.set-tile.on .set-livedot{background:var(--rec);box-shadow:0 0 6px var(--rec)}
+.set-l3{position:absolute;left:10px;bottom:10px;max-width:calc(100% - 52px);display:grid;background:rgba(10,9,8,.72);backdrop-filter:blur(4px);border-left:3px solid rgba(var(--c),1);border-radius:3px;padding:5px 10px 6px}
+.set-l3 b{font-size:14px;color:#f6ede0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.set-l3 span{font-size:11.5px;color:#b9b0a4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.set-lvl{position:absolute;right:10px;bottom:13px;display:flex;gap:2px;align-items:flex-end;height:18px}
+.set-lvl i{width:3px;height:18px;border-radius:1px;background:rgba(var(--c),.9);transform-origin:bottom;transform:scaleY(.15)}
+
+.set-desk{position:absolute;z-index:1;left:0;right:0;bottom:0;height:86px;background:linear-gradient(180deg,rgba(255,214,170,.10),transparent 18%),repeating-linear-gradient(92deg,rgba(255,225,190,.035) 0 2px,transparent 2px 11px,rgba(0,0,0,.08) 11px 13px,transparent 13px 23px),linear-gradient(180deg,var(--desk-top) 0%,var(--desk-mid) 50%,var(--desk-low) 100%);border-top:1px solid rgba(255,220,180,.18);box-shadow:0 -12px 30px rgba(0,0,0,.45)}
+.set-cap{position:absolute;z-index:4;left:50%;bottom:16px;transform:translateX(-50%);max-width:min(84%,760px);background:rgba(6,6,6,.8);color:#fff;padding:6px 12px 7px;border-radius:4px;font-family:var(--f-ui);font-size:15px;line-height:1.42;text-align:center}
+.set-cap b{font-family:var(--f-tag);font-weight:400;font-size:10px;letter-spacing:.12em;margin-right:8px;opacity:.9}
+.set-cap b.A{color:var(--a)} .set-cap b.B{color:var(--b)} .set-cap b.G{color:var(--cue)}
+
+@keyframes set-pulse{50%{opacity:.55}}
+@keyframes set-breathe{50%{transform:translate(-50%,-51.2%) scale(1.012)}}
+
+@media (max-width:680px){
+  .set{height:440px}
+  .set-vidnote,.set-show{display:none}
+  .set-avatar{width:56px}
+  .set-mic{height:42%}
+  .set-title{top:40px;width:92%}
+  .set-tiles{top:118px;bottom:84px;left:10px;right:10px;gap:8px}
+  .set.has-guest .set-tiles{grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr}
+  .set.has-guest .set-tile.G{grid-column:1/-1;grid-row:2}
+  .set-l3 b{font-size:12.5px}.set-l3 span{font-size:10.5px}
+  .set-cap{font-size:13.5px;max-width:92%}
+}
+@media (prefers-reduced-motion: reduce){
+  .set *{animation:none!important;transition:none!important}
+}
