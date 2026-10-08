@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import type { AppConfig, MockSettings } from '@crosstalk/shared';
 import { api } from '../api/client';
+import { BrowserSpeech } from '../speech/BrowserSpeech';
+import { useVoices } from '../speech/usePlayback';
+import { VoicePicker } from '../speech/VoicePicker';
 import { SetupBanner } from '../lib/Banners';
 import { Footer } from './Footer';
 
@@ -28,8 +31,9 @@ export function Settings({ config, refreshConfig }: { config: AppConfig | null; 
 
   return (
     <div className="page">
-      <div><h1>Settings</h1><p className="hint">Voices and Scout settings arrive in later milestones. What Iris has learned from you is on the <a href="#/iris">Iris</a> page.</p></div>
+      <div><h1>Settings</h1><p className="hint">What Iris has learned from you is on the <a href="#/iris">Iris</a> page. Topic Scout settings arrive with Milestone 7.</p></div>
       <SetupBanner config={config} onSettings />
+      <VoiceSettings />
       <section className="sec"><h2>Models</h2>
         <p className="hint">Read-only here. Models are set in the server's settings (the <code>.env</code> file, or the cloud environment's variables) and must be different IDs.</p>
         <dl className="kv">
@@ -64,6 +68,19 @@ export function Settings({ config, refreshConfig }: { config: AppConfig | null; 
       </section>}
       <Footer config={config} />
     </div>
+  );
+}
+
+/** The device's voices for the left and right seats. Every episode uses them; recordings use their own voices. */
+function VoiceSettings() {
+  const { voices, prefs, update } = useVoices();
+  const names = { A: 'Left seat (warm)', B: 'Right seat (cool)' };
+  return (
+    <section className="sec"><h2>Voices</h2>
+      <p className="hint">Saved on this device only. The same choices are in the Studio under Cues &amp; voices. Episodes with a rendered recording play its natural voices instead.</p>
+      <VoicePicker names={names} voices={voices} prefs={prefs} update={update}
+        preview={k => new BrowserSpeech(() => prefs).speak([{ key: 'p', speakerId: k, text: `This is the ${k === 'A' ? 'left' : 'right'} seat. This is how I'll sound on the show.` }], {})} />
+    </section>
   );
 }
 

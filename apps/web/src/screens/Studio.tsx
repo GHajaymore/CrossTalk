@@ -283,7 +283,7 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
       <SidePanel open={panelOpen} onClose={() => setPanelOpen(false)}
         cue={<CuePanel view={view} live={live} setView={setView} toast={toast} />}
         branches={<BranchList view={view} />}
-        voices={<VoicePicker speakers={sp} voices={voices} prefs={prefs} update={update}
+        voices={<VoicePicker names={{ A: sp.A.name, B: sp.B.name }} voices={voices} prefs={prefs} update={update}
           preview={k => new BrowserSpeech(() => prefs).speak([{ key: 'p', speakerId: k, text: `Hi, I'm ${sp[k].name}. This is how I'll sound on the show.` }], {})} />} />
     </div>
   );
