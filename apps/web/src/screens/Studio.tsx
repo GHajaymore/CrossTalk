@@ -12,6 +12,7 @@ import { LivingSketch, sketchProgress } from '../studio/LivingSketch';
 import { MindMeter } from '../studio/MindMeter';
 import { VerdictCard } from '../studio/VerdictCard';
 import { RoundCard } from '../studio/RoundCard';
+import { takeAutoplay } from '../studio/UpNext';
 import { BranchList } from '../studio/BranchList';
 import { CueCard } from '../studio/CueCard';
 import { cueState, CuePanel } from '../studio/CuePanel';
@@ -58,6 +59,13 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
     if (view?.format === 'live' && view.run?.state === 'generating' && lastSaved && play.state === 'idle') play.playFrom(lastSaved);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastSaved]);
+
+  // Up next: an episode opened by the countdown starts playing as soon as its turns are here.
+  const turnsReady = !!view?.turns.length;
+  useEffect(() => {
+    if (turnsReady && tab === 'listen' && takeAutoplay(id)) play.playFrom(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [turnsReady]);
 
   useEffect(() => {
     if (!onAir) return;

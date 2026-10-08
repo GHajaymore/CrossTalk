@@ -25,6 +25,7 @@ export function useRecording(turns: Turn[], audio: EpisodeAudio | null | undefin
   const [pulse, setPulse] = useState(0);
   const [position, setPosition] = useState(0);
   const [rate, setRateState] = useState(1);
+  const [finished, setFinished] = useState(0);
   const analyser = useRef<AnalyserNode | null>(null);
 
   useEffect(() => {
@@ -63,7 +64,7 @@ export function useRecording(turns: Turn[], audio: EpisodeAudio | null | undefin
       setState('speaking'); raf = requestAnimationFrame(tick);
     };
     const onPause = () => { cancelAnimationFrame(raf); if (!el.ended) setState('paused'); };
-    const onEnd = () => { cancelAnimationFrame(raf); setState('idle'); setSeq(null); setSpeakerId(null); setCaption(''); setPosition(0); };
+    const onEnd = () => { cancelAnimationFrame(raf); setFinished(n => n + 1); setState('idle'); setSeq(null); setSpeakerId(null); setCaption(''); setPosition(0); };
     // Scrubbing while paused still moves the progress bar.
     const onSeek = () => setPosition(el.currentTime);
     el.addEventListener('play', onPlay); el.addEventListener('pause', onPause); el.addEventListener('ended', onEnd); el.addEventListener('seeked', onSeek);
@@ -72,7 +73,7 @@ export function useRecording(turns: Turn[], audio: EpisodeAudio | null | undefin
 
   if (!el || !audio) return null;
   return {
-    available: true, state, seq, speakerId, caption, pulse,
+    available: true, state, seq, speakerId, caption, pulse, finished,
     playFrom: (from: number) => { const t = audio.timings.find(x => x.seq >= from); el.currentTime = t ? t.start : 0; void el.play(); },
     pause: () => el.pause(),
     resume: () => { void el.play(); },

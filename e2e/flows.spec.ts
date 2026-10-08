@@ -87,6 +87,30 @@ test("Iris's card shows her sketch, perspective, and learns from feedback", asyn
   await expect(page.locator('.learned')).toContainText('Love the warm colours');
 });
 
+test('up next: when an episode plays through, the next one starts on its own', async ({ page, request }) => {
+  // No real voices in the test browser: a stand-in speaks each line instantly.
+  await page.addInitScript(() => {
+    const fake = {
+      speaking: false, paused: false, pending: false,
+      speak(u: SpeechSynthesisUtterance) { setTimeout(() => { u.onstart?.(new Event('start') as SpeechSynthesisEvent); setTimeout(() => u.onend?.(new Event('end') as SpeechSynthesisEvent), 5); }, 5); },
+      cancel() {}, pause() {}, resume() {}, getVoices: () => [], addEventListener() {}, removeEventListener() {},
+    };
+    Object.defineProperty(window, 'speechSynthesis', { value: fake, configurable: true });
+  });
+  const first = await finishedEpisode(request, 'Should cities ban cars from downtown?');
+  const second = await finishedEpisode(request);
+  await page.goto(`/#/studio/${first}/listen`);
+  await page.getByRole('button', { name: 'Play', exact: true }).click();
+  const card = page.getByRole('region', { name: 'Up next' });
+  await expect(card).toContainText('Is a four-day workweek practical?');
+  await card.getByRole('button', { name: '▶ Play now' }).click();
+  await expect(page).toHaveURL(new RegExp(`#/studio/${second}/listen`));
+  // It played through on its own, so Up next comes round again (never back to the first episode).
+  await expect(page.getByRole('region', { name: 'Up next' }).or(page.getByText("That's everything on your shelf"))).toBeVisible();
+  const again = page.getByRole('region', { name: 'Up next' });
+  if (await again.count()) await expect(again).not.toContainText('Should cities ban cars from downtown?');
+});
+
 test('round two: same hosts pick up where they ended, linked both ways', async ({ page, request }) => {
   const id = await finishedEpisode(request);
   await page.goto(`/#/studio/${id}/read`);
