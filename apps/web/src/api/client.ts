@@ -1,5 +1,5 @@
 // Typed calls to the local server. The browser never talks to a model.
-import type { AppConfig, ArtistNotes, BranchInput, Conversation, ConversationView, CreateConversation, CueInput, IrisFeedback, MockSettings, PaintStyle, Overview, Rules, Run, ScoutPrefs, ScoutStatus, ScoutTopic } from '@crosstalk/shared';
+import type { AppConfig, ArtistNotes, BranchInput, Conversation, ConversationView, CreateConversation, CueInput, GalleryEpisode, IrisFeedback, MockSettings, PaintStyle, Overview, Rules, Run, ScoutPrefs, ScoutStatus, ScoutTopic } from '@crosstalk/shared';
 
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`/api${path}`, {
@@ -55,6 +55,9 @@ export const api = {
   nextRound: (id: string) => call<ConversationView>(`/conversations/${id}/round`, { method: 'POST' }),
   setYou: (id: string, patch: { start?: number | null; end?: number | null }) => call<ConversationView>(`/conversations/${id}/you`, { method: 'PUT', body: JSON.stringify(patch) }),
   setArtStyle: (id: string, style: PaintStyle) => call<ConversationView>(`/conversations/${id}/artist/style`, { method: 'PUT', body: JSON.stringify({ style }) }),
+  irisGallery: () => call<GalleryEpisode[]>('/iris/gallery'),
+  irisStyles: () => call<{ styles: PaintStyle[] }>('/iris/styles'),
+  setIrisStyles: (styles: PaintStyle[]) => call<{ styles: PaintStyle[] }>('/iris/styles', { method: 'PUT', body: JSON.stringify({ styles }) }),
   forgetIrisFeedback: (id: string) => call<IrisFeedback[]>(`/iris/feedback/${id}`, { method: 'DELETE' }),
   eventsUrl: (id: string) => `/api/conversations/${id}/events`,
 };

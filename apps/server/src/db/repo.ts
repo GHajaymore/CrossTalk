@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3';
-import { ArtistNotes, Conversation, Intervention, Run, type BranchSummary, type ConversationView, type ScoutStatus, type ScoutTopic, type IrisFeedback, type PaintStyle, type RunState, type Speakers, type Turn } from '@crosstalk/shared';
+import { ArtistNotes, Conversation, Intervention, Run, type BranchSummary, type ConversationView, type ScoutStatus, type ScoutTopic, type GalleryEpisode, type IrisFeedback, paintStyleOf, type PaintStyle, type RunState, type Speakers, type Turn } from '@crosstalk/shared';
 import { MIGRATIONS } from './schema';
 
 export type DB = Database.Database;
@@ -283,12 +283,43 @@ export class Repo {
         moment_seq = excluded.moment_seq, caption = excluded.caption, art_title = excluded.art_title, art_style = excluded.art_style,
         sketch_svg = excluded.sketch_svg, image_prompt = excluded.image_prompt, error = excluded.error, version = excluded.version,
         created_at = excluded.created_at, style_by_listener = 0`).run(a);
+    this.keepArtwork(a, a.createdAt);
   }
 
   /** The listener picked a style for Iris's art. Returns false if she has nothing drawn to restyle. */
-  setArtStyle(conversationId: string, style: PaintStyle) {
-    return this.db.prepare(`UPDATE artist_notes SET art_style = ?, style_by_listener = 1
+  setArtStyle(conversationId: string, style: PaintStyle, at = new Date().toISOString()) {
+    const ok = this.db.prepare(`UPDATE artist_notes SET art_style = ?, style_by_listener = 1
       WHERE conversation_id = ? AND state = 'done' AND sketch_svg IS NOT NULL`).run(style, conversationId).changes > 0;
+    // The gallery keeps each style the listener chose for this drawing.
+    if (ok) this.keepArtwork(this.getArtist(conversationId)!, at);
+    return ok;
+  }
+
+  /** Saves a finished drawing (in its current style) to the gallery, once per version and style. */
+  private keepArtwork(a: ArtistNotes, at: string) {
+    if (a.state !== 'done' || !a.sketchSvg) return;
+    this.db.prepare(`INSERT OR IGNORE INTO artworks (conversation_id, version, art_style, art_title, caption, moment_seq, sketch_svg, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).run(a.conversationId, a.version, a.artStyle, a.artTitle, a.caption, a.momentSeq, a.sketchSvg, at);
+  }
+
+  /** Iris's gallery: every episode she has drawn, newest work first, with all its versions and styles. */
+  gallery(): GalleryEpisode[] {
+    const rows = this.db.prepare(`SELECT a.*, c.title, c.topic, c.episode, c.parent_id, c.round FROM artworks a JOIN conversations c ON c.id = a.conversation_id
+      ORDER BY a.created_at DESC, a.id DESC`).all() as Record<string, unknown>[];
+    const byEpisode = new Map<string, GalleryEpisode>();
+    for (const r of rows) {
+      const id = r.conversation_id as string;
+      let g = byEpisode.get(id);
+      if (!g) {
+        const now = this.getArtist(id);
+        g = { conversationId: id, title: r.title as string, topic: r.topic as string, episode: r.episode as number, parentId: (r.parent_id as string | null) ?? null,
+          round: r.round as number, current: now?.state === 'done' && now.sketchSvg ? { version: now.version, style: paintStyleOf(now.artStyle) } : null, artworks: [] };
+        byEpisode.set(id, g);
+      }
+      g.artworks.push({ id: r.id as number, version: r.version as number, style: paintStyleOf(r.art_style as string), title: r.art_title as string,
+        caption: r.caption as string, momentSeq: r.moment_seq as number, svg: r.sketch_svg as string, createdAt: r.created_at as string });
+    }
+    return [...byEpisode.values()];
   }
 
   /** Styles the listener chose themselves on recent drawings, newest first. */

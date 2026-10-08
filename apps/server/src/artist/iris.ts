@@ -2,7 +2,7 @@
 // One request after each completed run (never during it). Her failure never changes the discussion.
 // She learns: the listener's recent notes on her work go into every new request.
 import { z } from 'zod';
-import { defaultPaintStyle, PAINT_STYLES, type ArtistNotes, type ConversationView, type IrisFeedback, type PaintStyle } from '@crosstalk/shared';
+import { cleanStyles, defaultPaintStyle, PAINT_STYLES, type ArtistNotes, type ConversationView, type IrisFeedback, type PaintStyle } from '@crosstalk/shared';
 import type { Repo } from '../db/repo';
 import { buildIrisPrompt } from './prompt';
 import { mockSketch } from './mockSketches';
@@ -96,11 +96,14 @@ export class Iris {
     if (blocked) return fail(blocked);
 
     const feedback = this.repo.listFeedback(10);
-    const taste = favouriteStyle(this.repo.listenerStyles());
+    // Only the styles the listener has ticked on the Iris page; within them, their taste, then her own feel.
+    const allowed = cleanStyles(this.repo.getSetting<PaintStyle[]>('iris_styles'));
+    const learned = favouriteStyle(this.repo.listenerStyles());
+    const taste = learned && allowed.includes(learned) ? learned : null;
     let raw: string;
     try {
       this.opts.countRequest();
-      raw = await this.backend.draw(buildIrisPrompt(view, feedback, taste), view, feedback, taste);
+      raw = await this.backend.draw(buildIrisPrompt(view, feedback, taste, allowed), view, feedback, taste);
     } catch (e) {
       return fail(`Iris couldn't finish: ${e instanceof Error ? e.message : 'the model failed'}. Try again.`);
     }
@@ -121,7 +124,7 @@ export class Iris {
     const svg = safeSvg(reply.sketchSvg);
 
     this.repo.saveArtist({
-      ...base, state: 'done', artStyle: reply.artStyle ?? taste ?? defaultPaintStyle(view), perspective: reply.perspective, momentSeq: turn.seq, caption,
+      ...base, state: 'done', artStyle: [reply.artStyle, taste].find(s => s && allowed.includes(s)) ?? defaultPaintStyle(view, allowed), perspective: reply.perspective, momentSeq: turn.seq, caption,
       artTitle: reply.artTitle.replace(/^["“]|["”]$/g, ''), sketchSvg: svg.ok ? svg.svg : null, imagePrompt: reply.imagePrompt,
       error: svg.ok ? null : `Her sketch didn't pass the safety check (${svg.reason}), so only her perspective is shown.`,
     });

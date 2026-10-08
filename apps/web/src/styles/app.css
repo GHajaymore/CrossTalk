@@ -553,3 +553,17 @@ img.living{object-fit:cover}
 .up-next-text b{font-family:var(--f-say);font-weight:600;font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .up-next-end{text-align:center;margin:4px 0 12px}
 @media (max-width:520px){.up-next{grid-template-columns:64px 1fr}.up-next .dock-row{grid-column:1/-1}}
+
+/* Iris: every version in the gallery, and the styles you tick */
+.g-link{display:grid;gap:6px;text-decoration:none;color:inherit}
+.g-card .g-versions img{aspect-ratio:5/3}
+.g-versions{display:flex;gap:6px;flex-wrap:wrap;padding-top:6px;border-top:1px solid var(--line-soft)}
+.g-versions button{padding:0;border:2px solid transparent;border-radius:6px;background:none;cursor:pointer;width:56px;line-height:0}
+.g-versions button[aria-pressed="true"]{border-color:var(--iris)}
+.g-versions img{width:100%;border-radius:4px;display:block}
+.iris-styles li{padding:0}
+.style-pick{display:grid;grid-template-columns:22px 1fr;gap:2px 8px;align-items:center;align-content:start;text-align:left;width:100%;height:100%;padding:10px;background:none;border:0;color:inherit;font:inherit;cursor:pointer;border-radius:8px}
+.style-pick .hint{grid-column:2}
+.style-pick .tick{width:20px;height:20px;border-radius:5px;border:1px solid var(--line);display:grid;place-items:center;font-size:13px;color:#141517}
+.style-pick[aria-pressed="true"] .tick{background:var(--iris);border-color:var(--iris)}
+.style-pick.off{cursor:default}

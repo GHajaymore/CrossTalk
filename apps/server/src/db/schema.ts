@@ -244,4 +244,22 @@ export const MIGRATIONS: string[] = [
   ALTER TABLE conversations ADD COLUMN round INTEGER NOT NULL DEFAULT 1;
   CREATE INDEX IF NOT EXISTS conversations_round_of ON conversations(round_of);
   `,
+  `
+  -- Iris's gallery keeps every version: each drawing she makes, in each style it was shown in.
+  CREATE TABLE artworks (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    conversation_id  TEXT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+    version          INTEGER NOT NULL,
+    art_style        TEXT NOT NULL,
+    art_title        TEXT NOT NULL,
+    caption          TEXT NOT NULL DEFAULT '',
+    moment_seq       INTEGER NOT NULL DEFAULT 0,
+    sketch_svg       TEXT NOT NULL,
+    created_at       TEXT NOT NULL,
+    UNIQUE (conversation_id, version, art_style)
+  );
+  INSERT OR IGNORE INTO artworks (conversation_id, version, art_style, art_title, caption, moment_seq, sketch_svg, created_at)
+    SELECT conversation_id, version, art_style, art_title, caption, moment_seq, sketch_svg, created_at
+    FROM artist_notes WHERE state = 'done' AND sketch_svg IS NOT NULL;
+  `,
 ];
