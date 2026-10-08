@@ -43,7 +43,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
     artistModel,
     apiKey,
     allowPaidModels: str(env.ALLOW_PAID_MODELS).toLowerCase() === 'true',
-    maxOutputTokens: int(env.MAX_OUTPUT_TOKENS_PER_TURN, 220),
+    // Room for a 70-120 word reply plus a short hidden "thinking" step that many free models take first.
+    maxOutputTokens: int(env.MAX_OUTPUT_TOKENS_PER_TURN, 1000),
     requestTimeoutMs: int(env.REQUEST_TIMEOUT_MS, 60_000),
     problems,
   };

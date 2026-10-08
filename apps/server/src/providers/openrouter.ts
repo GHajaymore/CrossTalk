@@ -5,6 +5,15 @@ import { buildPrompt } from '../prompts/buildPrompt';
 import { AbortedError, ProviderError, type Provider, type TurnOptions, type TurnRequest, type Usage } from './types';
 
 export const CHAT_URL = 'https://openrouter.ai/api/v1/chat/completions';
+/** A reply cut off by the length limit is kept, trimmed to whole sentences, only if at least this many words remain. */
+export const MIN_WORDS_AFTER_TRIM = 40;
+
+/** Text up to the last sentence ending (. ? ! possibly followed by a closing quote or bracket). */
+export function wholeSentences(text: string) {
+  const t = text.trim();
+  const m = t.match(/^[\s\S]*[.?!]["'”’)\]]?(?=\s|$)/);
+  return m ? m[0].trim() : '';
+}
 
 export type OpenRouterOptions = {
   apiKey: string;
@@ -67,6 +76,9 @@ export class OpenRouterProvider implements Provider {
           messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
           stream: true,
           max_tokens: this.opts.maxOutputTokens,
+          // Many free models "think" before they speak, and that counts against max_tokens.
+          // Keep it short and out of the reply; models without thinking ignore this.
+          reasoning: { effort: 'low', exclude: true },
           usage: { include: true },
         }),
       });
@@ -82,6 +94,7 @@ export class OpenRouterProvider implements Provider {
 
     let text = '';
     let usage: Usage | null = null;
+    let cutOff = false;
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     let buf = '';
@@ -99,7 +112,7 @@ export class OpenRouterProvider implements Provider {
           if (data === '[DONE]') continue;
           let chunk: {
             error?: { message?: string; code?: number };
-            choices?: { delta?: { content?: string } }[];
+            choices?: { delta?: { content?: string }; finish_reason?: string | null }[];
             usage?: { prompt_tokens?: number; completion_tokens?: number; cost?: number };
           };
           try { chunk = JSON.parse(data); } catch { continue; }
@@ -107,6 +120,7 @@ export class OpenRouterProvider implements Provider {
             const code = Number(chunk.error.code) || 0;
             throw new ProviderError(`OpenRouter stopped mid-turn: ${chunk.error.message ?? 'unknown error'}.`, code === 429 || code >= 500, null, code || null);
           }
+          if (chunk.choices?.[0]?.finish_reason === 'length') cutOff = true;
           const piece = chunk.choices?.[0]?.delta?.content;
           if (piece) { text += piece; onToken(piece); }
           if (chunk.usage) {
@@ -120,7 +134,15 @@ export class OpenRouterProvider implements Provider {
       }
     } catch (e) { reader.cancel().catch(() => {}); return fail(e); }
 
-    if (!text.trim()) throw new ProviderError('OpenRouter returned no text for this turn.', true);
+    if (!text.trim()) throw new ProviderError('OpenRouter returned no text for this turn (the model may have used its whole allowance thinking).', true);
+    if (cutOff) {
+      // Never save half a sentence: keep whole sentences if enough is left, otherwise try again.
+      const whole = wholeSentences(text);
+      if (whole.split(/\s+/).filter(Boolean).length < MIN_WORDS_AFTER_TRIM) {
+        throw new ProviderError('The reply was cut off by the length limit before it said enough.', true);
+      }
+      return { text: whole, usage };
+    }
     return { text: text.trim(), usage };
   }
 }

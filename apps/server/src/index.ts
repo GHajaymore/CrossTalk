@@ -18,6 +18,14 @@ try {
 mkdirSync(dirname(cfg.dbPath), { recursive: true });
 const { app } = buildApp(cfg, { logger: true });
 // Binds to localhost only by default; the prototype is not meant to be reachable from other machines.
-await app.listen({ host: cfg.host, port: cfg.port });
+try {
+  await app.listen({ host: cfg.host, port: cfg.port });
+} catch (e) {
+  if ((e as NodeJS.ErrnoException).code === 'EADDRINUSE') {
+    console.error(`Port ${cfg.port} is already in use: CrossTalk (or something else) is probably already running. Stop it first, or set PORT to another number.`);
+    process.exit(1);
+  }
+  throw e;
+}
 console.log(`CrossTalk server · ${cfg.providerMode} mode · http://${cfg.host}:${cfg.port}`);
 for (const p of cfg.problems) console.warn(`Real mode is blocked: ${p}`);

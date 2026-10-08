@@ -37,5 +37,6 @@ Open **Settings** in the app. Each model shows **✓ Free** or **✕** with the 
 - OpenRouter allows about **20 requests a minute** and **50 a day** on free models if you've never bought credits. One discussion uses 8 requests, plus any retries.
 - The app stops itself at `MAX_REQUESTS_PER_DAY` (40 by default), so you stay under that.
 - A negative credit balance can make even free models fail with a "402" error.
+- Many free models "think" silently before replying, and that thinking counts toward `MAX_OUTPUT_TOKENS_PER_TURN`. The app asks for short, hidden thinking and allows 1000 tokens a turn by default. If replies still come back empty or cut off, raise it; free models cost nothing either way.
 - Popular free models are often briefly busy ("rate limited"). The app waits 5 seconds and retries once; if it still fails, try again a few minutes later or pick a less busy model.
 - Source: https://openrouter.ai/docs/limits

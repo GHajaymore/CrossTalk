@@ -43,6 +43,8 @@ describe('retry policy and request counting', () => {
     expect(attempts()).toBe(2);
     expect(controller.requestsToday()).toBe(2);
     expect(repo.listUsage(c.id).map(u => [u.attempt, u.status])).toEqual([[1, 'error'], [2, 'ok']]);
+    // The failed attempt has no price, but it doesn't make the day's cost unknown.
+    expect(repo.usageOn(controller.today()).costUsd).toBe(0);
   });
 
   it('never retries more than once', async () => {

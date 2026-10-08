@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Conversation } from '@crosstalk/shared';
-import { OpenRouterProvider } from '../src/providers/openrouter';
+import { OpenRouterProvider, wholeSentences } from '../src/providers/openrouter';
 import { AbortedError, ProviderError } from '../src/providers/types';
 import { delta, fakeFetch, FREE_A, FREE_B, sse, usageChunk } from './fakeOpenRouter';
 
@@ -29,6 +29,7 @@ describe('OpenRouter provider', () => {
     expect(call.body).toMatchObject({ model: FREE_A, stream: true, max_tokens: 220 });
     expect(call.body).not.toHaveProperty('models');
     expect(call.body).not.toHaveProperty('route');
+    expect(call.body).toMatchObject({ reasoning: { effort: 'low', exclude: true } });
     expect((call.init.headers as Record<string, string>).Authorization).toBe('Bearer sk-or-test');
     expect(JSON.stringify(call.body)).not.toContain('sk-or-test');
   });
@@ -77,5 +78,22 @@ describe('OpenRouter provider', () => {
   it('treats an empty reply as a retryable failure', async () => {
     const net = fakeFetch({ replies: () => sse([usageChunk(10, 0), '[DONE]']) });
     expect(await errorOf(run(make(net.f)))).toMatchObject({ retryable: true });
+  });
+
+  it('trims a reply cut off by the length limit to whole sentences', async () => {
+    const long = Array.from({ length: 6 }, (_, i) => `Sentence number ${i + 1} carries a complete thought about the topic.`).join(' ');
+    const net = fakeFetch({ replies: () => sse([delta(`${long} And then it stopp`), JSON.stringify({ choices: [{ delta: {}, finish_reason: 'length' }] }), '[DONE]']) });
+    const r = await run(make(net.f));
+    expect(r.text).toBe(long);
+  });
+
+  it('retries when a cut-off reply leaves too little to keep', async () => {
+    const net = fakeFetch({ replies: () => sse([delta('A short start. Then it got cut'), JSON.stringify({ choices: [{ delta: {}, finish_reason: 'length' }] }), '[DONE]']) });
+    expect(await errorOf(run(make(net.f)))).toMatchObject({ retryable: true, message: expect.stringMatching(/cut off/) });
+  });
+
+  it('finds the last whole sentence, closing quotes included', () => {
+    expect(wholeSentences('One. Two? "Three!" Four is unfin')).toBe('One. Two? "Three!"');
+    expect(wholeSentences('no ending at all')).toBe('');
   });
 });

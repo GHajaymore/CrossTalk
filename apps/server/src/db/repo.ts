@@ -149,9 +149,11 @@ export class Repo {
   /** Totals for a day. Cost is null when any attempt's cost is unknown. */
   usageOn(date: string): { attempts: number; tokensIn: number; tokensOut: number; costUsd: number | null } {
     const r = this.db.prepare(`SELECT COUNT(*) AS attempts, COALESCE(SUM(tokens_in), 0) AS tokensIn, COALESCE(SUM(tokens_out), 0) AS tokensOut,
-      SUM(cost_usd) AS cost, SUM(CASE WHEN cost_usd IS NULL THEN 1 ELSE 0 END) AS unknown FROM provider_usage WHERE date = ?`).get(date) as
-      { attempts: number; tokensIn: number; tokensOut: number; cost: number | null; unknown: number };
-    return { attempts: r.attempts, tokensIn: r.tokensIn, tokensOut: r.tokensOut, costUsd: r.unknown > 0 || r.attempts === 0 ? (r.attempts === 0 ? 0 : null) : r.cost };
+      SUM(cost_usd) AS cost, SUM(CASE WHEN cost_usd IS NULL AND status = 'ok' THEN 1 ELSE 0 END) AS unknown,
+      SUM(CASE WHEN status = 'ok' THEN 1 ELSE 0 END) AS ok FROM provider_usage WHERE date = ?`).get(date) as
+      { attempts: number; tokensIn: number; tokensOut: number; cost: number | null; unknown: number; ok: number | null };
+    // A failed attempt returns no reply and no price, so only successful attempts can make the total unknown.
+    return { attempts: r.attempts, tokensIn: r.tokensIn, tokensOut: r.tokensOut, costUsd: r.unknown > 0 ? null : r.cost ?? 0 };
   }
 
   countRequest(date: string) {
