@@ -2,7 +2,7 @@
 
 CrossTalk only runs models that OpenRouter's own price list shows at **$0** for both prompt and completion. This guide doesn't name specific models, because the free list changes often. Pick from what's on offer the day you set it up.
 
-## Pick two (three later, for Iris)
+## Pick three: two hosts and Iris
 
 1. Open **openrouter.ai/models** and filter or sort by price so the free models show. You don't need to sign in to browse.
 2. For each candidate, open its page and check:
@@ -23,7 +23,7 @@ CrossTalk only runs models that OpenRouter's own price list shows at **$0** for 
 | `OPENROUTER_API_KEY` | Your key from openrouter.ai → Keys. Never paste it into chat, code or an issue. |
 | `SPEAKER_A_MODEL` | First model ID (left seat) |
 | `SPEAKER_B_MODEL` | Second model ID (right seat) |
-| `ARTIST_MODEL` | Leave empty until Milestone 5 |
+| `ARTIST_MODEL` | A third free model for Iris, different from both speakers. Without it, Iris shows a short message instead of drawing. |
 | `ALLOW_PAID_MODELS` | Leave `false` |
 
 On your own computer these go in a `.env` file in the repo folder (copy `.env.example`). In a Claude cloud session they go in the cloud environment's settings. Either way, restart the server afterwards.
