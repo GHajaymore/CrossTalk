@@ -9,8 +9,27 @@ import { AbortedError, ProviderError, type Provider, type Usage } from '../provi
 
 /** A 429 may be waited out once, up to this long. Longer waits pause the run instead. */
 export const MAX_RETRY_WAIT_MS = 20_000;
-/** A 429 without Retry-After waits this long before its one retry (free models are often briefly busy). */
-export const RATE_LIMIT_WAIT_MS = 5_000;
+/** A busy model (429 without Retry-After, 5xx, "overloaded") waits this long before its one retry. */
+export const BUSY_WAIT_MS = 10_000;
+/** Timeouts and network errors wait this long. */
+export const OTHER_WAIT_MS = 2_000;
+/** Replies longer than this are trimmed to whole sentences (kids get a shorter limit). */
+export const MAX_SPOKEN_WORDS = { kids: 100, other: 150 } as const;
+
+const isBusy = (e: ProviderError) => e.status === 429 || (e.status !== null && e.status >= 500) || /overload|busy|capacity/i.test(e.message);
+const wordCount = (t: string) => t.split(/\s+/).filter(Boolean).length;
+
+/** Keeps whole sentences up to `max` words. Leaves the text alone if trimming would leave too little. */
+export function fitToLength(text: string, max: number): string {
+  if (wordCount(text) <= max) return text;
+  const sentences = text.match(/[^.?!]+[.?!]+["'”’)\]]?(\s+|$)/g) ?? [];
+  let out = '';
+  for (const s of sentences) {
+    if (wordCount(out + s) > max) break;
+    out += s;
+  }
+  return wordCount(out) >= 40 ? out.trim() : text;
+}
 /** At most one automatic retry per turn: two attempts. */
 export const MAX_ATTEMPTS = 2;
 
@@ -227,7 +246,7 @@ export class ConversationController {
           { signal, onToken: t => { live.text += t; this.emit(conversationId, { type: 'token', seq, text: t }); } },
         );
         log('ok', res.usage, null);
-        return { text: res.text };
+        return { text: fitToLength(res.text, conv.audience === 'kids' ? MAX_SPOKEN_WORDS.kids : MAX_SPOKEN_WORDS.other) };
       } catch (e) {
         if (e instanceof AbortedError || signal.aborted) { log('error', null, 'stopped'); return null; }
         const err = e instanceof ProviderError ? e : new ProviderError(e instanceof Error ? e.message : 'The provider failed.');
@@ -240,11 +259,13 @@ export class ConversationController {
           return null;
         }
         if (err.retryable && attempt < MAX_ATTEMPTS) {
-          try { await sleep(err.retryAfterMs ?? (err.status === 429 ? RATE_LIMIT_WAIT_MS : 1000), signal); } catch { return null; }
+          try { await sleep(err.retryAfterMs ?? (isBusy(err) ? BUSY_WAIT_MS : OTHER_WAIT_MS), signal); } catch { return null; }
           if (this.repo.latestRun(conversationId)?.state !== 'generating') return null;
           continue;
         }
-        this.transition(latest, 'failed', err.message);
+        this.transition(latest, 'failed', err.retryable && isBusy(err)
+          ? `${err.message} The model is busy right now; wait a minute, then press Retry.`
+          : err.message);
         return null;
       }
     }

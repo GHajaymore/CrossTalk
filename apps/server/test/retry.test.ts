@@ -73,12 +73,31 @@ describe('retry policy and request counting', () => {
     expect(repo.view(c.id)!.run?.state).toBe('completed');
   });
 
-  it('waits 5 seconds before retrying a 429 that gives no Retry-After', async () => {
+  it('waits 10 seconds before retrying a busy model that gives no Retry-After', async () => {
     const { repo, controller, c, waits } = setup([new ProviderError('Rate limited.', true, null, 429), 'Fine now.']);
     await controller.start(c.id);
     await controller.settled(c.id);
-    expect(waits).toEqual([5000]);
+    expect(waits).toEqual([10000]);
     expect(repo.view(c.id)!.run?.state).toBe('completed');
+  });
+
+  it('treats "overloaded" upstream errors as busy, and says so plainly if they persist', async () => {
+    const overloaded = () => new ProviderError('OpenRouter stopped mid-turn: Upstream error from Nvidia: Service temporarily overloaded.', true, null, 502);
+    const { repo, controller, c, waits } = setup([overloaded(), overloaded()]);
+    await controller.start(c.id);
+    await controller.settled(c.id);
+    expect(waits).toEqual([10000]);
+    expect(repo.view(c.id)!.run).toMatchObject({ state: 'failed', stopReason: expect.stringMatching(/busy right now; wait a minute, then press Retry/) });
+  });
+
+  it('trims an over-long reply to whole sentences', async () => {
+    const sentence = 'This sentence has exactly ten words in it, you see. ';
+    const { repo, controller, c } = setup([sentence.repeat(20).trim()]);
+    await controller.start(c.id);
+    await controller.settled(c.id);
+    const text = repo.listTurns(c.id)[0].text;
+    expect(text.split(/\s+/)).toHaveLength(150);
+    expect(text.endsWith('you see.')).toBe(true);
   });
 
   it('pauses instead of waiting more than 20 seconds', async () => {

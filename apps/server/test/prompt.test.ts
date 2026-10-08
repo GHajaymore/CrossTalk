@@ -23,7 +23,8 @@ describe('prompt builder', () => {
 
   it('applies the audience, temperature and mode rules', () => {
     const { system } = buildPrompt({ conversation: conv, seq: 1, speaker: conv.speakers.B, objective: 'Frame', history: [] });
-    expect(system).toContain('50-80 words');
+    expect(system).toContain('50-80 words of natural speech, never more than 80');
+    expect(system).toMatch(/Never refer to yourself by name/);
     expect(system).toMatch(/kids aged about 8-12/);
     expect(system).toMatch(/Sober and measured/);
     expect(system).toMatch(/concede a point when it is fair/);
@@ -37,6 +38,6 @@ describe('prompt builder', () => {
     expect(user).toContain('Turn 7 · Pip: Opening words of turn 7 go here and on. Second sentence.');
     expect(user).toContain('Turn 6 · Juno (you)');
     expect(user).toContain(`Don't reuse these openings of yours: "Opening words of turn 2 go here and"`);
-    expect(user).toMatch(/turn 8 of 8\): Close with the unresolved questions/);
+    expect(user).toMatch(/turn 8 of 8\): Close in under 100 words/);
   });
 });
