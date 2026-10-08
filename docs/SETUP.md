@@ -37,7 +37,7 @@ to its sources. In mock mode it reads saved sample stories. In real mode it read
 most-read and any RSS feeds in `SCOUT_RSS_FEEDS`, then uses **1 request** to rank and brief them.
 
 - It runs once a day at `SCOUT_TIME` (default `07:00`, server time; set `TZ` for your time zone), and
-  once to catch up if the app starts later. **Run Scout now** runs it any time.
+  once to catch up if the app starts later. **↻ Refresh topics** runs it again (with real AI, at most every 30 minutes, since it uses a free request), and **Show more** reveals the rest of the last run's topics for free.
 - **Autopilot** (off by default) turns the top pick into an episode, at most once a day, about 18 requests.
 - Tragedies, crime, health scares and private lives are always filtered out. Politics and Scandals are
   off until you turn them on, and never shown for Kids.

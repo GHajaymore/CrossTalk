@@ -12,6 +12,8 @@ const when = (iso: string) => new Date(iso).toLocaleString([], { weekday: 'short
 export function TodayTray({ rules, audience, selected, onPick, toast, real }: Props) {
   const [data, setData] = useState<ScoutView | null>(null);
   const [running, setRunning] = useState(false);
+  // Five at first; Show more reveals the rest of this run's topics, with no new request.
+  const [shown, setShown] = useState(5);
   useEffect(() => { api.scout().then(setData).catch(() => {}); }, []);
   if (!data) return null;
 
@@ -21,14 +23,17 @@ export function TodayTray({ rules, audience, selected, onPick, toast, real }: Pr
   };
   const runNow = async () => {
     setRunning(true);
-    try { const v = await api.runScout(); setData(v); toast(v.status.lastRun?.state === 'ok' ? 'Fresh topics are in' : v.status.lastRun?.error ?? 'The Scout came back empty'); }
+    try { const v = await api.runScout(); setData(v); setShown(5); toast(v.status.lastRun?.state === 'ok' ? 'Fresh topics are in' : v.status.lastRun?.error ?? 'The Scout came back empty'); }
     catch (e) { toast((e as Error).message); }
     finally { setRunning(false); }
   };
 
   const { prefs, status, topics } = data;
-  const picks = scoutPicks(topics, prefs, audience, rules).slice(0, 6);
+  const all = scoutPicks(topics, prefs, audience, rules);
+  const picks = all.slice(0, shown);
+  const wait = status.refreshAfter ? Math.max(1, Math.ceil((new Date(status.refreshAfter).getTime() - Date.now()) / 60_000)) : 0;
   const last = status.lastRun;
+  const ago = last ? Math.round((Date.now() - new Date(last.startedAt).getTime()) / 60_000) : null;
   const [h, m] = status.time.split(':').map(Number);
   const at = new Date(2000, 0, 1, h, m).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 
@@ -48,7 +53,7 @@ export function TodayTray({ rules, audience, selected, onPick, toast, real }: Pr
       {last?.sourcesFailed.length ? <p className="hint">Couldn't reach {last.sourcesFailed.join(', ')} last time; the others still counted.</p> : null}
       {last?.autopilotConversationId && <p className="hint">Autopilot made today's episode: <a href={`#/studio/${last.autopilotConversationId}/watch`}>open it</a>.</p>}
       {last?.autopilotNote && <p className="hint">Autopilot: {last.autopilotNote}</p>}
-      {!topics.length ? <p className="empty-stage tray-empty">No topics yet. The Scout looks at {at}, or press Run Scout now.</p>
+      {!topics.length ? <p className="empty-stage tray-empty">No topics yet. The Scout looks at {at}, or press Refresh topics.</p>
         : !picks.length ? <p className="empty-stage tray-empty">No topics match your choices. Turn on more topics or regions.</p>
         : (
           <div className="tray">
@@ -68,8 +73,14 @@ export function TodayTray({ rules, audience, selected, onPick, toast, real }: Pr
           </div>
         )}
       <div className="dock-row">
-        <button className="btn sm ghost" disabled={running || status.running} onClick={runNow}>{running || status.running ? 'Looking…' : 'Run Scout now'}</button>
-        <span className="hint">{real ? 'Reads Hacker News, Wikipedia and your RSS feeds, then uses 1 request to rank and brief.' : 'Mock mode reads saved sample stories; no network, no requests.'}</span>
+        {all.length > shown && <button className="btn sm" onClick={() => setShown(n => n + 5)}>Show more · {all.length - shown} left</button>}
+        <button className="btn sm ghost" disabled={running || status.running || wait > 0} onClick={runNow}>
+          {running || status.running ? 'Looking…' : wait > 0 ? `↻ Refresh in ${wait} min` : '↻ Refresh topics'}
+        </button>
+        <span className="hint">
+          {ago != null ? `Last refreshed ${ago < 1 ? 'just now' : ago < 60 ? `${ago} min ago` : when(last!.startedAt)}. ` : ''}
+          {real ? 'Refresh reads your sources again and uses 1 free request (at most every 30 min); Show more is free.' : 'Mock mode reads saved sample stories; no network, no requests.'}
+        </span>
       </div>
     </section>
   );

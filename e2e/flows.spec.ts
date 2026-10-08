@@ -243,9 +243,24 @@ test('keyboard only: the turn menu and the branch dialog', async ({ page, reques
   await expect(menuButton).toBeFocused();
 });
 
+test('Scout: Show more is free, sources can be switched, social posts stay opinions', async ({ page }) => {
+  await page.goto('/#/create');
+  await page.getByRole('button', { name: '↻ Refresh topics' }).click();
+  await expect(page.locator('.topic-card')).toHaveCount(5);
+  await page.getByRole('button', { name: /Show more · \d+ left/ }).click();
+  await expect.poll(() => page.locator('.topic-card').count()).toBeGreaterThan(5);
+  await expect(page.locator('.topic-card', { hasText: 'Has tipping culture gone too far?' })).toBeVisible();
+  const sources = page.getByRole('group', { name: 'Sources' });
+  await expect(page.getByText(/brief reports them as opinions, never as facts/)).toBeVisible();
+  await sources.getByRole('button', { name: 'Reddit' }).click();
+  await expect(sources.getByRole('button', { name: 'Reddit' })).toHaveAttribute('aria-pressed', 'false');
+  await sources.getByRole('button', { name: 'Reddit' }).click();
+  await expect(page.getByText(/Last refreshed just now/)).toBeVisible();
+});
+
 test('Scout: run it, pick a topic, and the brief follows the episode', async ({ page, request }) => {
   await page.goto('/#/create');
-  await page.getByRole('button', { name: 'Run Scout now' }).click();
+  await page.getByRole('button', { name: '↻ Refresh topics' }).click();
   const card = page.locator('.topic-card').first();
   await expect(card).toBeVisible();
   const question = await card.locator('h3').innerText();

@@ -109,6 +109,12 @@ export const SCOUT_CATS = {
   politics: 'Politics', tech: 'Technology', economy: 'Economy', business: 'Business', scandals: 'Scandals',
   global: 'Global affairs', science: 'Science', sports: 'Sports', culture: 'Culture & food', society: 'Cities & society',
 } as const;
+/** Where the Scout looks. All free, no accounts or keys. Social ones are opinions, never facts. */
+export const SCOUT_SOURCES = {
+  news: 'News sites', trends: 'Google Trends', reddit: 'Reddit', social: 'Bluesky & Mastodon', hn: 'Hacker News', wikipedia: 'Wikipedia',
+} as const;
+/** In real mode, a manual Refresh (one request) waits this long after the last one. */
+export const SCOUT_REFRESH_WAIT_MIN = 30;
 export const SCOUT_REGIONS = { local: 'Local', na: 'North America', europe: 'Europe', asia: 'Asia', world: 'World' } as const;
 /** Sensitive categories: off by default, never for Kids, and always balanced and sourced. */
 export const SENSITIVE_CATS = ['politics', 'scandals'] as const;

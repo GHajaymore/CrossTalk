@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { AUDIENCES, CUE_TEXT_MAX, SCOUT_CATS, SCOUT_REGIONS, TITLE_MAX, FORMATS, LENGTHS, LENS_MAX, MODES, NAME_MAX, PERSONAS, ROLE_MAX, TEMPERATURES, TOPIC_MAX } from './constants';
+import { AUDIENCES, CUE_TEXT_MAX, SCOUT_CATS, SCOUT_REGIONS, SCOUT_SOURCES, TITLE_MAX, FORMATS, LENGTHS, LENS_MAX, MODES, NAME_MAX, PERSONAS, ROLE_MAX, TEMPERATURES, TOPIC_MAX } from './constants';
 
 const keys = <T extends Record<string, unknown>>(o: T) => Object.keys(o) as [keyof T & string, ...(keyof T & string)[]];
 
@@ -61,6 +61,8 @@ export type CreateConversation = z.infer<typeof CreateConversation>;
 export const ScoutCat = z.enum(keys(SCOUT_CATS));
 export type ScoutCat = z.infer<typeof ScoutCat>;
 export const ScoutRegion = z.enum(keys(SCOUT_REGIONS));
+export const ScoutSourceKey = z.enum(keys(SCOUT_SOURCES));
+export type ScoutSourceKey = z.infer<typeof ScoutSourceKey>;
 export type ScoutRegion = z.infer<typeof ScoutRegion>;
 
 export const ScoutPrefs = z.object({
@@ -70,6 +72,8 @@ export const ScoutPrefs = z.object({
   /** Your city or region for "Local". Typed by you; the app never detects your location. */
   place: z.string().trim().max(60),
   autopilot: z.boolean(),
+  /** Which sources to read; all of them when left out (older saved preferences). */
+  sources: z.array(ScoutSourceKey).default(['news', 'trends', 'reddit', 'social', 'hn', 'wikipedia']),
 });
 export type ScoutPrefs = z.infer<typeof ScoutPrefs>;
 
@@ -123,6 +127,8 @@ export type ScoutStatus = {
   /** When the Scout runs each day, server time (SCOUT_TIME). */
   time: string;
   running: boolean;
+  /** Real mode: when a manual Refresh is next allowed (it uses a request); null when it is now. */
+  refreshAfter: string | null;
   lastRun: {
     id: string; date: string; startedAt: string; state: 'ok' | 'failed'; error: string | null;
     sourcesOk: string[]; sourcesFailed: string[]; autopilotConversationId: string | null; autopilotNote: string | null;

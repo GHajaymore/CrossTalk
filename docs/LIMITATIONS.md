@@ -30,6 +30,10 @@ CrossTalk is a prototype for one person. These are the honest gaps.
   illustration (Picture) needs an image model, and none is free yet. Her picture prompts are saved so
   past episodes can be redrawn.
 - **Very old browsers** may show the painted styles without their washes (they need SVG filters).
+- **The Scout's sources are free public feeds** (news sites' RSS, Google Trends, Reddit, Bluesky,
+  Mastodon, Hacker News, Wikipedia). Sites change their feeds now and then; when one can't be read,
+  the tray says so and the others still count. Reddit, Bluesky and Mastodon are opinions, reported as
+  what people are saying. X/Twitter, TikTok and Instagram have no free access, so they aren't included.
 - **The hosts are living portraits, not photos or video.** They're invented people drawn in the app,
   with a mouth that follows the voice and small random movements. Photo-real presenters need a paid
   service, and CrossTalk never uses a real person's likeness.

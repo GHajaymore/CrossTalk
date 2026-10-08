@@ -1,10 +1,10 @@
-import { SCOUT_CATS, SCOUT_REGIONS, SENSITIVE_CATS, type Audience, type ScoutCat, type ScoutPrefs, type ScoutRegion } from '@crosstalk/shared';
+import { SCOUT_CATS, SCOUT_REGIONS, SCOUT_SOURCES, SENSITIVE_CATS, type Audience, type ScoutCat, type ScoutPrefs, type ScoutRegion, type ScoutSourceKey } from '@crosstalk/shared';
 
 type Props = { prefs: ScoutPrefs; onChange: (p: ScoutPrefs) => void; audience?: Audience; allowPolitics?: boolean };
 
 const toggle = <T,>(list: T[], v: T) => (list.includes(v) ? list.filter(x => x !== v) : [...list, v]);
 
-/** Topics · Where · Rank by. The same chips on the Today tray and in Settings. */
+/** Topics · Where · Sources · Rank by. The same chips on the Today tray and in Settings. */
 export function ScoutPrefsEditor({ prefs, onChange, audience, allowPolitics = true }: Props) {
   const sensitive = prefs.cats.some(c => (SENSITIVE_CATS as readonly string[]).includes(c));
   return (
@@ -24,6 +24,14 @@ export function ScoutPrefsEditor({ prefs, onChange, audience, allowPolitics = tr
           </button>
         ))}
       </div>
+      <div className="pref-row" role="group" aria-label="Sources">
+        <span className="tag">Sources</span>
+        {(Object.entries(SCOUT_SOURCES) as [ScoutSourceKey, string][]).map(([k, l]) => (
+          <button key={k} className="chip sm" aria-pressed={prefs.sources.includes(k)}
+            onClick={() => { const next = toggle(prefs.sources, k); if (next.length) onChange({ ...prefs, sources: next }); }}>{l}</button>
+        ))}
+      </div>
+      {prefs.sources.some(s => s === 'reddit' || s === 'social') && <p className="hint">Reddit, Bluesky and Mastodon are what people are saying: the brief reports them as opinions, never as facts.</p>}
       <div className="pref-row" role="group" aria-label="Rank by">
         <span className="tag">Rank by</span>
         <div className="seg">
