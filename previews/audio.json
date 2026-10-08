@@ -1,0 +1,105 @@
+{
+  "voices": {
+    "A": "am_michael",
+    "B": "af_heart"
+  },
+  "durationSec": 300.01,
+  "timings": [
+    {
+      "seq": 1,
+      "speakerId": "A",
+      "start": 0.4,
+      "end": 21.525
+    },
+    {
+      "seq": 2,
+      "speakerId": "B",
+      "start": 21.808,
+      "end": 37.808
+    },
+    {
+      "seq": 3,
+      "speakerId": "A",
+      "start": 38.277,
+      "end": 61.002
+    },
+    {
+      "seq": 4,
+      "speakerId": "B",
+      "start": 61.425,
+      "end": 73.8
+    },
+    {
+      "seq": 5,
+      "speakerId": "A",
+      "start": 74.14,
+      "end": 94.915
+    },
+    {
+      "seq": 6,
+      "speakerId": "B",
+      "start": 95.231,
+      "end": 115.131
+    },
+    {
+      "seq": 7,
+      "speakerId": "A",
+      "start": 115.656,
+      "end": 141.606
+    },
+    {
+      "seq": 8,
+      "speakerId": "B",
+      "start": 141.979,
+      "end": 150.429
+    },
+    {
+      "seq": 9,
+      "speakerId": "A",
+      "start": 150.957,
+      "end": 173.932
+    },
+    {
+      "seq": 10,
+      "speakerId": "B",
+      "start": 174.425,
+      "end": 195.4
+    },
+    {
+      "seq": 11,
+      "speakerId": "A",
+      "start": 195.711,
+      "end": 218.536
+    },
+    {
+      "seq": 12,
+      "speakerId": "B",
+      "start": 218.922,
+      "end": 235.947
+    },
+    {
+      "seq": 13,
+      "speakerId": "A",
+      "start": 236.244,
+      "end": 257.969
+    },
+    {
+      "seq": 14,
+      "speakerId": "B",
+      "start": 258.338,
+      "end": 274.613
+    },
+    {
+      "seq": 15,
+      "speakerId": "A",
+      "start": 275.112,
+      "end": 289.812
+    },
+    {
+      "seq": 16,
+      "speakerId": "B",
+      "start": 290.101,
+      "end": 299.601
+    }
+  ]
+}
