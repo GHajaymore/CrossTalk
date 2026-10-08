@@ -1,0 +1,25 @@
+# Render blueprint for hosting CrossTalk on the free plan. Steps: docs/DEPLOY.md.
+# Secrets are marked sync: false, so Render asks for them in its dashboard. They never live in this repo.
+services:
+  - type: web
+    name: crosstalk
+    runtime: node
+    plan: free
+    region: oregon
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/access
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: HOST
+        value: 0.0.0.0
+      # Required: the code you type once on each device. At least 8 characters.
+      - key: ACCESS_CODE
+        sync: false
+      # Starts in mock mode, which needs no key. Switch to openrouter in the dashboard when ready.
+      - key: PROVIDER_MODE
+        value: mock
+      - key: MAX_REQUESTS_PER_DAY
+        value: "40"

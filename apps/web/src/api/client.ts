@@ -7,16 +7,22 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
     headers: init?.body ? { 'Content-Type': 'application/json' } : undefined,
   });
   const body = await res.json().catch(() => ({}));
+  // A hosted CrossTalk is locked: any 401 sends you back to the access-code screen.
+  if (res.status === 401 && (body as { locked?: boolean }).locked) dispatchEvent(new Event('crosstalk:locked'));
   if (!res.ok) throw new Error((body as { error?: string }).error ?? `Request failed (${res.status})`);
   return body as T;
 }
 
+export type Access = { required: boolean; ok: boolean };
 export type ConversationSummary = Conversation & { run: Run | null; turnCount: number; artist?: ArtistNotes | null };
 
 export const api = {
   config: () => call<AppConfig>('/config'),
   checkModels: () => call<AppConfig>('/guard/check', { method: 'POST' }),
   setMock: (m: MockSettings) => call<MockSettings>('/mock', { method: 'PUT', body: JSON.stringify(m) }),
+  access: () => call<Access>('/access'),
+  unlock: (code: string) => call<Access>('/access', { method: 'POST', body: JSON.stringify({ code }) }),
+  lock: () => call<Access>('/access', { method: 'DELETE' }),
   list: () => call<ConversationSummary[]>('/conversations'),
   get: (id: string) => call<ConversationView>(`/conversations/${id}`),
   create: (c: CreateConversation) => call<ConversationView>('/conversations', { method: 'POST', body: JSON.stringify(c) }),

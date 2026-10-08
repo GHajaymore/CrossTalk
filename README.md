@@ -23,6 +23,10 @@ Open http://localhost:5173. The local server runs on http://127.0.0.1:8787 and s
 
 The key stays on the local server and is never sent to the browser. Only models priced at $0 can run unless you set `ALLOW_PAID_MODELS=true` (don't).
 
+## Put it online
+
+Free hosting on Render at ajailabs.app, locked with an access code: see [docs/DEPLOY.md](docs/DEPLOY.md).
+
 ## Other commands
 
 | Command | What it does |

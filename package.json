@@ -12,6 +12,7 @@
     "dev": "node scripts/dev.mjs",
     "dev:mock": "node scripts/dev.mjs --mock",
     "build": "npm run build -w @crosstalk/web",
+    "start": "npm run start -w @crosstalk/server",
     "typecheck": "tsc -p packages/shared --noEmit && tsc -p apps/server --noEmit && tsc -p apps/web --noEmit",
     "test": "vitest run"
   },

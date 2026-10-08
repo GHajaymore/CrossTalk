@@ -331,3 +331,9 @@ label.fld{display:grid;gap:6px}
   .listen-meta{text-align:center}
   .listen-meta h2{font-size:19px}
 }
+
+/* LOCK: the door of a hosted CrossTalk */
+.lock{min-height:100vh;display:grid;place-items:center;padding-block:24px}
+.lock-card{width:min(100%,360px);display:grid;gap:14px;border:1px solid var(--line);border-radius:12px;padding:24px;background:var(--surface)}
+.lock-card input{background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:10px 12px;width:100%;font-size:16px}
+.lock-error{margin:0;color:var(--bad);font-size:14px}

@@ -11,6 +11,7 @@ import { MockProvider, type MockTiming } from './providers/mock';
 import { OpenRouterProvider } from './providers/openrouter';
 import type { Provider } from './providers/types';
 import type { ServerConfig } from './config';
+import { registerAccess, registerWeb } from './access';
 
 export type AppOptions = {
   timing?: MockTiming;
@@ -64,7 +65,10 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
   const interrupted = controller.recoverInterrupted();
 
   // Never log request headers or bodies: the key travels only from this server to OpenRouter.
-  const app = Fastify({ logger: opts.logger ?? false });
+  // Behind a host's proxy (only when locked for hosting), so wrong-code limits see the real address.
+  const app = Fastify({ logger: opts.logger ?? false, trustProxy: !!cfg.accessCode });
+  registerAccess(app, cfg);
+  registerWeb(app, cfg);
   if (interrupted) app.log.info(`${interrupted} run(s) were interrupted by a restart and are now paused.`);
   // Check models once at start-up so Settings can show the verdicts straight away.
   if (real && !cfg.problems.length) void checkModels();
