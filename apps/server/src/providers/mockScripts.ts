@@ -154,13 +154,14 @@ export function mockBranchText(job: string, direction: string) {
 }
 
 /** How a host opens a turn that answers a listener's cue. */
-export function mockCueLead(kind: 'challenge' | 'deeper' | 'guest' | 'temp', text: string | null, targetSeq: number | null, up = true) {
+export function mockCueLead(kind: 'challenge' | 'deeper' | 'guest' | 'temp' | 'note', text: string | null, targetSeq: number | null, up = true) {
   const t = (text ?? '').trim();
   switch (kind) {
     case 'challenge': return `Fair challenge from a listener: "${t}" Honestly, part of that lands, so let me answer it straight. `;
     case 'deeper': return `I want to stay on line ${targetSeq} a bit longer, because there's more in it than we gave it. `;
     case 'guest': return `Thanks for jumping on the mic. "${t}" That's worth taking seriously, and here's my honest reply. `;
     case 'temp': return up ? "Right, I'll say it more bluntly. " : "Let me take the heat down a notch. ";
+    case 'note': return "Let me keep this to what we actually know. ";
   }
 }
 

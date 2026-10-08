@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { buildApp } from '../src/app';
 import { mockConfig } from '../src/config';
 import { draft, INSTANT, QUICK } from './helpers';
@@ -49,12 +49,13 @@ describe('episodes library', () => {
     const { app, controller, iris } = buildApp(mockConfig({ dbPath: ':memory:' }), { timing: INSTANT });
     try {
       const id = (await app.inject({ method: 'POST', url: '/api/conversations', payload: draft() })).json().id;
-      await controller.start(id); await controller.settled(id);
-      void iris.listen(id, true);
+      await controller.start(id); await controller.settled(id); await iris.settled(id);
+      // Hold her as busy while the delete arrives (the mock draws too fast to catch otherwise).
+      const busy = vi.spyOn(iris, 'isWorking').mockReturnValue(true);
       const res = await app.inject({ method: 'DELETE', url: `/api/conversations/${id}` });
       expect(res.statusCode).toBe(409);
       expect(res.json().error).toMatch(/Iris is still drawing/);
-      await iris.settled(id);
+      busy.mockRestore();
       expect((await app.inject({ method: 'DELETE', url: `/api/conversations/${id}` })).statusCode).toBe(204);
     } finally { await app.close(); }
   });

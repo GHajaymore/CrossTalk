@@ -188,4 +188,36 @@ export const MIGRATIONS: string[] = [
   -- Mind-change meter: how sure a host said they were, on their first and last lines.
   ALTER TABLE turns ADD COLUMN stance INTEGER;
   `,
+  `
+  -- Milestone 8: Control room.
+  ALTER TABLE conversations ADD COLUMN publish TEXT;
+  ALTER TABLE scout_topics ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0;
+  ALTER TABLE scout_topics ADD COLUMN hidden INTEGER NOT NULL DEFAULT 0;
+
+  -- Producer notes ('note') join the cue kinds: rebuild the table to widen its check.
+  CREATE TABLE interventions_v2 (
+    id                  TEXT PRIMARY KEY,
+    conversation_id     TEXT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+    kind                TEXT NOT NULL CHECK (kind IN ('challenge', 'deeper', 'temp', 'guest', 'note')),
+    text                TEXT,
+    target_seq          INTEGER,
+    from_temp           TEXT,
+    to_temp             TEXT,
+    applies_before_seq  INTEGER NOT NULL,
+    status              TEXT NOT NULL CHECK (status IN ('queued', 'applied', 'cancelled')),
+    created_at          TEXT NOT NULL
+  );
+  INSERT INTO interventions_v2 SELECT id, conversation_id, kind, text, target_seq, from_temp, to_temp, applies_before_seq, status, created_at FROM interventions;
+  DROP TABLE interventions;
+  ALTER TABLE interventions_v2 RENAME TO interventions;
+  CREATE INDEX cues_by_conversation ON interventions(conversation_id, applies_before_seq);
+
+  -- Every admin action, newest last.
+  CREATE TABLE admin_audit (
+    id      INTEGER PRIMARY KEY AUTOINCREMENT,
+    at      TEXT NOT NULL,
+    action  TEXT NOT NULL,
+    detail  TEXT NOT NULL
+  );
+  `,
 ];

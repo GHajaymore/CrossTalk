@@ -19,6 +19,7 @@ export const JOBS = [
 
 export const MAX_TURNS = 16;
 export const DAILY_LIMIT_DEFAULT = 40;
+/** The default listener cue limit; the Control room can set 0–6. */
 export const CUE_LIMIT = 3;
 /** Mind-change meter: the jobs where each host says how sure they are (first lines) and whether it moved (last lines). */
 export const STANCE_START_JOBS = ['Hello', 'First take'] as const;

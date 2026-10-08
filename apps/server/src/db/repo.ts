@@ -27,11 +27,11 @@ export function openDb(file: string): DB {
 type ConvRow = {
   id: string; title: string; topic: string; mode: string; format: string; audience: string; temperature: string;
   episode: number; speakers_json: string; parent_id: string | null; branch_turn_id: string | null;
-  branch_seq: number | null; branch_direction: string | null; scout_topic_id: string | null; created_at: string; updated_at: string;
+  branch_seq: number | null; branch_direction: string | null; scout_topic_id: string | null; publish: string | null; created_at: string; updated_at: string;
 };
 type TopicRow = {
   id: string; run_id: string; date: string; rank: number; question: string; category: string; region: string;
-  split: number; buzz: number; bullets: string; sources: string; created_at: string;
+  split: number; buzz: number; bullets: string; sources: string; created_at: string; pinned: number; hidden: number;
 };
 type ScoutRunRow = {
   id: string; date: string; started_at: string; state: string; error: string | null; sources_ok: string; sources_failed: string;
@@ -41,6 +41,7 @@ export type ScoutRun = NonNullable<ScoutStatus['lastRun']> & { scheduled: boolea
 const toTopic = (r: TopicRow): ScoutTopic => ({
   id: r.id, runId: r.run_id, date: r.date, question: r.question, category: r.category as ScoutTopic['category'],
   region: r.region as ScoutTopic['region'], split: r.split, buzz: r.buzz, bullets: JSON.parse(r.bullets), sources: JSON.parse(r.sources), createdAt: r.created_at,
+  pinned: !!r.pinned, hidden: !!r.hidden,
 });
 const toScoutRun = (r: ScoutRunRow): ScoutRun => ({
   id: r.id, date: r.date, startedAt: r.started_at, state: r.state === 'ok' ? 'ok' : 'failed', error: r.error,
@@ -64,7 +65,7 @@ const toConversation = (r: ConvRow): Conversation => Conversation.parse({
   id: r.id, title: r.title, topic: r.topic, mode: r.mode, format: r.format, audience: r.audience,
   temperature: r.temperature, episode: r.episode, speakers: JSON.parse(r.speakers_json) as Speakers,
   parentId: r.parent_id, branchTurnId: r.branch_turn_id, branchSeq: r.branch_seq, branchDirection: r.branch_direction,
-  scoutTopicId: r.scout_topic_id, createdAt: r.created_at, updatedAt: r.updated_at,
+  scoutTopicId: r.scout_topic_id, publish: r.publish, createdAt: r.created_at, updatedAt: r.updated_at,
 });
 const toCue = (r: CueRow): Intervention => Intervention.parse({
   id: r.id, kind: r.kind, text: r.text, targetSeq: r.target_seq, fromTemp: r.from_temp, toTemp: r.to_temp,
@@ -97,6 +98,22 @@ export class Repo {
 
   listConversations(): Conversation[] {
     return (this.db.prepare('SELECT * FROM conversations ORDER BY updated_at DESC').all() as ConvRow[]).map(toConversation);
+  }
+
+  setPublish(id: string, publish: Conversation['publish']) {
+    this.db.prepare('UPDATE conversations SET publish = ? WHERE id = ?').run(publish, id);
+  }
+
+  setTopicFlags(id: string, flags: { pinned?: boolean; hidden?: boolean }) {
+    if (flags.pinned !== undefined) this.db.prepare('UPDATE scout_topics SET pinned = ? WHERE id = ?').run(flags.pinned ? 1 : 0, id);
+    if (flags.hidden !== undefined) this.db.prepare('UPDATE scout_topics SET hidden = ? WHERE id = ?').run(flags.hidden ? 1 : 0, id);
+  }
+
+  audit(at: string, action: string, detail: string) {
+    this.db.prepare('INSERT INTO admin_audit (at, action, detail) VALUES (?, ?, ?)').run(at, action, detail);
+  }
+  listAudit(limit = 30): { at: string; action: string; detail: string }[] {
+    return this.db.prepare('SELECT at, action, detail FROM admin_audit ORDER BY id DESC LIMIT ?').all(limit) as { at: string; action: string; detail: string }[];
   }
 
   rename(id: string, title: string) {
@@ -335,7 +352,8 @@ export class Repo {
   insertTopics(topics: ScoutTopic[]) {
     const q = this.db.prepare(`INSERT INTO scout_topics (id, run_id, date, rank, question, category, region, split, buzz, bullets, sources, created_at)
       VALUES (@id, @runId, @date, @rank, @question, @category, @region, @split, @buzz, @bullets, @sources, @createdAt)`);
-    this.db.transaction(() => topics.forEach((t, i) => q.run({ ...t, rank: i, bullets: JSON.stringify(t.bullets), sources: JSON.stringify(t.sources) })))();
+    this.db.transaction(() => topics.forEach((t, i) => q.run({ id: t.id, runId: t.runId, date: t.date, question: t.question, category: t.category, region: t.region,
+      split: t.split, buzz: t.buzz, createdAt: t.createdAt, rank: i, bullets: JSON.stringify(t.bullets), sources: JSON.stringify(t.sources) })))();
   }
   topicsForRun(runId: string): ScoutTopic[] {
     return (this.db.prepare('SELECT * FROM scout_topics WHERE run_id = ? ORDER BY rank').all(runId) as TopicRow[]).map(toTopic);
