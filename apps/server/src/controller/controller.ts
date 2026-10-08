@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import {
-  assertTransition, BRANCH_TURNS, CUE_LIMIT, extractStance, STANCE_END_JOBS, STANCE_START_JOBS, jobIn, resolveSpeakers, speakerFor, stepTemperature, TransitionError,
+  assertTransition, blockedHit, BRANCH_TURNS, DEFAULT_RULES, extractStance, STANCE_END_JOBS, STANCE_START_JOBS, jobIn, resolveSpeakers, speakerFor, stepTemperature, TransitionError,
   type BranchInput, type Conversation, type ConversationView, type CreateConversation, type CueInput, type Intervention,
-  type LiveTurn, type Run, type RunState, type StreamEvent,
+  type LiveTurn, type Rules, type Run, type RunState, type StreamEvent,
 } from '@crosstalk/shared';
 import type { Repo } from '../db/repo';
 import { AbortedError, ProviderError, type Provider, type Usage } from '../providers/types';
@@ -55,6 +55,8 @@ export type ControllerOptions = {
   preflight?: () => Promise<string | null>;
   /** Called once when a run completes (Iris listens then). */
   onCompleted?: (conversationId: string) => void;
+  /** The Control room's rules (blocked words, audience and temperature switches, cue limit). */
+  rules?: () => Rules;
   /** Waiting before a retry. Replaceable in tests. */
   sleep?: (ms: number, signal: AbortSignal) => Promise<void>;
 };
@@ -105,8 +107,21 @@ export class ConversationController {
     return this.active?.conversationId === conversationId ? this.active.done : Promise.resolve();
   }
 
+  private rules() { return this.opts.rules?.() ?? DEFAULT_RULES; }
+
+  /** A topic the Control room's blocked words keep off air. */
+  private blockedMessage(text: string) {
+    const hit = blockedHit(text, this.rules().blocked);
+    return hit ? `"${hit}" is on the Control room's blocked list, so this can't go on air.` : null;
+  }
+
   // ---- commands ----
   create(input: CreateConversation, roles?: [string, string]): ConversationView {
+    const rules = this.rules();
+    const blocked = this.blockedMessage(input.topic);
+    if (blocked) throw new ControllerError(blocked, 400);
+    if (input.audience === 'mature' && !rules.allowMature) throw new ControllerError('The Mature audience is switched off in the Control room.', 400);
+    if (input.temperature === 'heated' && !rules.allowHeated) throw new ControllerError('Heated is switched off in the Control room.', 400);
     const at = this.now().toISOString();
     const c: Conversation = {
       id: randomUUID(),
@@ -123,6 +138,7 @@ export class ConversationController {
       branchSeq: null,
       branchDirection: null,
       scoutTopicId: input.scoutTopicId ?? null,
+      publish: null,
       createdAt: at,
       updatedAt: at,
     };
@@ -164,8 +180,10 @@ export class ConversationController {
     const appliesBeforeSeq = last + (writing ? 2 : 1);
     if (appliesBeforeSeq > this.limitFor(conv)) throw new ControllerError("The episode is about to end, so there's no turn left for a cue.", 409);
 
-    const cues = this.repo.listCues(conversationId).filter(x => x.status !== 'cancelled');
-    if (cues.length >= CUE_LIMIT) throw new ControllerError(`You've used all ${CUE_LIMIT} cues for this episode.`, 409);
+    // Producer notes never use the listener's cues.
+    const cues = this.repo.listCues(conversationId).filter(x => x.status !== 'cancelled' && x.kind !== 'note');
+    const limit = this.rules().cueLimit;
+    if (cues.length >= limit) throw new ControllerError(limit ? `You've used all ${limit} cues for this episode.` : 'Listener cues are switched off in the Control room.', 409);
     const waiting = cues.find(x => x.status === 'queued');
     if (waiting) throw new ControllerError(`A cue is already waiting for turn ${waiting.appliesBeforeSeq}. Cancel it, or wait until it lands.`, 409);
 
@@ -173,13 +191,18 @@ export class ConversationController {
       id: randomUUID(), kind: input.kind, text: null, targetSeq: null, fromTemp: null, toTemp: null,
       appliesBeforeSeq, status: 'queued', createdAt: this.now().toISOString(), fromOriginal: false,
     };
-    if (input.kind === 'challenge' || input.kind === 'guest') cue.text = input.text;
+    if (input.kind === 'challenge' || input.kind === 'guest') {
+      const blocked = this.blockedMessage(input.text);
+      if (blocked) throw new ControllerError(blocked, 400);
+      cue.text = input.text;
+    }
     if (input.kind === 'deeper') {
       if (!this.repo.listTurns(conversationId).some(t => t.seq === input.targetSeq)) throw new ControllerError('Pick a finished turn to go deeper on.', 400);
       cue.targetSeq = input.targetSeq;
     }
     if (input.kind === 'temp') {
       const to = stepTemperature(conv.temperature, input.direction, conv.audience);
+      if (to === 'heated' && !this.rules().allowHeated) throw new ControllerError('Heated is switched off in the Control room.', 409);
       if (!to) {
         throw new ControllerError(input.direction === 'down' ? "It's already at Calm."
           : conv.audience === 'kids' ? 'Kids episodes stop at Lively.' : "It's already at Heated.", 409);
@@ -192,10 +215,35 @@ export class ConversationController {
     return cue;
   }
 
+  /**
+   * A producer note from the Control room: lands before the next turn like a cue, shows on the centre
+   * line as "Producer note", and never counts against the listener's cues. One waiting at a time.
+   */
+  addNote(conversationId: string, text: string): Intervention {
+    const conv = this.repo.getConversation(conversationId);
+    if (!conv) throw new ControllerError('Conversation not found.', 404);
+    const run = this.repo.latestRun(conversationId);
+    if (!run || run.state === 'completed' || run.state === 'cancelled') throw new ControllerError('Producer notes go to an episode that is on air, paused or failed.', 409);
+    const last = this.repo.lastSeq(conversationId);
+    const writing = this.active?.conversationId === conversationId && !!this.active.live;
+    const appliesBeforeSeq = last + (writing ? 2 : 1);
+    if (appliesBeforeSeq > this.limitFor(conv)) throw new ControllerError("The episode is about to end, so there's no turn left for a note.", 409);
+    if (this.repo.listCues(conversationId).some(x => x.kind === 'note' && x.status === 'queued')) throw new ControllerError('A producer note is already waiting for the next turn.', 409);
+    const note: Intervention = {
+      id: randomUUID(), kind: 'note', text, targetSeq: null, fromTemp: null, toTemp: null,
+      appliesBeforeSeq, status: 'queued', createdAt: this.now().toISOString(), fromOriginal: false,
+    };
+    this.repo.insertCue(conversationId, note);
+    this.emit(conversationId, { type: 'changed' });
+    return note;
+  }
+
   /** Takes back a waiting cue. It doesn't count toward the limit. Too late once its turn is being written. */
   cancelCue(conversationId: string, cueId: string) {
     const cue = this.repo.listCues(conversationId).find(x => x.id === cueId);
     if (!cue) throw new ControllerError('Cue not found.', 404);
+    // A producer note belongs to the Control room; a listener can't take it back.
+    if (cue.kind === 'note') throw new ControllerError("Producer notes can't be taken back here.", 403);
     if (cue.status !== 'queued') throw new ControllerError('That cue has already landed.', 409);
     const live = this.liveTurn(conversationId);
     if (live && live.seq >= cue.appliesBeforeSeq) throw new ControllerError("Too late: that cue is already on air.", 409);
@@ -215,11 +263,14 @@ export class ConversationController {
     }
     const turn = this.repo.listTurns(conversationId).find(t => t.seq === input.fromSeq);
     if (!turn) throw new ControllerError('Pick a finished turn to branch from.', 400);
+    const blocked = this.blockedMessage(input.direction);
+    if (blocked) throw new ControllerError(blocked, 400);
     const at = this.now().toISOString();
     const c: Conversation = {
       ...parent,
       id: randomUUID(),
       title: input.direction,
+      publish: null,
       // The mood at the cut, not wherever the original ended up.
       temperature: this.repo.temperatureAt(conversationId, input.fromSeq),
       parentId: parent.id,
@@ -244,6 +295,9 @@ export class ConversationController {
   async start(conversationId: string): Promise<Run> {
     const conv = this.repo.getConversation(conversationId);
     if (!conv) throw new ControllerError('Conversation not found.', 404);
+    // Rules can change after an episode was made: a topic blocked since then can't go live.
+    const blocked = this.blockedMessage(conv.topic);
+    if (blocked) throw new ControllerError(blocked, 409);
     this.assertCanStart(conversationId);
     this.starting = conversationId;
     try {
@@ -412,7 +466,13 @@ export class ConversationController {
 
       const conv = this.repo.getConversation(conversationId)!;
       const seq = this.repo.lastSeq(conversationId) + 1;
-      if (seq > this.limitFor(conv)) { this.transition(run, 'completed', null); queueMicrotask(() => this.opts.onCompleted?.(conversationId)); return; }
+      if (seq > this.limitFor(conv)) {
+        this.transition(run, 'completed', null);
+        // Finished episodes wait for the owner's OK before anything can be published.
+        this.repo.setPublish(conversationId, 'waiting');
+        queueMicrotask(() => this.opts.onCompleted?.(conversationId));
+        return;
+      }
       if (run.pauseRequested) { this.transition(run, 'paused', 'by you'); return; }
       if (this.requestsToday() >= this.opts.dailyLimit) { this.transition(run, 'paused', 'Daily request limit reached'); return; }
 

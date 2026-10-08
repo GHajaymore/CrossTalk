@@ -32,7 +32,10 @@ export function EpisodeKit({ c, toast }: { c: ConversationView; toast: (m: strin
         <div className="kit-tile"><b>Social clip</b><p>The key moment as a 30–60 second vertical clip: the studio, live captions, and Iris's sketch at the end.</p><span className="badge later">Later</span></div>
         <div className="kit-tile"><b>Iris print</b><p>{c.artist?.state === 'done' ? `“${c.artist.artTitle}”, her sketch of turn ${c.artist.momentSeq}, prepared as a listing for your shop.` : 'Her drawing of the moment that stayed with her, prepared as a listing.'}</p><span className="badge later">Later</span></div>
       </div>
-      <p className="hint">Nothing posts or sells automatically: every episode, clip and print waits for your OK.</p>
+      <p className="hint publish-line">
+        <span className={`status ${c.publish === 'approved' ? 'completed' : c.publish === 'held' ? 'failed' : 'paused'}`}>{c.publish === 'approved' ? 'approved' : c.publish === 'held' ? 'held' : 'waiting for your OK'}</span>{' '}
+        Nothing posts or sells automatically: every episode, clip and print waits for your OK in the <a href="#/control/publish">Control room</a>.
+      </p>
     </section>
   );
 }

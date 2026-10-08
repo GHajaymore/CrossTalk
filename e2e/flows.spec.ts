@@ -140,3 +140,40 @@ test('Scout: run it, pick a topic, and the brief follows the episode', async ({ 
   const json = await (await request.get(`/api/conversations/${id}/export.json`)).json();
   expect(json.sources.length).toBeGreaterThan(0);
 });
+
+test('Control room: block a word, run an episode with a producer note, then approve it', async ({ page, request }) => {
+  await page.goto('/#/control/rules');
+  await page.getByLabel('Blocked words and topics (one per line)').fill('crypto');
+  await page.getByRole('button', { name: 'Save rules' }).click();
+  await expect(page.getByText('Rules saved')).toBeVisible();
+
+  await page.goto('/#/create');
+  await page.locator('#topic').fill('Is crypto the future of money?');
+  await expect(page.getByRole('alert')).toContainText('blocked list');
+  await expect(page.getByRole('button', { name: /Start recording/ })).toBeDisabled();
+
+  await page.locator('#topic').fill('Should cities ban cars from downtown?');
+  await page.getByRole('button', { name: /Start recording/ }).click();
+  await expect.poll(() => page.locator('.pip.done').count()).toBeGreaterThanOrEqual(1);
+  await page.getByRole('button', { name: 'Pause after this turn' }).click();
+  await expect(page.locator('.status-line')).toContainText('Paused after turn');
+  const id = page.url().split('/studio/')[1].split('/')[0];
+
+  await page.goto('/#/control/live');
+  await page.getByLabel('Producer note').fill('Keep it to the facts we have.');
+  await page.getByRole('button', { name: 'Send note' }).click();
+  await expect(page.getByText('Producer note queued')).toBeVisible();
+
+  await page.goto(`/#/studio/${id}/read`);
+  await expect(page.locator('.cue.note')).toContainText('Keep it to the facts we have.');
+  await page.getByRole('button', { name: 'Resume' }).click();
+  await expect(page.locator('.status-line')).toContainText('Complete', { timeout: 60_000 });
+
+  await page.goto('/#/control/publish');
+  const row = page.locator('.lib-item', { has: page.locator(`a[href="#/studio/${id}/read"]`) });
+  await row.getByRole('button', { name: 'Approve' }).click();
+  await expect(row.locator('.status')).toHaveText('approved');
+  const queue = await (await request.get('/api/admin/publish-queue')).json();
+  expect(queue.map((q: { id: string }) => q.id)).toContain(id);
+  await request.put('/api/admin/rules', { data: { blocked: [], allowMature: true, allowHeated: true, allowPolitics: false, cueLimit: 3 } });
+});

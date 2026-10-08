@@ -1,18 +1,19 @@
 import { SCOUT_CATS, SCOUT_REGIONS, SENSITIVE_CATS, type Audience, type ScoutCat, type ScoutPrefs, type ScoutRegion } from '@crosstalk/shared';
 
-type Props = { prefs: ScoutPrefs; onChange: (p: ScoutPrefs) => void; audience?: Audience };
+type Props = { prefs: ScoutPrefs; onChange: (p: ScoutPrefs) => void; audience?: Audience; allowPolitics?: boolean };
 
 const toggle = <T,>(list: T[], v: T) => (list.includes(v) ? list.filter(x => x !== v) : [...list, v]);
 
 /** Topics · Where · Rank by. The same chips on the Today tray and in Settings. */
-export function ScoutPrefsEditor({ prefs, onChange, audience }: Props) {
+export function ScoutPrefsEditor({ prefs, onChange, audience, allowPolitics = true }: Props) {
   const sensitive = prefs.cats.some(c => (SENSITIVE_CATS as readonly string[]).includes(c));
   return (
     <div className="prefs">
       <div className="pref-row" role="group" aria-label="Topics">
         <span className="tag">Topics</span>
         {(Object.entries(SCOUT_CATS) as [ScoutCat, string][]).map(([k, l]) => (
-          <button key={k} className="chip sm" aria-pressed={prefs.cats.includes(k)} onClick={() => onChange({ ...prefs, cats: toggle(prefs.cats, k) })}>{l}</button>
+          <button key={k} className="chip sm" aria-pressed={prefs.cats.includes(k)} onClick={() => onChange({ ...prefs, cats: toggle(prefs.cats, k) })}
+            disabled={!allowPolitics && (SENSITIVE_CATS as readonly string[]).includes(k)} title={!allowPolitics && (SENSITIVE_CATS as readonly string[]).includes(k) ? 'Switched off in the Control room' : undefined}>{l}</button>
         ))}
       </div>
       <div className="pref-row" role="group" aria-label="Where">
@@ -31,7 +32,8 @@ export function ScoutPrefsEditor({ prefs, onChange, audience }: Props) {
           ))}
         </div>
       </div>
-      {sensitive && <p className="hint sens">Politics and scandals stay balanced and sourced: both sides get their strongest case, accusations are reported as allegations, and private people are never named.{audience === 'kids' ? ' Hidden for the Kids audience.' : ''}</p>}
+      {!allowPolitics && <p className="hint">Politics and Scandals are switched off in the Control room.</p>}
+      {sensitive && allowPolitics && <p className="hint sens">Politics and scandals stay balanced and sourced: both sides get their strongest case, accusations are reported as allegations, and private people are never named.{audience === 'kids' ? ' Hidden for the Kids audience.' : ''}</p>}
     </div>
   );
 }

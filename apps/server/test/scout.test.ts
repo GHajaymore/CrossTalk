@@ -250,10 +250,13 @@ describe('Topic Scout: review fixes', () => {
     const { app, repo } = buildApp(mockConfig({ dbPath: ':memory:' }), { timing: INSTANT });
     try {
       repo.insertScoutRun('r1', '2026-10-08', '', false);
-      repo.insertTopics([{ id: 'pol', runId: 'r1', date: '2026-10-08', question: 'Should voting be mandatory?', category: 'politics', region: 'na', split: 52, buzz: 80, bullets: [{ text: 'x', url: 'https://example.com', source: 'RSS' }], sources: ['RSS'], createdAt: '' }]);
+      repo.insertTopics([{ id: 'pol', runId: 'r1', date: '2026-10-08', question: 'Should voting be mandatory?', category: 'politics', region: 'na', split: 52, buzz: 80, bullets: [{ text: 'x', url: 'https://example.com', source: 'RSS' }], sources: ['RSS'], createdAt: '', pinned: false, hidden: false }]);
       const kids = await app.inject({ method: 'POST', url: '/api/conversations', payload: { ...draft('Should voting be mandatory?'), audience: 'kids', scoutTopicId: 'pol' } });
       expect(kids.statusCode).toBe(400);
       expect(kids.json().error).toMatch(/aren't used for Kids/);
+      // Off by default in the Control room; allowed once switched on.
+      expect((await app.inject({ method: 'POST', url: '/api/conversations', payload: { ...draft('Should voting be mandatory?'), scoutTopicId: 'pol' } })).statusCode).toBe(400);
+      repo.setSetting('rules', { blocked: [], allowMature: true, allowHeated: true, allowPolitics: true, cueLimit: 3 });
       expect((await app.inject({ method: 'POST', url: '/api/conversations', payload: { ...draft('Should voting be mandatory?'), scoutTopicId: 'pol' } })).statusCode).toBe(201);
     } finally { await app.close(); }
   });

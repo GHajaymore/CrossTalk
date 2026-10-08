@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
-  ARTIST, AUDIENCES, episodeLabel, FORMATS, hostSubtitle, isSensitive, LENS_MAX, MAX_TURNS, MODES, NAME_MAX, PERSONAS, PRESETS, resolveSpeakers, ROLE_MAX,
+  ARTIST, AUDIENCES, blockedHit, DEFAULT_RULES, episodeLabel, FORMATS, hostSubtitle, isSensitive, LENS_MAX, MAX_TURNS, MODES, NAME_MAX, PERSONAS, PRESETS, resolveSpeakers, ROLE_MAX,
   TEMPERATURE_ORDER, TEMPERATURES, TOPIC_MAX,
   type AppConfig, type Audience, type CreateConversation, type Format, type Mode, type PersonaKey, type ScoutTopic, type SpeakerDraft, type SpeakerId, type Temperature,
 } from '@crosstalk/shared';
@@ -38,7 +38,16 @@ export function Create({ config, go, refreshConfig, toast }: Props) {
   const real = config?.providerMode === 'openrouter';
   const overBudget = !!config && config.requestsToday >= config.dailyLimit;
   const blocked = realBlocked(config);
-  const canStart = !!topic.trim() && !busy && !starting && !overBudget && !blocked;
+  // The Control room's rules: blocked words keep a topic off air; Mature and Heated can be switched off.
+  const rules = config?.rules ?? DEFAULT_RULES;
+  // If the Control room switches off what's selected, step back to the nearest allowed choice.
+  useEffect(() => {
+    if (audience === 'mature' && !rules.allowMature) setAudience('general');
+    if (temperature === 'heated' && !rules.allowHeated) setTemperature('lively');
+  }, [rules.allowMature, rules.allowHeated]); // eslint-disable-line react-hooks/exhaustive-deps
+  const blockedWord = blockedHit(topic, rules.blocked);
+  const canStart = !!topic.trim() && !busy && !starting && !overBudget && !blocked && !blockedWord
+    && !(audience === 'mature' && !rules.allowMature) && !(temperature === 'heated' && !rules.allowHeated);
 
   const pickAudience = (a: Audience) => {
     setAudience(a);
@@ -123,13 +132,14 @@ export function Create({ config, go, refreshConfig, toast }: Props) {
         iris={{ text: 'Iris · in the booth', active: false }}
       />
 
-      <TodayTray audience={audience} selected={scoutTopic?.id ?? null} real={real} toast={toast}
+      <TodayTray rules={rules} audience={audience} selected={scoutTopic?.id ?? null} real={real} toast={toast}
         onPick={t => { setScoutTopic(t); setTopic(t.question); setMode('debate'); document.getElementById('topic')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }} />
 
       <div className="topic-box">
         <label className="tag" htmlFor="topic">Topic</label>
         <textarea id="topic" maxLength={TOPIC_MAX} placeholder="Ask a question worth two perspectives" value={topic} onChange={e => setTopic(e.target.value)} />
         {briefOn && <BriefBox brief={scoutTopic!} note="from the Scout" />}
+        {blockedWord && <p className="hint blocked-hint" role="alert">✕ “{blockedWord}” is on the Control room's blocked list, so this topic can't go on air.</p>}
         {kidsBlocked && <p className="hint">Politics and scandals aren't used for Kids episodes, so this topic's brief is off. Pick another topic or audience.</p>}
         {scoutTopic && !briefOn && !kidsBlocked && <p className="hint">You changed the question, so the Scout's brief won't be used. <button className="link-btn" onClick={() => setTopic(scoutTopic.question)}>Put it back</button></p>}
         <div className="chips" role="group" aria-label="Preset topics">
@@ -157,7 +167,8 @@ export function Create({ config, go, refreshConfig, toast }: Props) {
         <div>
           <div className="tag" style={{ marginBottom: 8 }}>Audience</div>
           <div className="seg" role="group" aria-label="Audience">
-            {(Object.keys(AUDIENCES) as Audience[]).map(k => <button key={k} aria-pressed={audience === k} onClick={() => pickAudience(k)}>{AUDIENCES[k].label}</button>)}
+            {(Object.keys(AUDIENCES) as Audience[]).map(k => <button key={k} aria-pressed={audience === k} onClick={() => pickAudience(k)}
+              disabled={k === 'mature' && !rules.allowMature} title={k === 'mature' && !rules.allowMature ? 'Switched off in the Control room' : undefined}>{AUDIENCES[k].label}</button>)}
           </div>
           <p className="mode-help">{AUDIENCES[audience].help}</p>
         </div>
@@ -166,8 +177,8 @@ export function Create({ config, go, refreshConfig, toast }: Props) {
           <div className="seg" role="group" aria-label="Temperature">
             {TEMPERATURE_ORDER.map(k => (
               <button key={k} aria-pressed={temperature === k} onClick={() => setTemperature(k)}
-                disabled={TEMPERATURE_ORDER.indexOf(k) > TEMPERATURE_ORDER.indexOf(maxTemp(audience))}
-                title={k === 'heated' && audience === 'kids' ? 'Not available for Kids' : undefined}>{TEMPERATURES[k].label}</button>
+                disabled={TEMPERATURE_ORDER.indexOf(k) > TEMPERATURE_ORDER.indexOf(maxTemp(audience)) || (k === 'heated' && !rules.allowHeated)}
+                title={k === 'heated' && audience === 'kids' ? 'Not available for Kids' : k === 'heated' && !rules.allowHeated ? 'Switched off in the Control room' : undefined}>{TEMPERATURES[k].label}</button>
             ))}
           </div>
           <p className="mode-help">{TEMPERATURES[temperature].help} You can turn it up or down mid-discussion.</p>

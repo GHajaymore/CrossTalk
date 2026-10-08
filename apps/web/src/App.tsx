@@ -5,7 +5,8 @@ import { Lock } from './screens/Lock';
 import { Create } from './screens/Create';
 import { IrisPage } from './screens/Iris';
 import { Episodes } from './screens/Episodes';
-import { ControlRoom, Settings } from './screens/Others';
+import { ControlRoom } from './screens/ControlRoom';
+import { Settings } from './screens/Others';
 import { Studio, STUDIO_TABS, type StudioTab } from './screens/Studio';
 
 // Routes live in the URL hash (#/studio/<id>/<tab>), so a refresh reopens the same discussion and view.
@@ -65,7 +66,7 @@ export function App() {
   else if (loc.route === 'episodes') screen = <Episodes config={config} toast={toast} />;
   else if (loc.route === 'iris') screen = <IrisPage config={config} />;
   else if (loc.route === 'settings') screen = <Settings config={config} refreshConfig={refreshConfig} />;
-  else if (loc.route === 'control') screen = <ControlRoom config={config} />;
+  else if (loc.route === 'control') screen = <ControlRoom config={config} tab={loc.id} toast={toast} refreshConfig={refreshConfig} />;
   else screen = <Create config={config} go={go} refreshConfig={refreshConfig} toast={toast} />;
 
   return (

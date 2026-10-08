@@ -10,7 +10,7 @@ const conv: Conversation = {
     A: { id: 'A', name: 'Wren', autoName: true, persona: 'optimist', autoPersona: true, lens: 'Imaginative', modelId: FREE_A, role: '', autoRole: true },
     B: { id: 'B', name: 'Hale', autoName: true, persona: 'skeptic', autoPersona: true, lens: 'Analytical', modelId: FREE_B, role: '', autoRole: true },
   },
-  parentId: null, branchTurnId: null, branchSeq: null, branchDirection: null, scoutTopicId: null, createdAt: '', updatedAt: '',
+  parentId: null, branchTurnId: null, branchSeq: null, branchDirection: null, scoutTopicId: null, publish: null, createdAt: '', updatedAt: '',
 };
 const req = { conversation: conv, seq: 1, speaker: conv.speakers.A, objective: 'Frame', history: [] };
 const make = (f: typeof fetch, timeoutMs = 5000) => new OpenRouterProvider({ apiKey: 'sk-or-test', maxOutputTokens: 220, timeoutMs, fetch: f });

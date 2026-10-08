@@ -86,6 +86,33 @@ export type ScoutTopic = {
   bullets: ScoutBullet[];
   sources: string[];
   createdAt: string;
+  /** Control room: pinned topics come first; hidden ones never reach a tray or Autopilot. */
+  pinned: boolean;
+  hidden: boolean;
+};
+
+// ---- Control room ----
+export const Rules = z.object({
+  /** Words and phrases that keep a topic off air; the Scout drops matching stories. */
+  blocked: z.array(z.string().trim().min(1).max(60)).max(200),
+  allowMature: z.boolean(),
+  allowHeated: z.boolean(),
+  /** Politics and Scandals in the Scout. */
+  allowPolitics: z.boolean(),
+  /** Listener cues per episode, 0–6. */
+  cueLimit: z.number().int().min(0).max(6),
+});
+export type Rules = z.infer<typeof Rules>;
+
+export const NoteInput = z.object({
+  text: z.string().transform(s => s.replace(/\s+/g, ' ').trim()).pipe(z.string().min(1, 'Write the note first.').max(CUE_TEXT_MAX)),
+});
+
+export type Overview = {
+  episodes: number; finishedPct: number | null; cuesPerEpisode: number; irisArtworks: number; waiting: number;
+  requestsToday: number; dailyLimit: number;
+  topics: { category: string; count: number }[];
+  audit: { at: string; action: string; detail: string }[];
 };
 
 export type ScoutStatus = {
@@ -131,7 +158,8 @@ export const Run = z.object({
 });
 export type Run = z.infer<typeof Run>;
 
-export const CueKind = z.enum(['challenge', 'deeper', 'temp', 'guest']);
+// 'note' is a producer note from the Control room: it lands like a cue but never uses the listener's cues.
+export const CueKind = z.enum(['challenge', 'deeper', 'temp', 'guest', 'note']);
 export type CueKind = z.infer<typeof CueKind>;
 
 /** A listener's cue: a note passed across the desk that lands at the next turn boundary. */
@@ -194,6 +222,8 @@ export const Conversation = z.object({
   branchDirection: z.string().nullable(),
   /** The Scout topic this episode came from, if any. */
   scoutTopicId: z.string().nullable().default(null),
+  /** Publishing (Control room): every finished episode waits for the owner's OK. Nothing is ever posted without 'approved'. */
+  publish: z.enum(['waiting', 'approved', 'held']).nullable().default(null),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -284,6 +314,10 @@ export type AppConfig = {
   /** The free-model guard's latest verdict per model. Empty in mock mode or before the first check. */
   guard: { checkedAt: string | null; verdicts: ModelVerdict[] };
   usageToday: { attempts: number; tokensIn: number; tokensOut: number; costUsd: number | null };
+  /** The Control room's rules, which Create, the Studio and the Scout follow. */
+  rules: Rules;
+  /** Whether the Control room needs its admin code here (online), and whether this device has it. */
+  admin: { required: boolean; ok: boolean; configured: boolean };
 };
 
 export const MockSettings = z.object({

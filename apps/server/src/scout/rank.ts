@@ -76,6 +76,7 @@ export function parseRanking(reply: string, candidates: Candidate[], meta: { run
     topics.push({
       id: randomUUID(), runId: meta.runId, date: meta.date, question, category: category.data, region: region.data,
       split: 50 + Math.round((100 - arguability) / 2), buzz, bullets, sources: [...new Set(bullets.map(b => b.source))], createdAt: meta.at,
+      pinned: false, hidden: false,
     });
     if (topics.length >= MAX_TOPICS) break;
   }

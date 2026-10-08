@@ -1,5 +1,5 @@
 // Typed calls to the local server. The browser never talks to a model.
-import type { AppConfig, ArtistNotes, BranchInput, Conversation, ConversationView, CreateConversation, CueInput, IrisFeedback, MockSettings, Run, ScoutPrefs, ScoutStatus, ScoutTopic } from '@crosstalk/shared';
+import type { AppConfig, ArtistNotes, BranchInput, Conversation, ConversationView, CreateConversation, CueInput, IrisFeedback, MockSettings, Overview, Rules, Run, ScoutPrefs, ScoutStatus, ScoutTopic } from '@crosstalk/shared';
 
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`/api${path}`, {
@@ -9,6 +9,7 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
   const body = await res.json().catch(() => ({}));
   // A hosted CrossTalk is locked: any 401 sends you back to the access-code screen.
   if (res.status === 401 && (body as { locked?: boolean }).locked) dispatchEvent(new Event('crosstalk:locked'));
+  if (res.status === 403 && (body as { adminLocked?: boolean }).adminLocked) dispatchEvent(new Event('crosstalk:admin-locked'));
   if (!res.ok) throw new Error((body as { error?: string }).error ?? `Request failed (${res.status})`);
   return body as T;
 }
@@ -33,6 +34,14 @@ export const api = {
   rename: (id: string, title: string) => call<ConversationView>(`/conversations/${id}`, { method: 'PATCH', body: JSON.stringify({ title }) }),
   remove: (id: string) => call<unknown>(`/conversations/${id}`, { method: 'DELETE' }),
 
+  // Control room
+  adminSignIn: (code: string) => call<AppConfig['admin']>('/admin/access', { method: 'POST', body: JSON.stringify({ code }) }),
+  overview: () => call<Overview>('/admin/overview'),
+  rules: () => call<Rules>('/admin/rules'),
+  setRules: (r: Rules) => call<Rules>('/admin/rules', { method: 'PUT', body: JSON.stringify(r) }),
+  note: (id: string, text: string) => call<ConversationView>(`/admin/conversations/${id}/note`, { method: 'POST', body: JSON.stringify({ text }) }),
+  publish: (id: string, state: 'approved' | 'held') => call<ConversationView>(`/admin/conversations/${id}/publish`, { method: 'POST', body: JSON.stringify({ state }) }),
+  topicFlags: (id: string, flags: { pinned?: boolean; hidden?: boolean }) => call<ScoutView>(`/admin/topics/${id}`, { method: 'POST', body: JSON.stringify(flags) }),
   scout: () => call<ScoutView>('/scout'),
   setScoutPrefs: (p: ScoutPrefs) => call<ScoutView>('/scout/prefs', { method: 'PUT', body: JSON.stringify(p) }),
   runScout: () => call<ScoutView>('/scout/run', { method: 'POST' }),

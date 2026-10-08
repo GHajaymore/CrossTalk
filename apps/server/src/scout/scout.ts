@@ -1,7 +1,7 @@
 // The Topic Scout (docs/PLAN.md): a scheduled job with a fixed number of requests, not a free-running agent.
 // Gather → filter → rank and brief (one request) → Today tray, or Autopilot's one episode a day.
 import { randomUUID } from 'node:crypto';
-import { AUTOPILOT_REQUESTS, DEFAULT_SCOUT_PREFS, ScoutPrefs, scoutPicks, type ScoutStatus, type ScoutTopic } from '@crosstalk/shared';
+import { AUTOPILOT_REQUESTS, blockedHit, DEFAULT_RULES, DEFAULT_SCOUT_PREFS, ScoutPrefs, scoutPicks, type Rules, type ScoutStatus, type ScoutTopic } from '@crosstalk/shared';
 import type { Repo } from '../db/repo';
 import { isNoGo } from './filter';
 import { buildRankPrompt, MAX_CANDIDATES, parseRanking } from './rank';
@@ -27,6 +27,8 @@ export type ScoutOptions = {
   today: () => string;
   /** SCOUT_TIME, "HH:MM" server time. */
   time: string;
+  /** The Control room's rules: blocked words drop stories; politics and scandals only when allowed. */
+  rules?: () => Rules;
 };
 
 export class ScoutError extends Error {
@@ -89,7 +91,8 @@ export class Scout {
 
       // 2. Filter: no tragedies, crime, health scares or private lives; one candidate per link.
       const seen = new Set<string>();
-      const kept = candidates.filter(c => !isNoGo(`${c.title} ${c.excerpt}`) && !seen.has(c.url) && !!seen.add(c.url))
+      const rules = this.opts.rules?.() ?? DEFAULT_RULES;
+      const kept = candidates.filter(c => !isNoGo(`${c.title} ${c.excerpt}`) && !blockedHit(`${c.title} ${c.excerpt}`, rules.blocked) && !seen.has(c.url) && !!seen.add(c.url))
         .sort((a, b) => score(b) - score(a)).slice(0, MAX_CANDIDATES);
       if (!kept.length) return finish('failed', 'Nothing usable today: every story was filtered out.');
 
@@ -111,7 +114,7 @@ export class Scout {
       // 4. Autopilot: at most one episode a day, only when switched on, only with enough requests left.
       const prefs = this.prefs();
       if (prefs.autopilot && !this.repo.autopilotRanOn(date)) {
-        const pick = scoutPicks(topics, prefs)[0];
+        const pick = scoutPicks(topics, prefs, 'general', this.opts.rules?.() ?? DEFAULT_RULES)[0];
         if (!pick) this.repo.setAutopilot(id, null, 'No topic matched your Scout preferences today.');
         else if (this.opts.requestsLeft() < AUTOPILOT_REQUESTS) this.repo.setAutopilot(id, null, `Skipped: an episode needs about ${AUTOPILOT_REQUESTS} requests and fewer are left today.`);
         else {

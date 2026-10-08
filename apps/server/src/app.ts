@@ -2,7 +2,7 @@ import { createReadStream, existsSync, readFileSync, rmSync, statSync } from 'no
 import { dirname, join } from 'node:path';
 import Fastify, { type FastifyServerOptions } from 'fastify';
 import { randomUUID } from 'node:crypto';
-import { BranchInput, CreateConversation, CueInput, isSensitive, RenameInput, ScoutPrefs, IrisFeedbackInput, MockSettings, type AppConfig, type ConversationView, type EpisodeAudio, type StreamEvent } from '@crosstalk/shared';
+import { BranchInput, CreateConversation, CueInput, DEFAULT_RULES, isSensitive, NoteInput, RenameInput, Rules, SCOUT_CATS, ScoutPrefs, type Overview, IrisFeedbackInput, MockSettings, type AppConfig, type ConversationView, type EpisodeAudio, type StreamEvent } from '@crosstalk/shared';
 import { Iris, mockArtist, type ArtistBackend } from './artist/iris';
 import { ConversationController, ControllerError, type ControllerEvent } from './controller/controller';
 import { openDb, Repo } from './db/repo';
@@ -11,7 +11,7 @@ import { MockProvider, type MockTiming } from './providers/mock';
 import { OpenRouterProvider } from './providers/openrouter';
 import type { Provider } from './providers/types';
 import type { ServerConfig } from './config';
-import { registerAccess, registerWeb } from './access';
+import { registerAccess, registerAdmin, registerWeb } from './access';
 import { exportJson, exportMarkdown, exportName } from './export';
 import { SAMPLE_HN, SAMPLE_RANKING, SAMPLE_RSS, SAMPLE_WIKIPEDIA } from './scout/samples';
 import { Scout, ScoutError } from './scout/scout';
@@ -61,7 +61,11 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
     onChange: id => controllerRef?.notify(id),
   });
 
+  // The Control room's rules, saved with the app's settings.
+  const rules = (): Rules => { const r = Rules.safeParse(repo.getSetting('rules')); return r.success ? r.data : DEFAULT_RULES; };
+
   const controller = new ConversationController(repo, provider, {
+    rules,
     maxTurns: cfg.maxTurns, dailyLimit: cfg.dailyLimit, models: cfg.models, sleep: opts.sleep,
     onCompleted: id => { void iris.listen(id); },
     // Before every real run: settings must be complete, and every model must pass the free-model guard.
@@ -101,14 +105,17 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
     now: opts.now,
     today: () => controller.today(),
     time: cfg.scoutTime,
+    rules,
   });
   const scoutView = () => ({ prefs: scout.prefs(), status: scout.status(), topics: scout.tray() });
   const interrupted = controller.recoverInterrupted();
 
   // Never log request headers or bodies: the key travels only from this server to OpenRouter.
   // Behind a host's proxy (only when locked for hosting), so wrong-code limits see the real address.
-  const app = Fastify({ logger: opts.logger ?? false, trustProxy: !!cfg.accessCode });
+  // Hosted behind one proxy (Render): trust only its hop, so a client can't fake its address with X-Forwarded-For.
+  const app = Fastify({ logger: opts.logger ?? false, trustProxy: cfg.hosted ? (_addr: string, hop: number) => hop < 1 : false });
   registerAccess(app, cfg);
+  const admin = registerAdmin(app, cfg);
   registerWeb(app, cfg);
   if (interrupted) app.log.info(`${interrupted} run(s) were interrupted by a restart and are now paused.`);
   // Check models once at start-up so Settings can show the verdicts straight away.
@@ -140,7 +147,7 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
     return withAudio(v);
   };
 
-  const config = (): AppConfig => ({
+  const config = (cookie?: string): AppConfig => ({
     providerMode: cfg.providerMode,
     models: cfg.models,
     artistModel: cfg.artistModel,
@@ -155,13 +162,15 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
     problems: cfg.problems,
     guard: { checkedAt: guard?.checkedAt ?? null, verdicts: guard?.verdicts ?? [] },
     usageToday: repo.usageOn(controller.today()),
+    rules: rules(),
+    admin: admin.state(cookie),
   });
 
-  app.get('/api/config', async () => config());
+  app.get('/api/config', async req => config(req.headers.cookie));
 
-  app.post('/api/guard/check', async () => {
+  app.post('/api/guard/check', async req => {
     if (real && !cfg.problems.length) await checkModels();
-    return config();
+    return config(req.headers.cookie);
   });
 
   app.put('/api/mock', async req => {
@@ -199,6 +208,8 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
       const t = repo.getTopic(parsed.data.scoutTopicId);
       if (!t) throw new ControllerError("That Scout topic isn't available any more.", 400);
       if (parsed.data.audience === 'kids' && isSensitive(t)) throw new ControllerError("Politics and scandals aren't used for Kids episodes. Pick another topic or audience.", 400);
+      if (isSensitive(t) && !rules().allowPolitics) throw new ControllerError('Politics and scandals are switched off in the Control room.', 400);
+      if (t.hidden) throw new ControllerError('That Scout topic is hidden in the Control room.', 400);
     }
     // Real mode: one free request writes host roles that fit this topic. Any problem falls back to
     // the keyword rule, and creating a conversation never fails because of it.
@@ -276,6 +287,81 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
       return reply.header('Content-Disposition', `attachment; filename="${exportName(v, 'md')}"`).type('text/markdown; charset=utf-8').send(exportMarkdown(v));
     }
     throw new ControllerError('Export as json or md.', 404);
+  });
+
+  // Milestone 8: the Control room. Every action here is written to the audit log.
+  const audit = (action: string, detail: string) => repo.audit(new Date().toISOString(), action, detail);
+
+  app.get('/api/admin/overview', async (): Promise<Overview> => {
+    const all = repo.listConversations();
+    const episodes = all.filter(c => !c.parentId);
+    const finished = all.filter(c => repo.latestRun(c.id)?.state === 'completed');
+    const listenerCues = finished.reduce((n, c) => n + repo.listCues(c.id).filter(x => x.status === 'applied' && x.kind !== 'note').length, 0);
+    const byCat = new Map<string, number>();
+    for (const c of all) {
+      const t = c.scoutTopicId ? repo.getTopic(c.scoutTopicId) : null;
+      const label = t ? SCOUT_CATS[t.category] : 'Your own topics';
+      byCat.set(label, (byCat.get(label) ?? 0) + 1);
+    }
+    return {
+      episodes: episodes.length,
+      finishedPct: all.length ? Math.round((finished.length / all.length) * 100) : null,
+      cuesPerEpisode: finished.length ? Math.round((listenerCues / finished.length) * 10) / 10 : 0,
+      irisArtworks: all.filter(c => repo.getArtist(c.id)?.state === 'done').length,
+      waiting: finished.filter(c => c.publish === 'waiting').length,
+      requestsToday: controller.requestsToday(),
+      dailyLimit: cfg.dailyLimit,
+      topics: [...byCat].map(([category, count]) => ({ category, count })).sort((a, b) => b.count - a.count),
+      audit: repo.listAudit(),
+    };
+  });
+
+  app.get('/api/admin/rules', async () => rules());
+  app.put('/api/admin/rules', async req => {
+    const parsed = Rules.safeParse(req.body);
+    if (!parsed.success) throw new ControllerError(parsed.error.issues[0]?.message ?? 'Invalid rules.', 400);
+    const r = { ...parsed.data, blocked: [...new Set(parsed.data.blocked.map(w => w.trim()).filter(Boolean))] };
+    repo.setSetting('rules', r);
+    audit('rules', `blocked: ${r.blocked.length ? r.blocked.join(', ') : 'none'} · mature ${r.allowMature ? 'on' : 'off'} · heated ${r.allowHeated ? 'on' : 'off'} · politics ${r.allowPolitics ? 'on' : 'off'} · cues ${r.cueLimit}`);
+    return r;
+  });
+
+  app.post<{ Params: { id: string } }>('/api/admin/conversations/:id/note', async req => {
+    const parsed = NoteInput.safeParse(req.body);
+    if (!parsed.success) throw new ControllerError(parsed.error.issues[0]?.message ?? 'Invalid note.', 400);
+    const note = controller.addNote(req.params.id, parsed.data.text);
+    audit('producer note', `“${parsed.data.text}” before turn ${note.appliesBeforeSeq} of ${repo.getConversation(req.params.id)!.title}`);
+    return view(req.params.id);
+  });
+
+  app.post<{ Params: { id: string }; Body: { state?: unknown } }>('/api/admin/conversations/:id/publish', async req => {
+    const state = req.body?.state;
+    if (state !== 'approved' && state !== 'held') throw new ControllerError('Approve or hold.', 400);
+    const c = repo.getConversation(req.params.id);
+    if (!c) throw new ControllerError('Conversation not found.', 404);
+    if (repo.latestRun(c.id)?.state !== 'completed') throw new ControllerError('Only finished episodes can be approved or held.', 409);
+    repo.setPublish(c.id, state);
+    audit(state === 'approved' ? 'approved' : 'held', c.title);
+    controller.notify(c.id);
+    return view(c.id);
+  });
+
+  /** What would go to the podcast, social and shop queues: approved episodes only, never held or waiting ones. */
+  app.get('/api/admin/publish-queue', async () =>
+    repo.listConversations().filter(c => c.publish === 'approved').map(c => ({ id: c.id, title: c.title, episode: c.episode })));
+
+  app.post<{ Params: { id: string }; Body: { pinned?: unknown; hidden?: unknown } }>('/api/admin/topics/:id', async req => {
+    const t = repo.getTopic(req.params.id);
+    if (!t) throw new ControllerError('Topic not found.', 404);
+    const flags = {
+      pinned: typeof req.body?.pinned === 'boolean' ? req.body.pinned : undefined,
+      hidden: typeof req.body?.hidden === 'boolean' ? req.body.hidden : undefined,
+    };
+    if (flags.pinned === undefined && flags.hidden === undefined) throw new ControllerError('Pin or hide: send pinned or hidden as true or false.', 400);
+    repo.setTopicFlags(t.id, flags);
+    const did = [flags.pinned !== undefined && (flags.pinned ? 'pinned' : 'unpinned'), flags.hidden !== undefined && (flags.hidden ? 'hid' : 'showed')].filter(Boolean).join(' and ');
+    audit(`${did} topic`, t.question);
+    return scoutView();
   });
 
   // Milestone 7: Topic Scout.

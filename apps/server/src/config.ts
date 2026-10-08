@@ -43,11 +43,17 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
     throw new Error(`HOST=${host} with real models makes CrossTalk reachable from other machines, so ACCESS_CODE must be set (at least ${ACCESS_CODE_MIN} characters).`);
   }
   if (accessCode && accessCode.length < ACCESS_CODE_MIN) throw new Error(`ACCESS_CODE must be at least ${ACCESS_CODE_MIN} characters.`);
+  // The Control room is always locked online, in every mode: ADMIN_CODE, or ACCESS_CODE if that's all there is.
+  if (str(env.ADMIN_CODE) && str(env.ADMIN_CODE).length < ACCESS_CODE_MIN) throw new Error(`ADMIN_CODE must be at least ${ACCESS_CODE_MIN} characters.`);
+  const adminCode = [str(env.ADMIN_CODE), str(env.ACCESS_CODE)].find(c => c.length >= ACCESS_CODE_MIN) ?? null;
 
   return {
     providerMode: mode as 'mock' | 'openrouter',
     host,
     accessCode: accessCode || null,
+    /** Reachable from other machines (hosted). */
+    hosted: !local,
+    adminCode,
     // The built web app, served by this server when it exists (one process to host).
     webDir: str(env.WEB_DIR) || new URL('../../web/dist', import.meta.url).pathname,
     port: int(env.PORT, 8787),
