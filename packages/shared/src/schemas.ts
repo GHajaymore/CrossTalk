@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { AUDIENCES, CUE_TEXT_MAX, TITLE_MAX, FORMATS, LENS_MAX, MODES, NAME_MAX, PERSONAS, ROLE_MAX, TEMPERATURES, TOPIC_MAX } from './constants';
+import { AUDIENCES, CUE_TEXT_MAX, SCOUT_CATS, SCOUT_REGIONS, TITLE_MAX, FORMATS, LENS_MAX, MODES, NAME_MAX, PERSONAS, ROLE_MAX, TEMPERATURES, TOPIC_MAX } from './constants';
 
 const keys = <T extends Record<string, unknown>>(o: T) => Object.keys(o) as [keyof T & string, ...(keyof T & string)[]];
 
@@ -48,8 +48,55 @@ export const CreateConversation = z.object({
   audience: Audience,
   temperature: Temperature,
   speakers: z.object({ A: SpeakerDraft, B: SpeakerDraft }),
+  /** A topic picked from the Scout's Today tray: its brief goes to the hosts as the only facts. */
+  scoutTopicId: z.string().nullable().optional(),
 });
 export type CreateConversation = z.infer<typeof CreateConversation>;
+
+// ---- Topic Scout ----
+export const ScoutCat = z.enum(keys(SCOUT_CATS));
+export type ScoutCat = z.infer<typeof ScoutCat>;
+export const ScoutRegion = z.enum(keys(SCOUT_REGIONS));
+export type ScoutRegion = z.infer<typeof ScoutRegion>;
+
+export const ScoutPrefs = z.object({
+  cats: z.array(ScoutCat),
+  regions: z.array(ScoutRegion),
+  rank: z.enum(['split', 'buzz']),
+  /** Your city or region for "Local". Typed by you; the app never detects your location. */
+  place: z.string().trim().max(60),
+  autopilot: z.boolean(),
+});
+export type ScoutPrefs = z.infer<typeof ScoutPrefs>;
+
+/** One "what happened" bullet, always tied to a source the Scout actually read. */
+export type ScoutBullet = { text: string; url: string; source: string };
+
+export type ScoutTopic = {
+  id: string;
+  runId: string;
+  date: string;
+  question: string;
+  category: ScoutCat;
+  region: ScoutRegion;
+  /** The larger side of the split, 50–100: 50 is evenly divided. */
+  split: number;
+  /** How much people are talking about it, 0–100 within the day's candidates. */
+  buzz: number;
+  bullets: ScoutBullet[];
+  sources: string[];
+  createdAt: string;
+};
+
+export type ScoutStatus = {
+  /** When the Scout runs each day, server time (SCOUT_TIME). */
+  time: string;
+  running: boolean;
+  lastRun: {
+    id: string; date: string; startedAt: string; state: 'ok' | 'failed'; error: string | null;
+    sourcesOk: string[]; sourcesFailed: string[]; autopilotConversationId: string | null; autopilotNote: string | null;
+  } | null;
+};
 
 export const RunState = z.enum(['idle', 'generating', 'paused', 'completed', 'cancelled', 'failed']);
 export type RunState = z.infer<typeof RunState>;
@@ -64,6 +111,8 @@ export const Turn = z.object({
   text: z.string(),
   status: z.literal('completed'),
   createdAt: z.string(),
+  /** Mind-change meter: how sure the host said they were, 0 (firmly no) to 100 (firmly yes). Only on their first and last lines. */
+  stance: z.number().int().min(0).max(100).nullable().default(null),
 });
 export type Turn = z.infer<typeof Turn>;
 
@@ -143,6 +192,8 @@ export const Conversation = z.object({
   branchSeq: z.number().int().nullable(),
   /** The new direction the listener gave the branch. */
   branchDirection: z.string().nullable(),
+  /** The Scout topic this episode came from, if any. */
+  scoutTopicId: z.string().nullable().default(null),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -195,6 +246,8 @@ export type ConversationView = Conversation & {
   parent: { id: string; title: string; episode: number } | null;
   /** Branches cut from this conversation. */
   branches: BranchSummary[];
+  /** The Scout's brief, when the topic came from the Today tray. */
+  brief: ScoutTopic | null;
   /** The rendered recording, when tools/voice has made one. */
   audio?: EpisodeAudio | null;
   /** Iris's notes for this episode, once she has listened. */

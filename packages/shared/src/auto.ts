@@ -1,6 +1,6 @@
 // Auto personalities and auto host names (docs/PLAN.md, "Speakers" and "Real people").
 // Pure keyword rules, no model call, so the server and the Create screen always agree.
-import { BRANCH_JOBS, BRANCH_TURNS, JOBS, MAX_TURNS, PERSONAS } from './constants';
+import { BRANCH_JOBS, BRANCH_TURNS, JOBS, MAX_TURNS, PERSONAS, STANCE_END_JOBS, STANCE_START_JOBS } from './constants';
 import type { Audience, PersonaKey, SpeakerDraft, SpeakerId, Speakers, Temperature } from './schemas';
 
 type Pair = [PersonaKey, PersonaKey];
@@ -126,4 +126,23 @@ const ROLE_RULES: [RegExp, [string, string]][] = [
 export function autoRoles(topic: string): [string, string] {
   const t = topic.toLowerCase();
   return ROLE_RULES.find(([re]) => re.test(t))?.[1] ?? ['Someone who deals with this every day at work', 'Researcher who studies this question'];
+}
+
+/** The hidden tag a host adds after saying how sure they are: "[stance: 70]". */
+const STANCE_TAG = /\[\s*stance\s*:?\s*(\d{1,3})\s*%?\s*\]/gi;
+/** Takes the stance tag out of a line: the words to keep, and the number (0–100), if there was one. */
+export function extractStance(text: string): { text: string; stance: number | null } {
+  let stance: number | null = null;
+  const clean = text.replace(STANCE_TAG, (_, n: string) => { stance = Math.min(100, Number(n)); return ''; }).replace(/[ \t]+$/gm, '').trim();
+  return { text: clean, stance };
+}
+/** While a line streams in, hide a stance tag that's still being written. */
+export const hideStanceTag = (live: string) =>
+  extractStance(live).text.replace(/\[(\s*s(t(a(n(c(e[\s:]*\d{0,3}%?\s*)?)?)?)?)?)?$/i, '').trimEnd();
+
+/** Where each host started and ended on the Mind-change meter, from their stance lines. */
+export function mindChange(turns: { seq: number; speakerId: SpeakerId; objective: string; stance?: number | null }[]) {
+  const pick = (id: SpeakerId, jobs: readonly string[]) => turns.find(t => t.speakerId === id && jobs.includes(t.objective) && t.stance != null)?.stance ?? null;
+  const row = (id: SpeakerId) => ({ start: pick(id, STANCE_START_JOBS), end: pick(id, STANCE_END_JOBS) });
+  return { A: row('A'), B: row('B') };
 }

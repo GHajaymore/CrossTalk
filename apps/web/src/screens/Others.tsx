@@ -1,6 +1,7 @@
-import { useState } from 'react';
-import type { AppConfig, MockSettings } from '@crosstalk/shared';
-import { api } from '../api/client';
+import { useEffect, useState } from 'react';
+import { AUTOPILOT_REQUESTS, type AppConfig, type MockSettings } from '@crosstalk/shared';
+import { api, type ScoutView } from '../api/client';
+import { ScoutPrefsEditor } from '../scout/ScoutPrefsEditor';
 import { BrowserSpeech } from '../speech/BrowserSpeech';
 import { useVoices } from '../speech/usePlayback';
 import { VoicePicker } from '../speech/VoicePicker';
@@ -31,9 +32,10 @@ export function Settings({ config, refreshConfig }: { config: AppConfig | null; 
 
   return (
     <div className="page">
-      <div><h1>Settings</h1><p className="hint">What Iris has learned from you is on the <a href="#/iris">Iris</a> page. Topic Scout settings arrive with Milestone 7.</p></div>
+      <div><h1>Settings</h1><p className="hint">What Iris has learned from you is on the <a href="#/iris">Iris</a> page.</p></div>
       <SetupBanner config={config} onSettings />
       <VoiceSettings />
+      <ScoutSettings real={real} />
       <section className="sec"><h2>Models</h2>
         <p className="hint">Read-only here. Models are set in the server's settings (the <code>.env</code> file, or the cloud environment's variables) and must be different IDs.</p>
         <dl className="kv">
@@ -80,6 +82,32 @@ function VoiceSettings() {
       <p className="hint">Saved on this device only. The same choices are in the Studio under Cues &amp; voices. Episodes with a rendered recording play its natural voices instead.</p>
       <VoicePicker names={names} voices={voices} prefs={prefs} update={update}
         preview={k => new BrowserSpeech(() => prefs).speak([{ key: 'p', speakerId: k, text: `This is the ${k === 'A' ? 'left' : 'right'} seat. This is how I'll sound on the show.` }], {})} />
+    </section>
+  );
+}
+
+/** The Topic Scout: what it looks for, where, when, and Autopilot. */
+function ScoutSettings({ real }: { real: boolean }) {
+  const [data, setData] = useState<ScoutView | null>(null);
+  const [place, setPlace] = useState('');
+  useEffect(() => { api.scout().then(v => { setData(v); setPlace(v.prefs.place); }).catch(() => {}); }, []);
+  if (!data) return null;
+  const save = async (p: ScoutView['prefs']) => { setData({ ...data, prefs: p }); try { setData(await api.setScoutPrefs(p)); } catch { /* kept as typed */ } };
+  const last = data.status.lastRun;
+  return (
+    <section className="sec"><h2>Topic Scout</h2>
+      <p className="hint">Once a day the Scout reads public lists and feeds, drops tragedies, crime, health scares and private lives, and briefs the best 3–5 debates for your Today tray on Create.</p>
+      <ScoutPrefsEditor prefs={data.prefs} onChange={save} />
+      <label className="fld"><span className="tag">Your city or region, for "Local"</span>
+        <input type="text" maxLength={60} value={place} placeholder="e.g. Columbus, Ohio" onChange={e => setPlace(e.target.value)} onBlur={() => place !== data.prefs.place && save({ ...data.prefs, place: place.trim() })} />
+      </label>
+      <label className="switch"><input type="checkbox" checked={data.prefs.autopilot} onChange={e => save({ ...data.prefs, autopilot: e.target.checked })} /> Autopilot: make the top pick into an episode each day (about {AUTOPILOT_REQUESTS} requests)</label>
+      <dl className="kv">
+        <dt>SCOUT_TIME</dt><dd>{data.status.time} (server time)</dd>
+        <dt>Sources</dt><dd>{real ? 'Hacker News · Wikipedia most-read · RSS feeds in SCOUT_RSS_FEEDS' : 'Saved sample stories (mock mode)'}</dd>
+        <dt>Last run</dt><dd>{last ? `${new Date(last.startedAt).toLocaleString()} · ${last.state === 'ok' ? 'ok' : `failed: ${last.error}`}` : 'not yet'}</dd>
+      </dl>
+      <p className="hint">The app never detects your location: "Local" uses only what you type here. Reddit isn't used yet; it needs a registered app and a check of its terms first.</p>
     </section>
   );
 }

@@ -7,9 +7,17 @@ CrossTalk is a prototype for one person. These are the honest gaps.
 - **Free models vary.** Discussions can be flat, repetitive or agreeable, and quality changes with
   whatever free models are on offer. Nothing a host says is fact-checked: every page and export says
   "AI-generated; not independently verified."
-- **No sources.** Hosts are told not to invent statistics, studies or quotes, but they don't look
-  anything up. The Topic Scout (Milestone 7) adds briefs with source links.
+- **Sources only through the Scout.** Hosts are told not to invent statistics, studies or quotes, and
+  they don't look anything up. Scout topics carry a 3-point brief linked to its sources; the hosts treat
+  only that as fact. The Scout reads titles and summaries, never whole articles.
+- **The Scout's reach is small.** Hacker News, Wikipedia most-read and the RSS feeds you list. Reddit
+  isn't used (it needs a registered app and a terms check). The no-go filter is a keyword list, so it can
+  miss things or drop a harmless story.
 - **Free models have their own content rules**, and the app never tries to get around them.
+
+- **The Mind-change meter depends on the model.** Hosts are asked to say how sure they are and add a
+  hidden number on their first and last lines; a model that skips the number leaves that end of the
+  meter empty. The number is what the host says, not a measurement.
 
 ## Voices and pictures
 

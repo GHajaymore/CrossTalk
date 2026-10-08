@@ -163,3 +163,13 @@ export function mockCueLead(kind: 'challenge' | 'deeper' | 'guest' | 'temp', tex
     case 'temp': return up ? "Right, I'll say it more bluntly. " : "Let me take the heat down a notch. ";
   }
 }
+
+/** Mock Mind-change meter: each host says how sure they are at the start, and where they landed. They move toward each other. */
+export function mockStance(topic: string, speakerId: SpeakerId, job: string) {
+  const seed = [...topic].reduce((n, ch) => (n * 31 + ch.charCodeAt(0)) % 997, 7);
+  const start = speakerId === 'A' ? 62 + (seed % 20) : 22 + (seed % 20);
+  const end = speakerId === 'A' ? start - 10 - (seed % 8) : start + 8 + (seed % 9);
+  if (job === 'Hello' || job === 'First take') return ` I'd put myself at about ${start}% on yes. [stance: ${start}]`;
+  if (job === 'Takeaway' || job === 'Sign-off') return ` For the record, I've moved: about ${end}% on yes now. [stance: ${end}]`;
+  return '';
+}

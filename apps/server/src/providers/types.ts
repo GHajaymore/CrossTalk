@@ -1,4 +1,4 @@
-import type { Conversation, Intervention, Speaker, Turn } from '@crosstalk/shared';
+import type { Conversation, Intervention, ScoutTopic, Speaker, Turn } from '@crosstalk/shared';
 
 export type TurnRequest = {
   conversation: Conversation;
@@ -8,6 +8,8 @@ export type TurnRequest = {
   history: Turn[];
   /** Listener cues: queued ones land on this turn; applied guest lines are part of the history. */
   cues?: Intervention[];
+  /** The Scout's brief: the only facts the hosts know about recent events. */
+  brief?: ScoutTopic | null;
 };
 
 export type TurnOptions = {

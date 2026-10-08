@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ARTIST, type ArtistNotes, type Speakers } from '@crosstalk/shared';
 import { api } from '../api/client';
+import { LivingSketch, useDrawReplay } from './LivingSketch';
 
 /** Her sketch is shown as an image, never as live markup, so even a checked SVG can't run anything. */
 export const sketchSrc = (svg: string) => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
@@ -14,6 +15,7 @@ export function ArtistCard({ notes: a, speakers, conversationId, onAgain, onJump
   const [rating, setRating] = useState<'up' | 'down' | null>(null);
   const [note, setNote] = useState('');
   const [sent, setSent] = useState(false);
+  const replay = useDrawReplay();
 
   const head = (
     <div className="artist-head">
@@ -50,7 +52,10 @@ export function ArtistCard({ notes: a, speakers, conversationId, onAgain, onJump
       <div className="artist-grid">
         <figure className="art">
           {a.sketchSvg
-            ? <img className="sketch" src={sketchSrc(a.sketchSvg)} alt={`Iris's sketch: ${a.artTitle}`} />
+            ? <div className="sketch living-wrap">
+                <LivingSketch ghost className="living" svg={a.sketchSvg} progress={replay.progress ?? 1} label={`Iris's sketch: ${a.artTitle}`} />
+                <button className="btn sm ghost draw-btn" onClick={replay.start} disabled={replay.playing}>{replay.playing ? 'Drawing…' : '▶ Watch her draw'}</button>
+              </div>
             : <div className="sketch-missing"><p className="hint">{a.error}</p><button className="btn sm" onClick={onAgain}>Sketch again</button></div>}
           <figcaption><span className="art-title">“{a.artTitle}”</span>Iris · sketch of turn {a.momentSeq}</figcaption>
         </figure>

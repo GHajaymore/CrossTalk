@@ -1,12 +1,14 @@
 import { useMemo, useState } from 'react';
 import {
-  ARTIST, AUDIENCES, episodeLabel, FORMATS, hostSubtitle, LENS_MAX, MAX_TURNS, MODES, NAME_MAX, PERSONAS, PRESETS, resolveSpeakers, ROLE_MAX,
+  ARTIST, AUDIENCES, episodeLabel, FORMATS, hostSubtitle, isSensitive, LENS_MAX, MAX_TURNS, MODES, NAME_MAX, PERSONAS, PRESETS, resolveSpeakers, ROLE_MAX,
   TEMPERATURE_ORDER, TEMPERATURES, TOPIC_MAX,
-  type AppConfig, type Audience, type CreateConversation, type Format, type Mode, type PersonaKey, type SpeakerDraft, type SpeakerId, type Temperature,
+  type AppConfig, type Audience, type CreateConversation, type Format, type Mode, type PersonaKey, type ScoutTopic, type SpeakerDraft, type SpeakerId, type Temperature,
 } from '@crosstalk/shared';
 import { api } from '../api/client';
 import { BudgetBanner, realBlocked, SetupBanner } from '../lib/Banners';
 import { HeatMeter } from '../lib/HeatMeter';
+import { BriefBox } from '../scout/BriefBox';
+import { TodayTray } from '../scout/TodayTray';
 import { StudioSet } from '../studio/StudioSet';
 import { Footer } from './Footer';
 
@@ -23,6 +25,10 @@ export function Create({ config, go, refreshConfig, toast }: Props) {
   const [temperature, setTemperature] = useState<Temperature>('lively');
   const [drafts, setDrafts] = useState<{ A: SpeakerDraft; B: SpeakerDraft }>({ A: seatDraft('optimist'), B: seatDraft('skeptic') });
   const [starting, setStarting] = useState(false);
+  // A topic from the Today tray brings its brief; editing the question away from it drops the brief.
+  const [scoutTopic, setScoutTopic] = useState<ScoutTopic | null>(null);
+  const kidsBlocked = !!scoutTopic && audience === 'kids' && isSensitive(scoutTopic);
+  const briefOn = !!scoutTopic && topic.trim() === scoutTopic.question && !kidsBlocked;
 
   const models = config?.models ?? { A: 'mock/wren-v1', B: 'mock/hale-v1' };
   // The same rule the server uses, so what you see is what gets saved.
@@ -42,7 +48,7 @@ export function Create({ config, go, refreshConfig, toast }: Props) {
   const start = async () => {
     setStarting(true);
     try {
-      const body: CreateConversation = { topic: topic.trim(), mode, format, audience, temperature, speakers: drafts };
+      const body: CreateConversation = { topic: topic.trim(), mode, format, audience, temperature, speakers: drafts, scoutTopicId: briefOn ? scoutTopic!.id : null };
       const c = await api.create(body);
       await api.start(c.id);
       go(`#/studio/${c.id}`);
@@ -117,14 +123,15 @@ export function Create({ config, go, refreshConfig, toast }: Props) {
         iris={{ text: 'Iris · in the booth', active: false }}
       />
 
-      <div className="later-box">
-        <div><span className="tag">Today · from the Scout</span><h2>What people are arguing about</h2></div>
-        <span className="soon">Arrives in Milestone 7</span>
-      </div>
+      <TodayTray audience={audience} selected={scoutTopic?.id ?? null} real={real} toast={toast}
+        onPick={t => { setScoutTopic(t); setTopic(t.question); setMode('debate'); document.getElementById('topic')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }} />
 
       <div className="topic-box">
         <label className="tag" htmlFor="topic">Topic</label>
         <textarea id="topic" maxLength={TOPIC_MAX} placeholder="Ask a question worth two perspectives" value={topic} onChange={e => setTopic(e.target.value)} />
+        {briefOn && <BriefBox brief={scoutTopic!} note="from the Scout" />}
+        {kidsBlocked && <p className="hint">Politics and scandals aren't used for Kids episodes, so this topic's brief is off. Pick another topic or audience.</p>}
+        {scoutTopic && !briefOn && !kidsBlocked && <p className="hint">You changed the question, so the Scout's brief won't be used. <button className="link-btn" onClick={() => setTopic(scoutTopic.question)}>Put it back</button></p>}
         <div className="chips" role="group" aria-label="Preset topics">
           {PRESETS.map(p => <button key={p} className="chip" aria-pressed={topic === p} onClick={() => setTopic(p)}>{p}</button>)}
         </div>

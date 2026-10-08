@@ -20,6 +20,9 @@ export const JOBS = [
 export const MAX_TURNS = 16;
 export const DAILY_LIMIT_DEFAULT = 40;
 export const CUE_LIMIT = 3;
+/** Mind-change meter: the jobs where each host says how sure they are (first lines) and whether it moved (last lines). */
+export const STANCE_START_JOBS = ['Hello', 'First take'] as const;
+export const STANCE_END_JOBS = ['Takeaway', 'Sign-off'] as const;
 /** A challenge or a guest line: a sentence or two. */
 export const CUE_TEXT_MAX = 200;
 /** A branch always generates this many new turns, with these jobs. */
@@ -72,3 +75,16 @@ export const PERSONAS = {
 export const ARTIST = { name: 'Iris', role: 'the Artist' } as const;
 
 export const NOTICE = 'AI-generated; not independently verified.';
+/** Shown instead of NOTICE on episodes made from a Scout topic. */
+export const SCOUT_NOTICE = 'Brief from the linked sources; discussion AI-generated, not verified.';
+
+/** Topic Scout (docs/PLAN.md, "Topic Scout and Autopilot"). */
+export const SCOUT_CATS = {
+  politics: 'Politics', tech: 'Technology', economy: 'Economy', business: 'Business', scandals: 'Scandals',
+  global: 'Global affairs', science: 'Science', sports: 'Sports', culture: 'Culture & food', society: 'Cities & society',
+} as const;
+export const SCOUT_REGIONS = { local: 'Local', na: 'North America', europe: 'Europe', asia: 'Asia', world: 'World' } as const;
+/** Sensitive categories: off by default, never for Kids, and always balanced and sourced. */
+export const SENSITIVE_CATS = ['politics', 'scandals'] as const;
+/** A full Autopilot episode: 16 turns, host roles and Iris. */
+export const AUTOPILOT_REQUESTS = 18;

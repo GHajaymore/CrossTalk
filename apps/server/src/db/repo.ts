@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3';
-import { ArtistNotes, Conversation, Intervention, Run, type BranchSummary, type ConversationView, type IrisFeedback, type RunState, type Speakers, type Turn } from '@crosstalk/shared';
+import { ArtistNotes, Conversation, Intervention, Run, type BranchSummary, type ConversationView, type ScoutStatus, type ScoutTopic, type IrisFeedback, type RunState, type Speakers, type Turn } from '@crosstalk/shared';
 import { MIGRATIONS } from './schema';
 
 export type DB = Database.Database;
@@ -27,15 +27,33 @@ export function openDb(file: string): DB {
 type ConvRow = {
   id: string; title: string; topic: string; mode: string; format: string; audience: string; temperature: string;
   episode: number; speakers_json: string; parent_id: string | null; branch_turn_id: string | null;
-  branch_seq: number | null; branch_direction: string | null; created_at: string; updated_at: string;
+  branch_seq: number | null; branch_direction: string | null; scout_topic_id: string | null; created_at: string; updated_at: string;
 };
+type TopicRow = {
+  id: string; run_id: string; date: string; rank: number; question: string; category: string; region: string;
+  split: number; buzz: number; bullets: string; sources: string; created_at: string;
+};
+type ScoutRunRow = {
+  id: string; date: string; started_at: string; state: string; error: string | null; sources_ok: string; sources_failed: string;
+  scheduled: number; autopilot_conversation_id: string | null; autopilot_note: string | null;
+};
+export type ScoutRun = NonNullable<ScoutStatus['lastRun']> & { scheduled: boolean };
+const toTopic = (r: TopicRow): ScoutTopic => ({
+  id: r.id, runId: r.run_id, date: r.date, question: r.question, category: r.category as ScoutTopic['category'],
+  region: r.region as ScoutTopic['region'], split: r.split, buzz: r.buzz, bullets: JSON.parse(r.bullets), sources: JSON.parse(r.sources), createdAt: r.created_at,
+});
+const toScoutRun = (r: ScoutRunRow): ScoutRun => ({
+  id: r.id, date: r.date, startedAt: r.started_at, state: r.state === 'ok' ? 'ok' : 'failed', error: r.error,
+  sourcesOk: JSON.parse(r.sources_ok), sourcesFailed: JSON.parse(r.sources_failed), scheduled: !!r.scheduled,
+  autopilotConversationId: r.autopilot_conversation_id, autopilotNote: r.autopilot_note,
+});
 type CueRow = {
   id: string; conversation_id: string; kind: string; text: string | null; target_seq: number | null; from_temp: string | null;
   to_temp: string | null; applies_before_seq: number; status: string; created_at: string;
 };
 type TurnRow = {
   id: string; conversation_id: string; seq: number; speaker_id: string; model_id: string; objective: string;
-  text: string; status: string; created_at: string;
+  text: string; status: string; created_at: string; stance: number | null;
 };
 type RunRow = {
   id: string; conversation_id: string; state: string; from_seq: number; to_seq: number; started_at: string;
@@ -46,7 +64,7 @@ const toConversation = (r: ConvRow): Conversation => Conversation.parse({
   id: r.id, title: r.title, topic: r.topic, mode: r.mode, format: r.format, audience: r.audience,
   temperature: r.temperature, episode: r.episode, speakers: JSON.parse(r.speakers_json) as Speakers,
   parentId: r.parent_id, branchTurnId: r.branch_turn_id, branchSeq: r.branch_seq, branchDirection: r.branch_direction,
-  createdAt: r.created_at, updatedAt: r.updated_at,
+  scoutTopicId: r.scout_topic_id, createdAt: r.created_at, updatedAt: r.updated_at,
 });
 const toCue = (r: CueRow): Intervention => Intervention.parse({
   id: r.id, kind: r.kind, text: r.text, targetSeq: r.target_seq, fromTemp: r.from_temp, toTemp: r.to_temp,
@@ -54,7 +72,7 @@ const toCue = (r: CueRow): Intervention => Intervention.parse({
 });
 const toTurn = (r: TurnRow): Turn => ({
   id: r.id, conversationId: r.conversation_id, seq: r.seq, speakerId: r.speaker_id as Turn['speakerId'],
-  modelId: r.model_id, objective: r.objective, text: r.text, status: 'completed', createdAt: r.created_at,
+  modelId: r.model_id, objective: r.objective, text: r.text, status: 'completed', createdAt: r.created_at, stance: r.stance ?? null,
 });
 const toRun = (r: RunRow): Run => Run.parse({
   id: r.id, conversationId: r.conversation_id, state: r.state, fromSeq: r.from_seq, toSeq: r.to_seq,
@@ -67,9 +85,9 @@ export class Repo {
 
   insertConversation(c: Conversation) {
     this.db.prepare(`INSERT INTO conversations
-      (id, title, topic, mode, format, audience, temperature, episode, speakers_json, parent_id, branch_turn_id, branch_seq, branch_direction, created_at, updated_at)
-      VALUES (@id, @title, @topic, @mode, @format, @audience, @temperature, @episode, @speakers, @parentId, @branchTurnId, @branchSeq, @branchDirection, @createdAt, @updatedAt)`)
-      .run({ ...c, speakers: JSON.stringify(c.speakers) });
+      (id, title, topic, mode, format, audience, temperature, episode, speakers_json, parent_id, branch_turn_id, branch_seq, branch_direction, scout_topic_id, created_at, updated_at)
+      VALUES (@id, @title, @topic, @mode, @format, @audience, @temperature, @episode, @speakers, @parentId, @branchTurnId, @branchSeq, @branchDirection, @scoutTopicId, @createdAt, @updatedAt)`)
+      .run({ ...c, scoutTopicId: c.scoutTopicId ?? null, speakers: JSON.stringify(c.speakers) });
   }
 
   getConversation(id: string): Conversation | null {
@@ -109,9 +127,9 @@ export class Repo {
 
   /** Saves a completed turn. Saving the same (conversation, seq) twice keeps the first; returns false the second time. */
   saveTurn(t: Turn): boolean {
-    const res = this.db.prepare(`INSERT INTO turns (id, conversation_id, seq, speaker_id, model_id, objective, text, status, created_at)
-      VALUES (@id, @conversationId, @seq, @speakerId, @modelId, @objective, @text, @status, @createdAt)
-      ON CONFLICT (conversation_id, seq) DO NOTHING`).run(t);
+    const res = this.db.prepare(`INSERT INTO turns (id, conversation_id, seq, speaker_id, model_id, objective, text, status, created_at, stance)
+      VALUES (@id, @conversationId, @seq, @speakerId, @modelId, @objective, @text, @status, @createdAt, @stance)
+      ON CONFLICT (conversation_id, seq) DO NOTHING`).run({ ...t, stance: t.stance ?? null });
     return res.changes === 1;
   }
 
@@ -211,6 +229,7 @@ export class Repo {
       interventions: this.cuesFor(id).filter(x => x.status !== 'cancelled'),
       parent: parent && { id: parent.id, title: parent.title, episode: parent.episode },
       branches: this.listBranches(id),
+      brief: c.scoutTopicId ? this.getTopic(c.scoutTopicId) : null,
       artist: this.getArtist(id),
     };
   }
@@ -273,6 +292,57 @@ export class Repo {
       { attempts: number; tokensIn: number; tokensOut: number; cost: number | null; unknown: number; ok: number | null };
     // A failed attempt returns no reply and no price, so only successful attempts can make the total unknown.
     return { attempts: r.attempts, tokensIn: r.tokensIn, tokensOut: r.tokensOut, costUsd: r.unknown > 0 ? null : r.cost ?? 0 };
+  }
+
+  // ---- Topic Scout ----
+  getSetting<T>(key: string): T | null {
+    const r = this.db.prepare('SELECT value FROM settings WHERE key = ?').get(key) as { value: string } | undefined;
+    return r ? JSON.parse(r.value) as T : null;
+  }
+  setSetting(key: string, value: unknown) {
+    this.db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value').run(key, JSON.stringify(value));
+  }
+
+  insertScoutRun(id: string, date: string, startedAt: string, scheduled: boolean) {
+    this.db.prepare(`INSERT INTO scout_runs (id, date, started_at, state, scheduled) VALUES (?, ?, ?, 'running', ?)`).run(id, date, startedAt, scheduled ? 1 : 0);
+  }
+  finishScoutRun(id: string, p: { state: 'ok' | 'failed'; error: string | null; sourcesOk: string[]; sourcesFailed: string[] }) {
+    this.db.prepare('UPDATE scout_runs SET state = ?, error = ?, sources_ok = ?, sources_failed = ? WHERE id = ?')
+      .run(p.state, p.error, JSON.stringify(p.sourcesOk), JSON.stringify(p.sourcesFailed), id);
+  }
+  setAutopilot(runId: string, conversationId: string | null, note: string | null) {
+    this.db.prepare('UPDATE scout_runs SET autopilot_conversation_id = ?, autopilot_note = ? WHERE id = ?').run(conversationId, note, runId);
+  }
+  /** A run that was going when the server stopped never finished. */
+  failRunningScoutRuns() {
+    this.db.prepare(`UPDATE scout_runs SET state = 'failed', error = 'The server restarted during this run.' WHERE state = 'running'`).run();
+  }
+  latestScoutRun(): ScoutRun | null {
+    const r = this.db.prepare(`SELECT * FROM scout_runs WHERE state != 'running' ORDER BY started_at DESC, rowid DESC LIMIT 1`).get() as ScoutRunRow | undefined;
+    return r ? toScoutRun(r) : null;
+  }
+  latestOkScoutRun(): ScoutRun | null {
+    const r = this.db.prepare(`SELECT * FROM scout_runs WHERE state = 'ok' ORDER BY started_at DESC, rowid DESC LIMIT 1`).get() as ScoutRunRow | undefined;
+    return r ? toScoutRun(r) : null;
+  }
+  scoutRunsOn(date: string): ScoutRun[] {
+    return (this.db.prepare('SELECT * FROM scout_runs WHERE date = ? ORDER BY started_at').all(date) as ScoutRunRow[]).map(toScoutRun);
+  }
+  autopilotRanOn(date: string): boolean {
+    return !!this.db.prepare('SELECT 1 FROM scout_runs WHERE date = ? AND autopilot_conversation_id IS NOT NULL').get(date);
+  }
+
+  insertTopics(topics: ScoutTopic[]) {
+    const q = this.db.prepare(`INSERT INTO scout_topics (id, run_id, date, rank, question, category, region, split, buzz, bullets, sources, created_at)
+      VALUES (@id, @runId, @date, @rank, @question, @category, @region, @split, @buzz, @bullets, @sources, @createdAt)`);
+    this.db.transaction(() => topics.forEach((t, i) => q.run({ ...t, rank: i, bullets: JSON.stringify(t.bullets), sources: JSON.stringify(t.sources) })))();
+  }
+  topicsForRun(runId: string): ScoutTopic[] {
+    return (this.db.prepare('SELECT * FROM scout_topics WHERE run_id = ? ORDER BY rank').all(runId) as TopicRow[]).map(toTopic);
+  }
+  getTopic(id: string): ScoutTopic | null {
+    const r = this.db.prepare('SELECT * FROM scout_topics WHERE id = ?').get(id) as TopicRow | undefined;
+    return r ? toTopic(r) : null;
   }
 
   countRequest(date: string) {

@@ -1,5 +1,5 @@
 // Transcript export (docs/PLAN.md, "Export (schema v1)"): one JSON document and the same content as a readable script.
-import { ARTIST, AUDIENCES, CUE_LIMIT, episodeLabel, MODES, NOTICE, TEMPERATURES, turnTotal, type ConversationView } from '@crosstalk/shared';
+import { ARTIST, AUDIENCES, CUE_LIMIT, episodeLabel, mindChange, MODES, NOTICE, SCOUT_NOTICE, TEMPERATURES, turnTotal, type ConversationView } from '@crosstalk/shared';
 import type { UsageRow } from './db/repo';
 
 export const EXPORT_SCHEMA_VERSION = 1;
@@ -8,7 +8,7 @@ export function exportJson(c: ConversationView, usage: UsageRow[]) {
   const ok = usage.filter(u => u.status === 'ok');
   return {
     schemaVersion: EXPORT_SCHEMA_VERSION,
-    notice: NOTICE,
+    notice: c.brief ? SCOUT_NOTICE : NOTICE,
     exportedAt: new Date().toISOString(),
     conversation: {
       id: c.id, title: c.title, topic: c.topic, mode: c.mode, format: c.format, episode: c.episode,
@@ -22,6 +22,7 @@ export function exportJson(c: ConversationView, usage: UsageRow[]) {
       seq: t.seq, speakerId: t.speakerId, speaker: c.speakers[t.speakerId].name, modelId: t.modelId, job: t.objective, text: t.text,
       // In a branch, turns before the cut are read from the original episode.
       fromOriginal: t.conversationId !== c.id,
+      stance: t.stance ?? null,
     })),
     interventions: c.interventions.map(x => ({
       kind: x.kind, text: x.text, targetSeq: x.targetSeq, fromTemperature: x.fromTemp, toTemperature: x.toTemp,
@@ -32,7 +33,8 @@ export function exportJson(c: ConversationView, usage: UsageRow[]) {
       name: ARTIST.name, modelId: c.artist.modelId, perspective: c.artist.perspective, momentSeq: c.artist.momentSeq,
       caption: c.artist.caption, artTitle: c.artist.artTitle, sketchSvg: c.artist.sketchSvg, imagePrompt: c.artist.imagePrompt,
     } : null,
-    sources: [],
+    brief: c.brief ? { question: c.brief.question, date: c.brief.date, category: c.brief.category, region: c.brief.region, bullets: c.brief.bullets } : null,
+    sources: c.brief ? [...new Map(c.brief.bullets.map(b => [b.url, { name: b.source, url: b.url }])).values()] : [],
     usage: {
       requests: usage.length,
       tokensIn: ok.reduce((n, u) => n + (u.tokensIn ?? 0), 0),
@@ -63,6 +65,7 @@ export function exportMarkdown(c: ConversationView) {
     '',
     `Hosts: ${host('A')} and ${host('B')}`,
     c.parentId ? `\n✂ Branch of “${c.parent?.title ?? c.parentId}” from turn ${c.branchSeq}: “${safe(c.branchDirection)}”` : '',
+    c.brief ? `\n**Today's brief** (the hosts treat only this as fact):\n\n${c.brief.bullets.map(b => `- ${safe(b.text)} ([${safe(b.source)}](${b.url}))`).join('\n')}` : '',
     '',
     '---',
     '',
@@ -72,12 +75,17 @@ export function exportMarkdown(c: ConversationView) {
     lines.push(`**${sp[t.speakerId].name}** · turn ${t.seq} · ${t.objective}${t.conversationId !== c.id ? ' · from the original' : ''}`, '', t.text, '');
     if (c.branchSeq === t.seq) lines.push(`*✂ The branch starts here: “${safe(c.branchDirection)}”*`, '');
   }
+  const mc = mindChange(c.turns);
+  if (mc.A.start != null || mc.B.start != null) {
+    lines.push('---', '', '## Mind-change meter', '', ...(['A', 'B'] as const).filter(k => mc[k].start != null)
+      .map(k => `- ${sp[k].name}: ${mc[k].start}% on yes${mc[k].end != null ? ` → ${mc[k].end}%` : ''}`), '');
+  }
   if (c.artist?.state === 'done') {
     lines.push('---', '', `## From the booth: ${ARTIST.name}, ${ARTIST.role}`, '', c.artist.perspective, '',
       `Her sketch, “${c.artist.artTitle}”, is of turn ${c.artist.momentSeq}: “${c.artist.caption}”`, '');
   }
   if (c.branches.length) lines.push('## Branches', '', ...c.branches.map(b => `- From turn ${b.branchSeq}: ${safe(b.direction)}`), '');
-  lines.push('---', '', `*${NOTICE}*`);
+  lines.push('---', '', `*${c.brief ? SCOUT_NOTICE : NOTICE}*`);
   return lines.filter((l, i, a) => !(l === '' && a[i - 1] === '')).join('\n') + '\n';
 }
 

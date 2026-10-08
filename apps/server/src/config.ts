@@ -59,6 +59,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
     // Room for a 70-120 word reply plus a short hidden "thinking" step that many free models take first.
     maxOutputTokens: int(env.MAX_OUTPUT_TOKENS_PER_TURN, 1000),
     requestTimeoutMs: int(env.REQUEST_TIMEOUT_MS, 60_000),
+    // Topic Scout: when it runs each day (server time; set TZ for your time zone), and which RSS feeds it reads.
+    scoutTime: /^([01]\d|2[0-3]):[0-5]\d$/.test(str(env.SCOUT_TIME)) ? str(env.SCOUT_TIME) : '07:00',
+    scoutFeeds: str(env.SCOUT_RSS_FEEDS).split(',').map(x => x.trim()).filter(x => /^https?:\/\//.test(x)),
     problems,
   };
 }
