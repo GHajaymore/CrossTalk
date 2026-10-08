@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react';
+import { makePoster, posterName } from '../lib/poster';
 import { ARTIST, AUDIENCES, episodeLabel, MODES, NOTICE, TEMPERATURES, type ConversationView } from '@crosstalk/shared';
 
 export function showNotes(c: ConversationView) {
@@ -16,6 +18,32 @@ export function showNotes(c: ConversationView) {
   ].join('\n');
 }
 
+/** The share-ready poster: made on this device, then downloaded or shared straight from the phone. */
+function PosterTile({ c, toast }: { c: ConversationView; toast: (m: string) => void }) {
+  const [url, setUrl] = useState<string | null>(null);
+  const [blob, setBlob] = useState<Blob | null>(null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => () => { if (url) URL.revokeObjectURL(url); }, [url]);
+  const make = async () => {
+    setBusy(true);
+    try { const b = await makePoster(c); setBlob(b); setUrl(URL.createObjectURL(b)); }
+    catch (e) { toast((e as Error).message); } finally { setBusy(false); }
+  };
+  const file = blob ? new File([blob], posterName(c), { type: 'image/png' }) : null;
+  const canShare = !!file && typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] });
+  return (
+    <div className="kit-tile poster-tile"><b>Episode poster</b>
+      {url ? <img className="poster-preview" src={url} alt={`Poster for ${c.topic}`} /> : <p>The question, the hosts, Iris's sketch and quote, and where each host landed, in one image to share.</p>}
+      <div className="dock-row">
+        {!url && <button className="btn sm" disabled={busy} onClick={make}>{busy ? 'Drawing…' : 'Make poster'}</button>}
+        {url && <a className="btn sm" href={url} download={posterName(c)}>Download</a>}
+        {canShare && <button className="btn sm ghost" onClick={() => navigator.share({ files: [file!], title: c.topic }).catch(() => {})}>Share</button>}
+      </div>
+      <span className="badge ok">Free · made on this device</span>
+    </div>
+  );
+}
+
 /** What a finished episode can become. Text is ready now; audio, clips and prints come later and always wait for your OK. */
 export function EpisodeKit({ c, toast }: { c: ConversationView; toast: (m: string) => void }) {
   const copy = async () => {
@@ -29,6 +57,7 @@ export function EpisodeKit({ c, toast }: { c: ConversationView; toast: (m: strin
       </div>
       <div className="kit-grid">
         <div className="kit-tile"><b>Podcast episode</b><p>Title, show notes, {c.turns.length} chapters and the full transcript are ready. {c.audio ? 'Audio with natural voices is ready too.' : 'Audio comes when the episode is voiced.'}</p><span className="badge ok">Text ready</span><span className={`badge ${c.audio ? 'ok' : 'later'}`}>{c.audio ? 'Audio ready' : 'Audio · later'}</span></div>
+        <PosterTile c={c} toast={toast} />
         <div className="kit-tile"><b>Social clip</b><p>The key moment as a 30–60 second vertical clip: the studio, live captions, and Iris's sketch at the end.</p><span className="badge later">Later</span></div>
         <div className="kit-tile"><b>Iris print</b><p>{c.artist?.state === 'done' ? `“${c.artist.artTitle}”, her sketch of turn ${c.artist.momentSeq}, prepared as a listing for your shop.` : 'Her drawing of the moment that stayed with her, prepared as a listing.'}</p><span className="badge later">Later</span></div>
       </div>

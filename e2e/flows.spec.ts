@@ -177,3 +177,18 @@ test('Control room: block a word, run an episode with a producer note, then appr
   expect(queue.map((q: { id: string }) => q.id)).toContain(id);
   await request.put('/api/admin/rules', { data: { blocked: [], allowMature: true, allowHeated: true, allowPolitics: false, cueLimit: 3 } });
 });
+
+test('Hot seat: vote who moved you, then make the episode poster', async ({ page }) => {
+  await page.goto('/#/create');
+  await page.locator('#topic').fill('Should homework be banned in primary schools?');
+  await page.getByRole('button', { name: 'Hot seat' }).click();
+  await page.getByRole('button', { name: /Start recording/ }).click();
+  await expect(page.locator('.status-line')).toContainText('Complete', { timeout: 60_000 });
+  await page.getByRole('link', { name: /Read/ }).first().click();
+  await page.getByRole('button', { name: 'The challenger won me over' }).click();
+  await expect(page.getByRole('button', { name: 'The challenger won me over' })).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('button', { name: 'Make poster' }).click({ timeout: 60_000 });
+  await expect(page.getByRole('img', { name: /Poster for/ })).toBeVisible();
+  const [dl] = await Promise.all([page.waitForEvent('download'), page.getByRole('link', { name: 'Download' }).click()]);
+  expect(dl.suggestedFilename()).toMatch(/^crosstalk-ep\d+-poster\.png$/);
+});
