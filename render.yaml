@@ -23,3 +23,8 @@ services:
         value: mock
       - key: MAX_REQUESTS_PER_DAY
         value: "40"
+      # The Scout runs at SCOUT_TIME in this time zone.
+      - key: TZ
+        value: America/New_York
+      - key: SCOUT_TIME
+        value: "07:00"

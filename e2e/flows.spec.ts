@@ -121,3 +121,20 @@ test('keyboard only: the turn menu and the branch dialog', async ({ page, reques
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(menuButton).toBeFocused();
 });
+
+test('Scout: run it, pick a topic, and the brief follows the episode', async ({ page, request }) => {
+  await page.goto('/#/create');
+  await page.getByRole('button', { name: 'Run Scout now' }).click();
+  const card = page.locator('.topic-card').first();
+  await expect(card).toBeVisible();
+  const question = await card.locator('h3').innerText();
+  await card.getByRole('button', { name: 'Discuss this' }).click();
+  await expect(page.locator('#topic')).toHaveValue(question);
+  await page.getByRole('button', { name: /Start recording/ }).click();
+  await expect(page.locator('.status-line')).toContainText('Complete', { timeout: 60_000 });
+  await expect(page.locator('.stage-brief summary')).toContainText("Today's brief");
+  await expect(page.locator('.notice')).toContainText('Brief from the linked sources');
+  const id = page.url().split('/studio/')[1].split('/')[0];
+  const json = await (await request.get(`/api/conversations/${id}/export.json`)).json();
+  expect(json.sources.length).toBeGreaterThan(0);
+});

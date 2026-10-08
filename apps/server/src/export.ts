@@ -1,5 +1,5 @@
 // Transcript export (docs/PLAN.md, "Export (schema v1)"): one JSON document and the same content as a readable script.
-import { ARTIST, AUDIENCES, CUE_LIMIT, episodeLabel, MODES, NOTICE, TEMPERATURES, turnTotal, type ConversationView } from '@crosstalk/shared';
+import { ARTIST, AUDIENCES, CUE_LIMIT, episodeLabel, MODES, NOTICE, SCOUT_NOTICE, TEMPERATURES, turnTotal, type ConversationView } from '@crosstalk/shared';
 import type { UsageRow } from './db/repo';
 
 export const EXPORT_SCHEMA_VERSION = 1;
@@ -8,7 +8,7 @@ export function exportJson(c: ConversationView, usage: UsageRow[]) {
   const ok = usage.filter(u => u.status === 'ok');
   return {
     schemaVersion: EXPORT_SCHEMA_VERSION,
-    notice: NOTICE,
+    notice: c.brief ? SCOUT_NOTICE : NOTICE,
     exportedAt: new Date().toISOString(),
     conversation: {
       id: c.id, title: c.title, topic: c.topic, mode: c.mode, format: c.format, episode: c.episode,
@@ -32,7 +32,8 @@ export function exportJson(c: ConversationView, usage: UsageRow[]) {
       name: ARTIST.name, modelId: c.artist.modelId, perspective: c.artist.perspective, momentSeq: c.artist.momentSeq,
       caption: c.artist.caption, artTitle: c.artist.artTitle, sketchSvg: c.artist.sketchSvg, imagePrompt: c.artist.imagePrompt,
     } : null,
-    sources: [],
+    brief: c.brief ? { question: c.brief.question, date: c.brief.date, category: c.brief.category, region: c.brief.region, bullets: c.brief.bullets } : null,
+    sources: c.brief ? [...new Map(c.brief.bullets.map(b => [b.url, { name: b.source, url: b.url }])).values()] : [],
     usage: {
       requests: usage.length,
       tokensIn: ok.reduce((n, u) => n + (u.tokensIn ?? 0), 0),
@@ -63,6 +64,7 @@ export function exportMarkdown(c: ConversationView) {
     '',
     `Hosts: ${host('A')} and ${host('B')}`,
     c.parentId ? `\n✂ Branch of “${c.parent?.title ?? c.parentId}” from turn ${c.branchSeq}: “${safe(c.branchDirection)}”` : '',
+    c.brief ? `\n**Today's brief** (the hosts treat only this as fact):\n\n${c.brief.bullets.map(b => `- ${safe(b.text)} ([${safe(b.source)}](${b.url}))`).join('\n')}` : '',
     '',
     '---',
     '',
@@ -77,7 +79,7 @@ export function exportMarkdown(c: ConversationView) {
       `Her sketch, “${c.artist.artTitle}”, is of turn ${c.artist.momentSeq}: “${c.artist.caption}”`, '');
   }
   if (c.branches.length) lines.push('## Branches', '', ...c.branches.map(b => `- From turn ${b.branchSeq}: ${safe(b.direction)}`), '');
-  lines.push('---', '', `*${NOTICE}*`);
+  lines.push('---', '', `*${c.brief ? SCOUT_NOTICE : NOTICE}*`);
   return lines.filter((l, i, a) => !(l === '' && a[i - 1] === '')).join('\n') + '\n';
 }
 

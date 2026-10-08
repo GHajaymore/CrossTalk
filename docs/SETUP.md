@@ -30,6 +30,18 @@ cue and branch without calling any model.
 The key is read only by the local server. It never reaches the browser, the logs or an export.
 The app stops at 40 model requests a day (`MAX_REQUESTS_PER_DAY`); a full real episode uses about 18 (16 turns, writing the host roles, and Iris).
 
+## Topic Scout
+
+The **Today** tray on Create shows 3–5 topics people are arguing about, each with a 3-point brief linked
+to its sources. In mock mode it reads saved sample stories. In real mode it reads Hacker News, Wikipedia
+most-read and any RSS feeds in `SCOUT_RSS_FEEDS`, then uses **1 request** to rank and brief them.
+
+- It runs once a day at `SCOUT_TIME` (default `07:00`, server time; set `TZ` for your time zone), and
+  once to catch up if the app starts later. **Run Scout now** runs it any time.
+- **Autopilot** (off by default) turns the top pick into an episode, at most once a day, about 18 requests.
+- Tragedies, crime, health scares and private lives are always filtered out. Politics and Scandals are
+  off until you turn them on, and never shown for Kids.
+
 ## Natural recorded voices (optional)
 
 `tools/voice` renders an episode to an MP3 with free, open-source voices (Kokoro) that run on your

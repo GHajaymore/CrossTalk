@@ -1,5 +1,5 @@
 // Typed calls to the local server. The browser never talks to a model.
-import type { AppConfig, ArtistNotes, BranchInput, Conversation, ConversationView, CreateConversation, CueInput, IrisFeedback, MockSettings, Run } from '@crosstalk/shared';
+import type { AppConfig, ArtistNotes, BranchInput, Conversation, ConversationView, CreateConversation, CueInput, IrisFeedback, MockSettings, Run, ScoutPrefs, ScoutStatus, ScoutTopic } from '@crosstalk/shared';
 
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`/api${path}`, {
@@ -14,6 +14,7 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export type Access = { required: boolean; ok: boolean };
+export type ScoutView = { prefs: ScoutPrefs; status: ScoutStatus; topics: ScoutTopic[] };
 export type ConversationSummary = Conversation & { run: Run | null; turnCount: number; artist?: ArtistNotes | null; branchCount: number };
 
 export const api = {
@@ -32,6 +33,9 @@ export const api = {
   rename: (id: string, title: string) => call<ConversationView>(`/conversations/${id}`, { method: 'PATCH', body: JSON.stringify({ title }) }),
   remove: (id: string) => call<unknown>(`/conversations/${id}`, { method: 'DELETE' }),
 
+  scout: () => call<ScoutView>('/scout'),
+  setScoutPrefs: (p: ScoutPrefs) => call<ScoutView>('/scout/prefs', { method: 'PUT', body: JSON.stringify(p) }),
+  runScout: () => call<ScoutView>('/scout/run', { method: 'POST' }),
   addCue: (id: string, cue: CueInput) => call<ConversationView>(`/conversations/${id}/cues`, { method: 'POST', body: JSON.stringify(cue) }),
   cancelCue: (id: string, cueId: string) => call<ConversationView>(`/conversations/${id}/cues/${cueId}`, { method: 'DELETE' }),
   branch: (id: string, b: BranchInput) => call<ConversationView>(`/conversations/${id}/branch`, { method: 'POST', body: JSON.stringify(b) }),

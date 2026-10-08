@@ -6,6 +6,7 @@ import {
 import { api } from '../api/client';
 import { useConversation } from '../api/useConversation';
 import { ArtistCard } from '../studio/ArtistCard';
+import { BriefBox } from '../scout/BriefBox';
 import { BranchDialog } from '../studio/BranchDialog';
 import { BranchList } from '../studio/BranchList';
 import { CueCard } from '../studio/CueCard';
@@ -164,6 +165,7 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
 
   const transcript = (
     <>
+      {view.brief && <BriefBox brief={view.brief} note={view.brief.sources.join(', ')} />}
       <div className="table">
         {!view.turns.length && !live && st === 'idle' && (
           <div className="empty-stage"><p>Both seats are ready. Press Start to hear {sp.A.name} open.</p></div>
@@ -224,6 +226,7 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
             {set}
             {onAir && <button className="btn sm leave-air" onClick={leaveAir}>Leave On air</button>}
           </div>
+          {view.brief && <details className="brief stage-brief"><summary>Today's brief · {view.brief.sources.join(', ')}</summary><BriefBox brief={view.brief} /></details>}
           <TurnRail turns={view.turns} liveSeq={live?.seq ?? null} failedSeq={failedSeq} speakers={sp}
             branchSeq={view.branchSeq} cueSeqs={view.interventions.filter(c => c.status === 'queued').map(c => c.appliesBeforeSeq)} />
         </>}
@@ -277,7 +280,7 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
             </div>
           </div>}
         </div>
-        <Footer config={config} />
+        <Footer config={config} briefed={!!view.brief} />
       </section>
       {branchFrom && <BranchDialog seq={branchFrom} who={sp[speakerFor(branchFrom)].name} onClose={() => setBranchFrom(null)} onCreate={createBranch} />}
       <SidePanel open={panelOpen} onClose={() => setPanelOpen(false)}

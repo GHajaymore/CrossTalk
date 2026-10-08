@@ -145,4 +145,43 @@ export const MIGRATIONS: string[] = [
   ALTER TABLE provider_usage_v2 RENAME TO provider_usage;
   CREATE INDEX usage_by_date ON provider_usage(date);
   `,
+  `
+  -- Milestone 7: Topic Scout. Topics stay after newer runs, because episodes made from them keep their brief.
+  CREATE TABLE scout_runs (
+    id                         TEXT PRIMARY KEY,
+    date                       TEXT NOT NULL,
+    started_at                 TEXT NOT NULL,
+    state                      TEXT NOT NULL CHECK (state IN ('running', 'ok', 'failed')),
+    error                      TEXT,
+    sources_ok                 TEXT NOT NULL DEFAULT '[]',
+    sources_failed             TEXT NOT NULL DEFAULT '[]',
+    scheduled                  INTEGER NOT NULL DEFAULT 0,
+    autopilot_conversation_id  TEXT,
+    autopilot_note             TEXT
+  );
+  CREATE INDEX scout_runs_by_date ON scout_runs(date, started_at);
+
+  CREATE TABLE scout_topics (
+    id          TEXT PRIMARY KEY,
+    run_id      TEXT NOT NULL REFERENCES scout_runs(id),
+    date        TEXT NOT NULL,
+    rank        INTEGER NOT NULL,
+    question    TEXT NOT NULL,
+    category    TEXT NOT NULL,
+    region      TEXT NOT NULL,
+    split       INTEGER NOT NULL,
+    buzz        INTEGER NOT NULL,
+    bullets     TEXT NOT NULL,
+    sources     TEXT NOT NULL,
+    created_at  TEXT NOT NULL
+  );
+
+  -- Small app settings, such as the Scout preferences, as JSON by key.
+  CREATE TABLE settings (
+    key    TEXT PRIMARY KEY,
+    value  TEXT NOT NULL
+  );
+
+  ALTER TABLE conversations ADD COLUMN scout_topic_id TEXT;
+  `,
 ];

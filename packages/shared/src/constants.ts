@@ -72,3 +72,16 @@ export const PERSONAS = {
 export const ARTIST = { name: 'Iris', role: 'the Artist' } as const;
 
 export const NOTICE = 'AI-generated; not independently verified.';
+/** Shown instead of NOTICE on episodes made from a Scout topic. */
+export const SCOUT_NOTICE = 'Brief from the linked sources; discussion AI-generated, not verified.';
+
+/** Topic Scout (docs/PLAN.md, "Topic Scout and Autopilot"). */
+export const SCOUT_CATS = {
+  politics: 'Politics', tech: 'Technology', economy: 'Economy', business: 'Business', scandals: 'Scandals',
+  global: 'Global affairs', science: 'Science', sports: 'Sports', culture: 'Culture & food', society: 'Cities & society',
+} as const;
+export const SCOUT_REGIONS = { local: 'Local', na: 'North America', europe: 'Europe', asia: 'Asia', world: 'World' } as const;
+/** Sensitive categories: off by default, never for Kids, and always balanced and sourced. */
+export const SENSITIVE_CATS = ['politics', 'scandals'] as const;
+/** A full Autopilot episode: 16 turns, host roles and Iris. */
+export const AUTOPILOT_REQUESTS = 18;

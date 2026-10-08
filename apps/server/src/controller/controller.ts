@@ -122,6 +122,7 @@ export class ConversationController {
       branchTurnId: null,
       branchSeq: null,
       branchDirection: null,
+      scoutTopicId: input.scoutTopicId ?? null,
       createdAt: at,
       updatedAt: at,
     };
@@ -357,7 +358,7 @@ export class ConversationController {
 
       try {
         const res = await this.provider.generateTurn(
-          { conversation: conv, seq, speaker, objective, history: this.repo.listTurns(conversationId), cues },
+          { conversation: conv, seq, speaker, objective, history: this.repo.listTurns(conversationId), cues, brief: conv.scoutTopicId ? this.repo.getTopic(conv.scoutTopicId) : null },
           { signal, onToken: t => { live.text += t; this.emit(conversationId, { type: 'token', seq, text: t }); } },
         );
         log('ok', res.usage, null);

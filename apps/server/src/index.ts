@@ -16,7 +16,7 @@ try {
   process.exit(1);
 }
 mkdirSync(dirname(cfg.dbPath), { recursive: true });
-const { app } = buildApp(cfg, { logger: true });
+const { app } = buildApp(cfg, { logger: true, scheduler: true });
 // Binds to localhost only by default; the prototype is not meant to be reachable from other machines.
 try {
   await app.listen({ host: cfg.host, port: cfg.port });

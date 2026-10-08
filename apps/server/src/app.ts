@@ -2,7 +2,7 @@ import { createReadStream, existsSync, readFileSync, rmSync, statSync } from 'no
 import { dirname, join } from 'node:path';
 import Fastify, { type FastifyServerOptions } from 'fastify';
 import { randomUUID } from 'node:crypto';
-import { BranchInput, CreateConversation, CueInput, RenameInput, IrisFeedbackInput, MockSettings, type AppConfig, type ConversationView, type EpisodeAudio, type StreamEvent } from '@crosstalk/shared';
+import { BranchInput, CreateConversation, CueInput, RenameInput, ScoutPrefs, IrisFeedbackInput, MockSettings, type AppConfig, type ConversationView, type EpisodeAudio, type StreamEvent } from '@crosstalk/shared';
 import { Iris, mockArtist, type ArtistBackend } from './artist/iris';
 import { ConversationController, ControllerError, type ControllerEvent } from './controller/controller';
 import { openDb, Repo } from './db/repo';
@@ -13,6 +13,9 @@ import type { Provider } from './providers/types';
 import type { ServerConfig } from './config';
 import { registerAccess, registerWeb } from './access';
 import { exportJson, exportMarkdown, exportName } from './export';
+import { SAMPLE_HN, SAMPLE_RANKING, SAMPLE_RSS, SAMPLE_WIKIPEDIA } from './scout/samples';
+import { Scout, ScoutError } from './scout/scout';
+import { HackerNewsSource, RssSource, SampleSource, WikipediaSource, type TopicSource } from './scout/sources';
 
 export type AppOptions = {
   timing?: MockTiming;
@@ -20,6 +23,11 @@ export type AppOptions = {
   /** Replaces the network in tests. */
   fetch?: typeof fetch;
   sleep?: (ms: number, signal: AbortSignal) => Promise<void>;
+  /** Run the Scout's daily timer (the real server does; tests drive it by hand). */
+  scheduler?: boolean;
+  /** Replaces the Scout's sources in tests. */
+  scoutSources?: TopicSource[];
+  now?: () => Date;
 };
 
 export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
@@ -63,6 +71,39 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
     } : undefined,
   });
   controllerRef = controller;
+
+  // Topic Scout. Mock mode reads saved samples and never touches the network.
+  const scout = new Scout(repo, {
+    sources: opts.scoutSources ?? (real
+      ? [new HackerNewsSource(f), new WikipediaSource(f, () => new Date()), ...(cfg.scoutFeeds.length ? [new RssSource(f, cfg.scoutFeeds)] : [])]
+      : [new SampleSource('Hacker News', SAMPLE_HN), new SampleSource('Wikipedia most-read', SAMPLE_WIKIPEDIA), new SampleSource('RSS', SAMPLE_RSS)]),
+    rank: real
+      ? ({ system, user }) => (provider as OpenRouterProvider).complete(cfg.models.A, system, user, 3000)
+      : async () => JSON.stringify(SAMPLE_RANKING),
+    preflight: real ? async () => {
+      if (cfg.problems.length) return `Real mode isn't set up yet: ${cfg.problems.join(' ')}`;
+      const v = (await checkModels()).find(x => x.modelId === cfg.models.A);
+      return v && !v.ok ? `Blocked by the free-model check: ${v.modelId}: ${v.reason}` : null;
+    } : undefined,
+    counts: real,
+    requestsLeft: () => cfg.dailyLimit - controller.requestsToday(),
+    countRequest: () => controller.countRequest(),
+    // Autopilot: the top pick as a Friendly Debate with automatic hosts, Iris included.
+    autopilot: async topic => {
+      const auto = { name: '', autoName: true, lens: '', role: '', autoRole: true, autoPersona: true };
+      const v = controller.create({
+        topic: topic.question, mode: 'debate', format: 'recorded', audience: 'general', temperature: 'lively', scoutTopicId: topic.id,
+        speakers: { A: { ...auto, persona: 'optimist' }, B: { ...auto, persona: 'skeptic' } },
+      });
+      await controller.start(v.id);
+      return v.id;
+    },
+    onChange: () => {},
+    now: opts.now,
+    today: () => controller.today(),
+    time: cfg.scoutTime,
+  });
+  const scoutView = () => ({ prefs: scout.prefs(), status: scout.status(), topics: scout.tray() });
   const interrupted = controller.recoverInterrupted();
 
   // Never log request headers or bodies: the key travels only from this server to OpenRouter.
@@ -75,7 +116,7 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
   if (real && !cfg.problems.length) void checkModels();
 
   app.setErrorHandler((err, _req, reply) => {
-    if (err instanceof ControllerError) return reply.status(err.status).send({ error: err.message });
+    if (err instanceof ControllerError || err instanceof ScoutError) return reply.status(err.status).send({ error: err.message });
     const status = (err as { statusCode?: number }).statusCode ?? 500;
     return reply.status(status).send({ error: status === 500 ? 'Something went wrong on the server.' : (err as Error).message });
   });
@@ -155,6 +196,7 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
   app.post('/api/conversations', async (req, reply) => {
     const parsed = CreateConversation.safeParse(req.body);
     if (!parsed.success) throw new ControllerError(parsed.error.issues[0]?.message ?? 'Invalid conversation.', 400);
+    if (parsed.data.scoutTopicId && !repo.getTopic(parsed.data.scoutTopicId)) throw new ControllerError("That Scout topic isn't available any more.", 400);
     // Real mode: one free request writes host roles that fit this topic. Any problem falls back to
     // the keyword rule, and creating a conversation never fails because of it.
     let roles: [string, string] | undefined;
@@ -233,6 +275,16 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
     throw new ControllerError('Export as json or md.', 404);
   });
 
+  // Milestone 7: Topic Scout.
+  app.get('/api/scout', async () => scoutView());
+  app.put('/api/scout/prefs', async req => {
+    const parsed = ScoutPrefs.safeParse(req.body);
+    if (!parsed.success) throw new ControllerError(parsed.error.issues[0]?.message ?? 'Invalid Scout settings.', 400);
+    scout.setPrefs(parsed.data);
+    return scoutView();
+  });
+  app.post('/api/scout/run', async () => { await scout.run(false); return scoutView(); });
+
   // Milestone 4: listener cues and branches.
   app.post<{ Params: { id: string } }>('/api/conversations/:id/cues', async req => {
     const parsed = CueInput.safeParse(req.body);
@@ -265,5 +317,6 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
     req.raw.on('close', () => { off(); clearInterval(ping); });
   });
 
-  return { app, controller, repo, guard, iris, setMock: (m: MockSettings) => { mock = m; } };
+  if (opts.scheduler) { scout.start(); app.addHook('onClose', async () => scout.stop()); }
+  return { app, controller, repo, guard, iris, scout, setMock: (m: MockSettings) => { mock = m; } };
 }
