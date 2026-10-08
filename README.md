@@ -2,7 +2,7 @@
 
 A live broadcast studio where two AI hosts discuss a topic and you steer it. This is a local prototype, built one milestone at a time (see `docs/PLAN.md`).
 
-**Status:** Milestone 6, polish. Two hosts, 16 short turns, listener cues (challenge, go deeper, take the mic, temperature), branches, Iris the Artist, an episodes library, export, and an offline episode page to keep or send. Iris sketches, paints and dreams up each episode. Start round two and the same hosts pick up where they ended. Say where you stand before and after, and see yourself on the mind-change meter next to the hosts. Mock mode (scripted text, no API key) always works; real mode uses free models through OpenRouter. Full setup: `docs/SETUP.md`.
+**Status:** Milestone 6, polish. Two hosts, 16 short turns, listener cues (challenge, go deeper, take the mic, temperature), branches, Iris the Artist, an episodes library, export, and an offline episode page to keep or send. Iris sketches, paints and dreams up each episode. Start round two and the same hosts pick up where they ended. Listen plays on: when one episode ends, Up next starts the next. Say where you stand before and after, and see yourself on the mind-change meter next to the hosts. Mock mode (scripted text, no API key) always works; real mode uses free models through OpenRouter. Full setup: `docs/SETUP.md`.
 
 ## Run it
 

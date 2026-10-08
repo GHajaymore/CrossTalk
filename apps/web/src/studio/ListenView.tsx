@@ -3,6 +3,7 @@ import { ARTIST, artworkSvg, episodeLabel, hostSubtitle, paintStyleOf, type Conv
 import type { Playback } from '../speech/usePlayback';
 import { sketchSrc } from './ArtistCard';
 import { LivingSketch, sketchProgress } from './LivingSketch';
+import { UpNext } from './UpNext';
 
 const SPEEDS = [0.8, 1, 1.25, 1.5];
 
@@ -72,6 +73,8 @@ export function ListenView({ view, play, rate, setRate }: Props) {
         <div className="scrub-times"><span>{clock ? mmss(clock.position) : `Turn ${seq || 0}`}</span><span>{clock ? mmss(clock.duration) : `of ${turns.length}`}</span></div>
         <div className="scrub-bar" aria-hidden="true"><i style={{ width: `${Math.round(progress * 100)}%` }} /></div>
       </div>
+
+      <UpNext view={view} finished={play.finished} />
 
       <div className="transport">
         <button className="round" onClick={() => step(-1)} disabled={!on || seq <= 1} aria-label="Previous turn">⏮</button>

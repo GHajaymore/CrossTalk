@@ -545,3 +545,11 @@ img.living{object-fit:cover}
 .round-card > div{min-width:0;flex:1 1 280px}
 .round-banner{border-color:var(--line)}
 .lib-round{font-family:var(--f-tag);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--cue);margin-left:8px;white-space:nowrap}
+
+/* Up next */
+.up-next{display:grid;grid-template-columns:72px 1fr auto;gap:12px;align-items:center;border:1px solid var(--cue);border-radius:12px;background:var(--surface);padding:10px 12px;margin:4px 0 14px}
+.up-next img,.up-next-blank{width:72px;aspect-ratio:5/3;object-fit:cover;border-radius:6px;background:var(--set-bg);display:block}
+.up-next-text{display:grid;gap:2px;min-width:0}
+.up-next-text b{font-family:var(--f-say);font-weight:600;font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.up-next-end{text-align:center;margin:4px 0 12px}
+@media (max-width:520px){.up-next{grid-template-columns:64px 1fr}.up-next .dock-row{grid-column:1/-1}}
