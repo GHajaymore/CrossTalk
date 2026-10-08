@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { ARTIST, episodeLabel, hostSubtitle, type ConversationView, type SpeakerId } from '@crosstalk/shared';
 import type { Playback } from '../speech/usePlayback';
 import { sketchSrc } from './ArtistCard';
+import { LivingSketch, sketchProgress } from './LivingSketch';
 
 const SPEEDS = [0.8, 1, 1.25, 1.5];
 
@@ -39,7 +40,7 @@ export function ListenView({ view, play, rate, setRate }: Props) {
   return (
     <section className="listen-view" aria-label="Listen">
       <div className="cover">
-        {cover ? <img src={cover} alt={`${ARTIST.name}'s sketch for this episode: ${view.artist?.artTitle}`} />
+        {cover && view.artist?.sketchSvg ? <LivingSketch ghost className="living" svg={view.artist.sketchSvg} progress={sketchProgress(view, play)} label={`${ARTIST.name}'s sketch for this episode: ${view.artist.artTitle}. It draws itself as the episode plays.`} />
           : <div className="cover-blank" aria-hidden="true"><span className="brand-mark"><i /><i /></span></div>}
       </div>
       <div className="listen-meta">

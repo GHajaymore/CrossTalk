@@ -8,6 +8,7 @@ import { useConversation } from '../api/useConversation';
 import { ArtistCard } from '../studio/ArtistCard';
 import { BriefBox } from '../scout/BriefBox';
 import { BranchDialog } from '../studio/BranchDialog';
+import { LivingSketch, sketchProgress } from '../studio/LivingSketch';
 import { BranchList } from '../studio/BranchList';
 import { CueCard } from '../studio/CueCard';
 import { cueState, CuePanel } from '../studio/CuePanel';
@@ -222,8 +223,15 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
         )}
 
         {tab === 'watch' && <>
-          <div ref={setRef} className={onAir ? 'on-air' : undefined}>
+          <div ref={setRef} className={`set-wrap${onAir ? ' on-air' : ''}`}>
             {set}
+            {/* While the episode plays, Iris draws in the corner, finishing on the turn she chose. */}
+            {play.state !== 'idle' && view.artist?.state === 'done' && view.artist.sketchSvg && (
+              <div className="iris-pip" aria-hidden="true">
+                <LivingSketch ghost className="living" svg={view.artist.sketchSvg} progress={sketchProgress(view, play)} label="" />
+                <span className="tag">Iris · drawing</span>
+              </div>
+            )}
             {onAir && <button className="btn sm leave-air" onClick={leaveAir}>Leave On air</button>}
           </div>
           {view.brief && <details className="brief stage-brief"><summary>Today's brief · {view.brief.sources.join(', ')}</summary><BriefBox brief={view.brief} /></details>}
