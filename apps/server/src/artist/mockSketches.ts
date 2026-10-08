@@ -66,11 +66,18 @@ export function sceneFor(topic: string) {
   return 'table';
 }
 
-export function mockSketch(topic: string): { title: string; svg: string } {
+// Asking Iris again in mock mode: the same scene, seen differently each time.
+const FRAMINGS = ['', 'translate(600 0) scale(-1 1)', 'translate(30 18) scale(0.92)', 'translate(-36 -22) scale(1.1)', 'translate(600 0) scale(-1 1) translate(20 10) scale(0.95)'];
+const ROTATE: Record<string, string> = { [P.amber]: P.teal, [P.teal]: P.gold, [P.gold]: P.lavender, [P.lavender]: P.amber };
+
+export function mockSketch(topic: string, version = 1): { title: string; svg: string } {
   const sc = SCENES[sceneFor(topic)];
-  const body = sc.draw().replace(/\s+/g, ' ').trim();
+  let body = sc.draw().replace(/\s+/g, ' ').trim();
+  // Version 1 is the scene as drawn; later versions reframe it and shift its colours round the palette.
+  for (let i = 1; i < version && i < 4; i++) body = body.replace(/stroke="(#[0-9A-F]{6})"/gi, (m, c: string) => (ROTATE[c.toUpperCase()] ? `stroke="${ROTATE[c.toUpperCase()]}"` : m));
+  const frame = FRAMINGS[(version - 1) % FRAMINGS.length];
   return {
     title: sc.title,
-    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 360"><rect x="0" y="0" width="600" height="360" fill="${P.ground}" stroke="none"/><g fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">${body}</g></svg>`,
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 360"><rect x="0" y="0" width="600" height="360" fill="${P.ground}" stroke="none"/><g fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"${frame ? ` transform="${frame}"` : ''}>${body}</g></svg>`,
   };
 }

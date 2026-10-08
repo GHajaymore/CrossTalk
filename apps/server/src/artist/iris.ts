@@ -11,7 +11,7 @@ import { safeSvg } from './svgSafety';
 /** Whatever answers Iris's request: a model, or the scripted mock. Returns the raw reply text. */
 export interface ArtistBackend {
   readonly modelId: string;
-  draw(prompt: { system: string; user: string }, episode: ConversationView, feedback: IrisFeedback[], taste: PaintStyle | null): Promise<string>;
+  draw(prompt: { system: string; user: string }, episode: ConversationView, feedback: IrisFeedback[], taste: PaintStyle | null, version?: number): Promise<string>;
 }
 
 const Reply = z.object({
@@ -103,7 +103,7 @@ export class Iris {
     let raw: string;
     try {
       this.opts.countRequest();
-      raw = await this.backend.draw(buildIrisPrompt(view, feedback, taste, allowed), view, feedback, taste);
+      raw = await this.backend.draw(buildIrisPrompt(view, feedback, taste, allowed), view, feedback, taste, version);
     } catch (e) {
       return fail(`Iris couldn't finish: ${e instanceof Error ? e.message : 'the model failed'}. Try again.`);
     }
@@ -137,7 +137,7 @@ const PAINT_STYLE_NAME: Record<PaintStyle, string> = { sketch: 'sketches', paint
 /** Mock Iris: no model call. Picks a moment, writes a perspective, draws a scene, and shows she read your notes. */
 export const mockArtist: ArtistBackend = {
   modelId: 'mock/iris-v1',
-  async draw(_prompt, c, feedback, taste) {
+  async draw(_prompt, c, feedback, taste, version = 1) {
     // Like real Iris: the turn that answered the listener first, then a change of mind.
     const cue = c.interventions.find(x => x.status === 'applied' && x.kind !== 'temp');
     const answered = cue && c.turns.find(t => t.seq === cue.appliesBeforeSeq);
@@ -152,7 +152,7 @@ export const mockArtist: ArtistBackend = {
       : steered ? `What stayed with me was the moment you steered the show and ${who} went with it, picking up a road the first version never took.`
       : `What stayed with me was the moment ${who} gave ground to ${other}. The talk got honest right there, because someone changed their mind out loud.`;
     const lastNote = feedback.find(f => f.note);
-    const sketch = mockSketch(c.topic);
+    const sketch = mockSketch(c.topic, version);
     const perspective = [
       opener,
       `I wish they had spent a turn on the people who never get asked about this.`,
