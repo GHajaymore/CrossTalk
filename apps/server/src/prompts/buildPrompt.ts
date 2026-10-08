@@ -1,7 +1,7 @@
 // Builds the system + user message for one turn (docs/PLAN.md, Conversation engine).
 // Style: two friends chatting on a podcast, in 16 short turns (decided Oct 8, 2026).
 // Listener text (topic, custom personality) is delimited and marked as content, never instructions.
-import { MODES, turnTotal, type Audience, type Intervention, type Temperature, type Turn } from '@crosstalk/shared';
+import { MODES, STANCE_END_JOBS, STANCE_START_JOBS, turnTotal, type Audience, type Intervention, type Temperature, type Turn } from '@crosstalk/shared';
 import type { TurnRequest } from '../providers/types';
 
 const OBJECTIVES: Record<string, string> = {
@@ -108,6 +108,13 @@ export function buildPrompt({ conversation: c, seq, speaker, objective, history,
     return `${CUE_ASK[x.kind]}\n<listener_cue kind="${x.kind}">${clean(x.text ?? '')}</listener_cue>`;
   });
   const branching = !!c.branchSeq && seq > c.branchSeq;
+  // Mind-change meter: say how sure you are at the start, and honestly whether it moved at the end.
+  const startStance = done.find(t => t.speakerId === speaker.id && (STANCE_START_JOBS as readonly string[]).includes(t.objective))?.stance;
+  const stanceAsk = (STANCE_START_JOBS as readonly string[]).includes(objective)
+    ? 'Somewhere in this line, say in your own words roughly how sure you are right now, as a percentage (for example "I\'m maybe 70% on yes"). After your spoken words, add the tag [stance: NN], where NN is 0 (firmly no) to 100 (firmly yes). The tag is never read aloud.'
+    : (STANCE_END_JOBS as readonly string[]).includes(objective)
+      ? `Say honestly whether your view moved during the show${startStance != null ? ` (you started at ${startStance}% on yes)` : ''} and where you are now, as a percentage. Moving is fine and so is staying put; don't fake either. After your spoken words, add the tag [stance: NN], 0 (firmly no) to 100 (firmly yes). The tag is never read aloud.`
+      : '';
   const ownOpenings = done.filter(t => t.speakerId === speaker.id).slice(-4).map(t => `"${opening(t.text)}"`);
 
   const user = [
@@ -120,6 +127,7 @@ export function buildPrompt({ conversation: c, seq, speaker, objective, history,
     ...cueLines,
     ownOpenings.length ? `Start differently from your recent lines: ${ownOpenings.join('; ')}.` : '',
     `This is line ${seq} of ${turnTotal(c)}. Your part now: ${OBJECTIVES[objective] ?? objective}`,
+    stanceAsk,
     'Reply with only your spoken words.',
   ].filter(Boolean).join('\n\n');
 

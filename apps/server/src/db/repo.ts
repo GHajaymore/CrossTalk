@@ -53,7 +53,7 @@ type CueRow = {
 };
 type TurnRow = {
   id: string; conversation_id: string; seq: number; speaker_id: string; model_id: string; objective: string;
-  text: string; status: string; created_at: string;
+  text: string; status: string; created_at: string; stance: number | null;
 };
 type RunRow = {
   id: string; conversation_id: string; state: string; from_seq: number; to_seq: number; started_at: string;
@@ -72,7 +72,7 @@ const toCue = (r: CueRow): Intervention => Intervention.parse({
 });
 const toTurn = (r: TurnRow): Turn => ({
   id: r.id, conversationId: r.conversation_id, seq: r.seq, speakerId: r.speaker_id as Turn['speakerId'],
-  modelId: r.model_id, objective: r.objective, text: r.text, status: 'completed', createdAt: r.created_at,
+  modelId: r.model_id, objective: r.objective, text: r.text, status: 'completed', createdAt: r.created_at, stance: r.stance ?? null,
 });
 const toRun = (r: RunRow): Run => Run.parse({
   id: r.id, conversationId: r.conversation_id, state: r.state, fromSeq: r.from_seq, toSeq: r.to_seq,
@@ -127,9 +127,9 @@ export class Repo {
 
   /** Saves a completed turn. Saving the same (conversation, seq) twice keeps the first; returns false the second time. */
   saveTurn(t: Turn): boolean {
-    const res = this.db.prepare(`INSERT INTO turns (id, conversation_id, seq, speaker_id, model_id, objective, text, status, created_at)
-      VALUES (@id, @conversationId, @seq, @speakerId, @modelId, @objective, @text, @status, @createdAt)
-      ON CONFLICT (conversation_id, seq) DO NOTHING`).run(t);
+    const res = this.db.prepare(`INSERT INTO turns (id, conversation_id, seq, speaker_id, model_id, objective, text, status, created_at, stance)
+      VALUES (@id, @conversationId, @seq, @speakerId, @modelId, @objective, @text, @status, @createdAt, @stance)
+      ON CONFLICT (conversation_id, seq) DO NOTHING`).run({ ...t, stance: t.stance ?? null });
     return res.changes === 1;
   }
 

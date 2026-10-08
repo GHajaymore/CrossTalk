@@ -1,5 +1,5 @@
 // Transcript export (docs/PLAN.md, "Export (schema v1)"): one JSON document and the same content as a readable script.
-import { ARTIST, AUDIENCES, CUE_LIMIT, episodeLabel, MODES, NOTICE, SCOUT_NOTICE, TEMPERATURES, turnTotal, type ConversationView } from '@crosstalk/shared';
+import { ARTIST, AUDIENCES, CUE_LIMIT, episodeLabel, mindChange, MODES, NOTICE, SCOUT_NOTICE, TEMPERATURES, turnTotal, type ConversationView } from '@crosstalk/shared';
 import type { UsageRow } from './db/repo';
 
 export const EXPORT_SCHEMA_VERSION = 1;
@@ -22,6 +22,7 @@ export function exportJson(c: ConversationView, usage: UsageRow[]) {
       seq: t.seq, speakerId: t.speakerId, speaker: c.speakers[t.speakerId].name, modelId: t.modelId, job: t.objective, text: t.text,
       // In a branch, turns before the cut are read from the original episode.
       fromOriginal: t.conversationId !== c.id,
+      stance: t.stance ?? null,
     })),
     interventions: c.interventions.map(x => ({
       kind: x.kind, text: x.text, targetSeq: x.targetSeq, fromTemperature: x.fromTemp, toTemperature: x.toTemp,
@@ -73,6 +74,11 @@ export function exportMarkdown(c: ConversationView) {
     for (const x of c.interventions.filter(i => i.appliesBeforeSeq === t.seq && i.status === 'applied')) lines.push(CUE_LINE[x.kind](x), '');
     lines.push(`**${sp[t.speakerId].name}** · turn ${t.seq} · ${t.objective}${t.conversationId !== c.id ? ' · from the original' : ''}`, '', t.text, '');
     if (c.branchSeq === t.seq) lines.push(`*✂ The branch starts here: “${safe(c.branchDirection)}”*`, '');
+  }
+  const mc = mindChange(c.turns);
+  if (mc.A.start != null || mc.B.start != null) {
+    lines.push('---', '', '## Mind-change meter', '', ...(['A', 'B'] as const).filter(k => mc[k].start != null)
+      .map(k => `- ${sp[k].name}: ${mc[k].start}% on yes${mc[k].end != null ? ` → ${mc[k].end}%` : ''}`), '');
   }
   if (c.artist?.state === 'done') {
     lines.push('---', '', `## From the booth: ${ARTIST.name}, ${ARTIST.role}`, '', c.artist.perspective, '',

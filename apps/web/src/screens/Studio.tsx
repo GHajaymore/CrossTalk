@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  AUDIENCES, CUE_LIMIT, episodeLabel, hostSubtitle, jobIn, MODES, speakerFor, TEMPERATURES, turnTotal,
+  AUDIENCES, CUE_LIMIT, episodeLabel, hideStanceTag, hostSubtitle, jobIn, MODES, speakerFor, TEMPERATURES, turnTotal,
   type AppConfig, type ConversationView, type Intervention,
 } from '@crosstalk/shared';
 import { api } from '../api/client';
@@ -9,6 +9,7 @@ import { ArtistCard } from '../studio/ArtistCard';
 import { BriefBox } from '../scout/BriefBox';
 import { BranchDialog } from '../studio/BranchDialog';
 import { LivingSketch, sketchProgress } from '../studio/LivingSketch';
+import { MindMeter } from '../studio/MindMeter';
 import { BranchList } from '../studio/BranchList';
 import { CueCard } from '../studio/CueCard';
 import { cueState, CuePanel } from '../studio/CuePanel';
@@ -110,7 +111,7 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
   const guests = view.interventions.filter(c => c.kind === 'guest');
   const guestWaiting = guests.find(c => c.status === 'queued');
   const caption = live && !listening
-    ? { who: live.speakerId, text: tail(live.text) || '…' }
+    ? { who: live.speakerId, text: tail(hideStanceTag(live.text)) || '…' }
     : guestWaiting && !listening ? { who: 'G' as const, text: guestWaiting.text ?? '' }
     : listening ? { who: play.speakerId, text: play.caption }
     : st === 'failed' ? { who: null, text: 'The connection dropped on this turn. Everything before it is saved.' }
@@ -167,6 +168,7 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
   const transcript = (
     <>
       {view.brief && <BriefBox brief={view.brief} note={view.brief.sources.join(', ')} />}
+      <MindMeter turns={view.turns} speakers={sp} />
       <div className="table">
         {!view.turns.length && !live && st === 'idle' && (
           <div className="empty-stage"><p>Both seats are ready. Press Start to hear {sp.A.name} open.</p></div>
@@ -187,7 +189,7 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
         {live && !view.turns.some(t => t.seq === live.seq) && <>
           {cuesBefore(live.seq)}
           <TurnCard seq={live.seq} speakerId={live.speakerId} name={sp[live.speakerId].name} objective={live.objective}
-            modelId={live.modelId} text={live.text} state="streaming" />
+            modelId={live.modelId} text={hideStanceTag(live.text)} state="streaming" />
         </>}
         {failedSeq && <>
           {cuesBefore(failedSeq)}
@@ -237,6 +239,7 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
           {view.brief && <details className="brief stage-brief"><summary>Today's brief · {view.brief.sources.join(', ')}</summary><BriefBox brief={view.brief} /></details>}
           <TurnRail turns={view.turns} liveSeq={live?.seq ?? null} failedSeq={failedSeq} speakers={sp}
             branchSeq={view.branchSeq} cueSeqs={view.interventions.filter(c => c.status === 'queued').map(c => c.appliesBeforeSeq)} />
+          <MindMeter turns={view.turns} speakers={sp} compact />
         </>}
         <div className="status-line" aria-live="polite">
           <span><b>{statusWord}</b>{view.run?.pauseRequested ? ' · pausing after this turn' : ''}</span>

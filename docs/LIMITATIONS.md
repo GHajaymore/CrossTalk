@@ -15,6 +15,10 @@ CrossTalk is a prototype for one person. These are the honest gaps.
   miss things or drop a harmless story.
 - **Free models have their own content rules**, and the app never tries to get around them.
 
+- **The Mind-change meter depends on the model.** Hosts are asked to say how sure they are and add a
+  hidden number on their first and last lines; a model that skips the number leaves that end of the
+  meter empty. The number is what the host says, not a measurement.
+
 ## Voices and pictures
 
 - **Browser voices depend on the device.** They sound different everywhere and can sound robotic.

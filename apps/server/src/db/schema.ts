@@ -184,4 +184,8 @@ export const MIGRATIONS: string[] = [
 
   ALTER TABLE conversations ADD COLUMN scout_topic_id TEXT;
   `,
+  `
+  -- Mind-change meter: how sure a host said they were, on their first and last lines.
+  ALTER TABLE turns ADD COLUMN stance INTEGER;
+  `,
 ];

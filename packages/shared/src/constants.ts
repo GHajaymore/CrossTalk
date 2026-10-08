@@ -20,6 +20,9 @@ export const JOBS = [
 export const MAX_TURNS = 16;
 export const DAILY_LIMIT_DEFAULT = 40;
 export const CUE_LIMIT = 3;
+/** Mind-change meter: the jobs where each host says how sure they are (first lines) and whether it moved (last lines). */
+export const STANCE_START_JOBS = ['Hello', 'First take'] as const;
+export const STANCE_END_JOBS = ['Takeaway', 'Sign-off'] as const;
 /** A challenge or a guest line: a sentence or two. */
 export const CUE_TEXT_MAX = 200;
 /** A branch always generates this many new turns, with these jobs. */
