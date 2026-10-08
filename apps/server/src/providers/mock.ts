@@ -1,5 +1,5 @@
 import type { MockSettings } from '@crosstalk/shared';
-import { mockBranchText, mockCueLead, mockStance, mockTurnText } from './mockScripts';
+import { mockBranchText, mockCueLead, mockRoundOpening, mockStance, mockTurnText } from './mockScripts';
 import { AbortedError, ProviderError, type Provider, type TurnOptions, type TurnRequest } from './types';
 
 export type MockTiming = {
@@ -35,7 +35,7 @@ export class MockProvider implements Provider {
 
   async generateTurn(req: TurnRequest, { onToken, signal }: TurnOptions) {
     const { fast, failOnce } = this.settings();
-    const { conversation: c, seq, speaker, objective, cues = [] } = req;
+    const { conversation: c, seq, speaker, objective, cues = [], lastRound = null } = req;
     await wait(this.timing.thinkMs(fast), signal);
 
     const base = c.branchSeq && seq > c.branchSeq ? mockBranchText(objective, c.branchDirection ?? '') : mockTurnText(c.topic, seq, speaker.id, c.temperature);
@@ -44,7 +44,9 @@ export class MockProvider implements Provider {
     // Hot seat: the hosts name their roles on their first lines.
     const seat = c.mode === 'hotseat' && seq === 1 ? "I'm in the hot seat today, arguing the side most people reject. "
       : c.mode === 'hotseat' && seq === 2 ? 'And my job is to talk you out of it, fairly. ' : '';
-    const words = (seat + leads.join('') + base + mockStance(c.topic, speaker.id, objective)).split(' ');
+    const open = lastRound?.lines.find(l => l.job === 'Still unsure')?.text ?? null;
+    const roundOpening = lastRound ? mockRoundOpening(lastRound.round, seq, open) : null;
+    const words = (seat + leads.join('') + (roundOpening ?? base) + mockStance(c.topic, speaker.id, objective, lastRound?.stances[speaker.id].end ?? null)).split(' ');
     const failAt = failOnce && seq === MOCK_FAIL_SEQ && !this.failedOnce.has(c.id) ? Math.floor(words.length / 2) : -1;
 
     let text = '';

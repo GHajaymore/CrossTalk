@@ -238,4 +238,10 @@ export const MIGRATIONS: string[] = [
   ALTER TABLE conversations ADD COLUMN you_start INTEGER;
   ALTER TABLE conversations ADD COLUMN you_end INTEGER;
   `,
+  `
+  -- Round two: a sequel with the same hosts and question, picking up where the last round ended.
+  ALTER TABLE conversations ADD COLUMN round_of TEXT;
+  ALTER TABLE conversations ADD COLUMN round INTEGER NOT NULL DEFAULT 1;
+  CREATE INDEX IF NOT EXISTS conversations_round_of ON conversations(round_of);
+  `,
 ];

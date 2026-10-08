@@ -1,12 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import {
-  assertTransition, blockedHit, BRANCH_TURNS, DEFAULT_RULES, extractStance, STANCE_END_JOBS, STANCE_START_JOBS, jobIn, resolveSpeakers, speakerFor, stepTemperature, TransitionError,
+  assertTransition, blockedHit, BRANCH_TURNS, DEFAULT_RULES, extractStance, mindChange, STANCE_END_JOBS, STANCE_START_JOBS, jobIn, resolveSpeakers, speakerFor, stepTemperature, TransitionError,
   type BranchInput, type Conversation, type ConversationView, type CreateConversation, type CueInput, type Intervention,
   type LiveTurn, type Rules, type Run, type RunState, type StreamEvent,
 } from '@crosstalk/shared';
 import type { Repo } from '../db/repo';
-import { AbortedError, ProviderError, type Provider, type Usage } from '../providers/types';
+import { AbortedError, ProviderError, type LastRound, type Provider, type Usage } from '../providers/types';
 
 /** A 429 may be waited out once, up to this long. Longer waits pause the run instead. */
 export const MAX_RETRY_WAIT_MS = 20_000;
@@ -142,11 +142,61 @@ export class ConversationController {
       verdict: null,
       youStart: null,
       youEnd: null,
+      roundOf: null,
+      round: 1,
       createdAt: at,
       updatedAt: at,
     };
     this.repo.insertConversation(c);
     return this.repo.view(c.id)!;
+  }
+
+  /**
+   * Round two: a new episode with the same hosts, question and settings that picks up where this one
+   * ended. Their starting stances are last round's endings; so is yours. One sequel per episode.
+   */
+  nextRound(conversationId: string): ConversationView {
+    const prev = this.repo.view(conversationId);
+    if (!prev) throw new ControllerError('Conversation not found.', 404);
+    if (prev.run?.state !== 'completed') throw new ControllerError('Finish this episode first, then start round two.', 409);
+    if (prev.nextRound) throw new ControllerError(`Round ${prev.nextRound.round} already exists for this episode.`, 409);
+    const rules = this.rules();
+    const blocked = this.blockedMessage(prev.topic);
+    if (blocked) throw new ControllerError(blocked, 400);
+    if (prev.audience === 'mature' && !rules.allowMature) throw new ControllerError('The Mature audience is switched off in the Control room.', 400);
+    const at = this.now().toISOString();
+    // The mood they ended on, within today's rules.
+    const mood = this.repo.temperatureAt(prev.id, prev.turns.length);
+    const c: Conversation = {
+      ...prev,
+      id: randomUUID(),
+      title: prev.topic,
+      episode: this.repo.nextEpisode(),
+      temperature: mood === 'heated' && !rules.allowHeated ? 'lively' : mood,
+      parentId: null, branchTurnId: null, branchSeq: null, branchDirection: null,
+      publish: null, verdict: null,
+      youStart: prev.youEnd ?? prev.youStart, youEnd: null,
+      roundOf: prev.id, round: prev.round + 1,
+      createdAt: at, updatedAt: at,
+    };
+    this.repo.insertConversation(c);
+    this.emit(conversationId, { type: 'changed' });
+    return this.repo.view(c.id)!;
+  }
+
+  /** What the hosts remember from the round before: where they ended, the lines that got them there, and the listener's cues. */
+  private lastRound(conv: Conversation): LastRound | null {
+    if (!conv.roundOf) return null;
+    const prev = this.repo.view(conv.roundOf);
+    if (!prev) return null;
+    const m = mindChange(prev.turns);
+    const KEY = ['Rethink', 'Common ground', 'Still unsure', 'Takeaway', 'Close'];
+    return {
+      round: conv.round,
+      stances: m,
+      lines: prev.turns.filter(t => KEY.includes(t.objective)).map(t => ({ speakerId: t.speakerId, job: t.objective, text: t.text })),
+      listener: prev.interventions.filter(x => x.status === 'applied' && (x.kind === 'challenge' || x.kind === 'guest') && x.text).map(x => x.text!).slice(0, 3),
+    };
   }
 
   /** Removes an episode for good. Not while it's generating, and not while branches still read its turns. */
@@ -418,7 +468,7 @@ export class ConversationController {
 
       try {
         const res = await this.provider.generateTurn(
-          { conversation: conv, seq, speaker, objective, history: this.repo.listTurns(conversationId), cues, brief: conv.scoutTopicId ? this.repo.getTopic(conv.scoutTopicId) : null },
+          { conversation: conv, seq, speaker, objective, history: this.repo.listTurns(conversationId), cues, brief: conv.scoutTopicId ? this.repo.getTopic(conv.scoutTopicId) : null, lastRound: this.lastRound(conv) },
           { signal, onToken: t => { live.text += t; this.emit(conversationId, { type: 'token', seq, text: t }); } },
         );
         log('ok', res.usage, null);

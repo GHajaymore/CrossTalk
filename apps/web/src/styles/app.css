@@ -538,3 +538,10 @@ img.living{object-fit:cover}
 .mm-askbar .mm-text b{color:var(--text);font-variant-numeric:tabular-nums}
 .mm-ask{padding:8px 10px;margin:2px -10px 0;border:1px dashed rgba(var(--cue-rgb),.45);border-radius:8px;background:var(--cue-soft)}
 .linkish{background:none;border:0;padding:0 0 0 8px;color:var(--cue);text-decoration:underline;cursor:pointer;font:inherit}
+
+/* Round two */
+.round-card{border:1px solid var(--line);border-radius:12px;background:var(--surface);padding:16px;display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin:16px 0}
+.round-card h3{font-family:var(--f-say);font-weight:600;font-size:20px;margin:2px 0 4px}
+.round-card > div{min-width:0;flex:1 1 280px}
+.round-banner{border-color:var(--line)}
+.lib-round{font-family:var(--f-tag);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--cue);margin-left:8px;white-space:nowrap}

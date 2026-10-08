@@ -17,6 +17,7 @@ Iris listens to every finished episode and responds like a thoughtful listener: 
 
 - **Poster and comic strip:** her sketch and quote are at the heart of both share images, made on the
   device. If she couldn't draw, the comic says so plainly.
+- **Round two:** she's told when an episode is a later round of the same question.
 - **Hot seat:** she knows only the listener decides who moved them, and never says who held, won or lost.
 - **She paints:** three styles, all made from her own checked lines in the browser (`packages/shared/src/paint.ts`):
   **Sketch** (the lines), **Painting** (watercolour washes, paper grain, inky lines) and **Dreamscape** (night sky,

@@ -15,6 +15,7 @@ export function exportJson(c: ConversationView, usage: UsageRow[]) {
       audience: c.audience, temperature: c.temperature, createdAt: c.createdAt, updatedAt: c.updatedAt,
       state: c.run?.state ?? 'idle', turnsPlanned: turnTotal(c), listenerVerdict: c.verdict ?? null,
       listenerStance: { start: c.youStart ?? null, end: c.youEnd ?? null },
+      round: c.round, roundOf: c.roundOf,
     },
     speakers: [c.speakers.A, c.speakers.B].map(s => ({ id: s.id, name: s.name, role: s.role ?? '', persona: s.persona, lens: s.lens, modelId: s.modelId })),
     branch: c.parentId ? { parentId: c.parentId, parentTitle: c.parent?.title ?? null, branchTurnId: c.branchTurnId, branchSeq: c.branchSeq, direction: c.branchDirection } : null,
@@ -64,7 +65,7 @@ export function exportMarkdown(c: ConversationView) {
   const lines = [
     `# ${c.topic}`,
     '',
-    `CrossTalk · ${episodeLabel(c.episode)} · ${MODES[c.mode].label} · ${AUDIENCES[c.audience].label} · ${TEMPERATURES[c.temperature].label}`,
+    `CrossTalk · ${episodeLabel(c.episode)}${c.round > 1 ? ` · Round ${c.round}` : ''} · ${MODES[c.mode].label} · ${AUDIENCES[c.audience].label} · ${TEMPERATURES[c.temperature].label}`,
     '',
     `Hosts: ${host('A')} and ${host('B')}`,
     c.parentId ? `\n✂ Branch of “${c.parent?.title ?? c.parentId}” from turn ${c.branchSeq}: “${safe(c.branchDirection)}”` : '',

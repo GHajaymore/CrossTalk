@@ -30,6 +30,9 @@ CrossTalk is a prototype for one person. These are the honest gaps.
   illustration (Picture) needs an image model, and none is free yet. Her picture prompts are saved so
   past episodes can be redrawn.
 - **Very old browsers** may show the painted styles without their washes (they need SVG filters).
+- **Round two in mock mode** opens properly (the hosts recall where they ended and quote what was left
+  open), then follows the same sample script as round one. Real models write a new conversation that
+  builds on a short memo of last round: where each host ended, their key lines and your challenges.
 - **The episode page reads aloud with the reader's own device voices**, so it sounds like their phone,
   not the studio. A browser with no voices says so and the page still reads like a script. It leaves out
   producer notes (they're private); the Markdown and JSON exports keep them.

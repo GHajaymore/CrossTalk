@@ -11,6 +11,7 @@ import { BranchDialog } from '../studio/BranchDialog';
 import { LivingSketch, sketchProgress } from '../studio/LivingSketch';
 import { MindMeter } from '../studio/MindMeter';
 import { VerdictCard } from '../studio/VerdictCard';
+import { RoundCard } from '../studio/RoundCard';
 import { BranchList } from '../studio/BranchList';
 import { CueCard } from '../studio/CueCard';
 import { cueState, CuePanel } from '../studio/CuePanel';
@@ -137,7 +138,7 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
     <StudioSet
       show={`CrossTalk · ${view.format === 'live' ? '● Live' : episodeLabel(view.episode)}`}
       topic={view.topic}
-      tags={`${MODES[view.mode].label} · ${AUDIENCES[view.audience].label} · ${TEMPERATURES[view.temperature].label}`}
+      tags={`${view.round > 1 ? `Round ${view.round} · ` : ''}${MODES[view.mode].label} · ${AUDIENCES[view.audience].label} · ${TEMPERATURES[view.temperature].label}`}
       temperature={view.temperature}
       hosts={{ A: { name: sp.A.name, role: hostSubtitle(sp.A) }, B: { name: sp.B.name, role: hostSubtitle(sp.B) } }}
       guest={guests.length ? { name: 'Guest', role: 'You, on the mic' } : null}
@@ -217,6 +218,7 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
           onJump={seq => document.getElementById(`turn-${seq}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })} />
       )}
       {st === 'completed' && view.artist?.state === 'done' && <EpisodeKit c={view} toast={toast} />}
+      {st === 'completed' && !view.parent && <RoundCard view={view} toast={toast} />}
     </>
   );
 
@@ -230,6 +232,12 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
             </a>
           ))}
         </nav>
+        {view.prevRound && !view.parent && (
+          <div className="branch-banner round-banner">
+            <span><span aria-hidden="true">↻ </span>Round {view.round}: the same hosts pick up where they ended in <b>{episodeLabel(view.prevRound.episode)}</b>.</span>
+            <a className="btn sm ghost" href={`#/studio/${view.prevRound.id}/read`}>← Round {view.prevRound.round}</a>
+          </div>
+        )}
         {view.parent && (
           <div className="branch-banner">
             <span><span aria-hidden="true">✂ </span>Branch from turn {view.branchSeq} of <b>{view.parent.title}</b>: “{view.branchDirection}”</span>

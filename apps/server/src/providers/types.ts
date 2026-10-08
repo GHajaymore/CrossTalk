@@ -1,4 +1,16 @@
-import type { Conversation, Intervention, ScoutTopic, Speaker, Turn } from '@crosstalk/shared';
+import type { Conversation, Intervention, ScoutTopic, Speaker, SpeakerId, Turn } from '@crosstalk/shared';
+
+/** Round two: what the hosts remember from the round before. */
+export type LastRound = {
+  /** The round being made now (2, 3…). */
+  round: number;
+  /** Where each host started and ended last round (0 no, 100 yes). */
+  stances: Record<SpeakerId, { start: number | null; end: number | null }>;
+  /** The lines that say where they got to: concessions, common ground, what was open, the takeaway. */
+  lines: { speakerId: SpeakerId; job: string; text: string }[];
+  /** What listeners challenged them with, or said on air. */
+  listener: string[];
+};
 
 export type TurnRequest = {
   conversation: Conversation;
@@ -10,6 +22,8 @@ export type TurnRequest = {
   cues?: Intervention[];
   /** The Scout's brief: the only facts the hosts know about recent events. */
   brief?: ScoutTopic | null;
+  /** Round two and later: the round before, so they pick up where they left off. */
+  lastRound?: LastRound | null;
 };
 
 export type TurnOptions = {

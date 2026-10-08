@@ -388,6 +388,12 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
   });
   app.post('/api/scout/run', async () => { await scout.run(false); return scoutView(); });
 
+  // Round two: same hosts, same question, picking up where this episode ended.
+  app.post<{ Params: { id: string } }>('/api/conversations/:id/round', async (req, reply) => {
+    const v = controller.nextRound(req.params.id);
+    return reply.status(201).send(v);
+  });
+
   // Where do you stand? The listener's own 0-100 before listening, and again once the episode is finished.
   app.put<{ Params: { id: string }; Body: { start?: unknown; end?: unknown } }>('/api/conversations/:id/you', async req => {
     const c = repo.getConversation(req.params.id);
