@@ -85,7 +85,7 @@ test("Iris's card shows her sketch, perspective, and learns from feedback", asyn
   await expect(page.locator('.learned')).toContainText('Love the warm colours');
 });
 
-test('export downloads Markdown and JSON with models, turns and cues', async ({ page, request }) => {
+test('export downloads Markdown and JSON with models, turns and cues', async ({ page, request }, info) => {
   const id = await finishedEpisode(request);
   await page.goto(`/#/studio/${id}/read`);
   await page.locator('.export-menu summary').click();
@@ -95,6 +95,20 @@ test('export downloads Markdown and JSON with models, turns and cues', async ({ 
   expect(json).toMatchObject({ schemaVersion: 1 });
   expect(json.speakers.map((s: { modelId: string }) => s.modelId)).toEqual(['mock/wren-v1', 'mock/hale-v1']);
   expect(json.turns).toHaveLength(16);
+
+  // The episode page: one offline file that opens on its own and plays nothing from the network.
+  if (!(await page.locator('.export-menu').evaluate(d => (d as HTMLDetailsElement).open))) await page.locator('.export-menu summary').click();
+  const [html] = await Promise.all([page.waitForEvent('download'), page.getByRole('menuitem', { name: /Episode page/ }).click()]);
+  expect(html.suggestedFilename()).toMatch(/^crosstalk-ep\d+-is-a-four-day-workweek-practical\.html$/);
+  const outside: string[] = [];
+  page.on('request', r => { if (!/^(file|data):/.test(r.url())) outside.push(r.url()); });
+  const file = info.outputPath(html.suggestedFilename());
+  await html.saveAs(file);
+  await page.goto('file://' + file);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Is a four-day workweek practical?');
+  await expect(page.locator('article.turn')).toHaveCount(16);
+  await expect(page.getByRole('img', { name: /Iris's/ })).toBeVisible();
+  expect(outside).toEqual([]);
 });
 
 test('episodes: rename, then delete with confirmation', async ({ page, request }) => {

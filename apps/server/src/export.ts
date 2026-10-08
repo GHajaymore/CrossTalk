@@ -31,7 +31,7 @@ export function exportJson(c: ConversationView, usage: UsageRow[]) {
     cueLimit: CUE_LIMIT,
     artist: c.artist?.state === 'done' ? {
       name: ARTIST.name, modelId: c.artist.modelId, perspective: c.artist.perspective, momentSeq: c.artist.momentSeq,
-      caption: c.artist.caption, artTitle: c.artist.artTitle, sketchSvg: c.artist.sketchSvg, imagePrompt: c.artist.imagePrompt,
+      caption: c.artist.caption, artTitle: c.artist.artTitle, artStyle: c.artist.artStyle, sketchSvg: c.artist.sketchSvg, imagePrompt: c.artist.imagePrompt,
     } : null,
     brief: c.brief ? { question: c.brief.question, date: c.brief.date, category: c.brief.category, region: c.brief.region, bullets: c.brief.bullets } : null,
     sources: c.brief ? [...new Map(c.brief.bullets.map(b => [b.url, { name: b.source, url: b.url }])).values()] : [],
@@ -53,6 +53,8 @@ const CUE_LINE: Record<string, (x: ConversationView['interventions'][number]) =>
   guest: x => `> **Guest on the mic:** “${safe(x.text)}”`,
   deeper: x => `> **Listener:** go deeper on turn ${x.targetSeq}`,
   temp: x => `> **Listener:** temperature ${x.fromTemp && TEMPERATURES[x.fromTemp].label} → ${x.toTemp && TEMPERATURES[x.toTemp].label}`,
+  // Your own export, so your notes to the hosts are in it (the shareable episode page leaves them out).
+  note: x => `> **Producer's note:** ${safe(x.text)}`,
 };
 
 export function exportMarkdown(c: ConversationView) {

@@ -30,6 +30,9 @@ CrossTalk is a prototype for one person. These are the honest gaps.
   illustration (Picture) needs an image model, and none is free yet. Her picture prompts are saved so
   past episodes can be redrawn.
 - **Very old browsers** may show the painted styles without their washes (they need SVG filters).
+- **The episode page reads aloud with the reader's own device voices**, so it sounds like their phone,
+  not the studio. A browser with no voices says so and the page still reads like a script. It leaves out
+  producer notes (they're private); the Markdown and JSON exports keep them.
 - **Presenter tiles show initials**, not moving faces. Lifelike presenters are a paid Phase 2 decision.
 
 ## Engine

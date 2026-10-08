@@ -274,6 +274,7 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
                 <details className="export-menu">
                   <summary className="btn ghost">Export</summary>
                   <div className="menu" role="menu">
+                    <a role="menuitem" href={`/api/conversations/${id}/export.html`} download>Episode page<small>One file to keep or send: art, transcript, Play</small></a>
                     <a role="menuitem" href={`/api/conversations/${id}/export.md`} download>Markdown script<small>Readable transcript with cues and Iris</small></a>
                     <a role="menuitem" href={`/api/conversations/${id}/export.json`} download>JSON<small>Schema v1: models, turns, cues, branches</small></a>
                   </div>

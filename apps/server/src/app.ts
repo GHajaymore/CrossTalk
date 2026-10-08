@@ -13,6 +13,7 @@ import type { Provider } from './providers/types';
 import type { ServerConfig } from './config';
 import { registerAccess, registerAdmin, registerWeb } from './access';
 import { exportJson, exportMarkdown, exportName } from './export';
+import { exportHtml } from './episodePage';
 import { SAMPLE_HN, SAMPLE_RANKING, SAMPLE_RSS, SAMPLE_WIKIPEDIA } from './scout/samples';
 import { Scout, ScoutError } from './scout/scout';
 import { HackerNewsSource, RssSource, SampleSource, WikipediaSource, type TopicSource } from './scout/sources';
@@ -286,7 +287,7 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
     return view(req.params.id);
   });
 
-  // Export: the transcript as JSON (schema v1) or a readable Markdown script.
+  // Export: the transcript as JSON (schema v1), a readable Markdown script, or the episode page to keep or send.
   app.get<{ Params: { id: string; fmt: string } }>('/api/conversations/:id/export.:fmt', async (req, reply) => {
     const v = view(req.params.id);
     if (req.params.fmt === 'json') {
@@ -296,7 +297,10 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
     if (req.params.fmt === 'md') {
       return reply.header('Content-Disposition', `attachment; filename="${exportName(v, 'md')}"`).type('text/markdown; charset=utf-8').send(exportMarkdown(v));
     }
-    throw new ControllerError('Export as json or md.', 404);
+    if (req.params.fmt === 'html') {
+      return reply.header('Content-Disposition', `attachment; filename="${exportName(v, 'html')}"`).type('text/html; charset=utf-8').send(exportHtml(v));
+    }
+    throw new ControllerError('Export as json, md or html.', 404);
   });
 
   // Milestone 8: the Control room. Every action here is written to the audit log.
