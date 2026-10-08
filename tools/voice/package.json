@@ -1,0 +1,13 @@
+{
+  "name": "crosstalk-voice",
+  "private": true,
+  "type": "module",
+  "description": "Turns a recorded CrossTalk episode into a podcast audio file with free, open-source voices (Kokoro, Apache-2.0). Runs on your own machine; no paid service.",
+  "scripts": {
+    "render": "node render.mjs"
+  },
+  "dependencies": {
+    "@breezystack/lamejs": "^1.2.7",
+    "kokoro-js": "^1.2.1"
+  }
+}

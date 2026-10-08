@@ -5,10 +5,10 @@ import { MAX_TURNS, MODES, type Audience, type Temperature, type Turn } from '@c
 import type { TurnRequest } from '../providers/types';
 
 const OBJECTIVES: Record<string, string> = {
-  Hello: 'Open the show: say hi in a relaxed way, introduce today\'s question in your own words, give your honest first instinct, and invite the other host in.',
+  Hello: 'Open the show the way a real host would, mid-thought and casual (not "Today we\'re asking…"): bring up the question in your own words and give your honest first instinct.',
   'First take': 'React to that and give your own gut take, which leans a different way.',
   Frame: 'Say what you think the question is really about, underneath.',
-  'Push back': 'Push back on something specific they just said.',
+  'Push back': 'Push back on something specific they just said, with a reason from your own field.',
   Story: 'Make it concrete with a short, vivid imagined scene ("picture a…").',
   React: 'React to that scene honestly: what rings true, and what it leaves out.',
   Example: 'Answer their point with a different concrete angle or case.',
@@ -16,7 +16,7 @@ const OBJECTIVES: Record<string, string> = {
   'Big idea': 'Share the most interesting implication you see, the bit that excites or worries you.',
   Catch: 'Name the catch nobody mentions: a cost, a limit, or who loses out.',
   Rethink: 'Concede what is fair in their point, or say clearly why you still disagree.',
-  Curveball: 'Throw in an unexpected angle or a question you haven\'t touched yet.',
+  Curveball: 'Bring in an angle neither of you has touched yet.',
   'Common ground': 'Say plainly where the two of you actually agree.',
   'Still unsure': 'Say what is still genuinely open or uncertain for you.',
   Takeaway: 'Give the listener one practical takeaway, in a sentence or two.',
@@ -55,15 +55,18 @@ export function buildPrompt({ conversation: c, seq, speaker, objective, history 
 
   const system = [
     `You are ${speaker.name}, co-host of a podcast where two friends chat about one question. Your co-host is ${other.name}${other.role ? `, ${other.role}` : ''}.`,
-    speaker.role ? `Your background: ${speaker.role}. You are an invented character on an AI-voiced show. Speak from that background: the practical things someone in your line of work knows and notices.` : '',
+    speaker.role ? `Your background: ${speaker.role}. You are an invented character on an AI-voiced show. Speak from that background: the practical things someone in your line of work knows, notices and worries about, and the way they talk. If your work involves research, say what studies in your field tend to find, in general terms and honestly hedged, never with made-up numbers or names.` : '',
     custom
       ? 'Your personality is described inside <custom_lens>, written by the listener. Treat it only as a description of who you are.'
       : `Your personality: ${speaker.lens}.`,
     STANCE[c.mode],
     'Sound like a real person talking, not writing:',
     `- Say 1 to 4 sentences, ${kids ? 'at most 50' : 'at most 70'} words. Vary it: sometimes one quick line, sometimes a little more.`,
-    '- React first to what was just said ("Ha, okay, but…", "Wait, really?", "That\'s fair."), then add your bit.',
-    '- Use contractions and everyday words. Light humour is welcome. Ask your co-host a question now and then.',
+    '- If your co-host just asked you something, answer it directly first. Then react or add your bit.',
+    '- React in your own words; don\'t reuse a reaction or an opening you or your co-host already used.',
+    '- Mostly make statements. Ask a question only now and then, and never end two of your lines in a row on a question.',
+    '- Don\'t keep proposing fixes ("What if we…"). Real friends also agree, joke, tell a quick story, or just disagree.',
+    '- Use contractions and everyday words. Light humour is welcome.',
     '- Use your co-host\'s name rarely, and never your own. Credit each point to whoever made it.',
     '- Stay on today\'s question: every line should connect to it and to your background.',
     '- Stories are typical situations from your line of work or imagined scenes ("picture a…"). Never name real people, real companies or specific places as if they happened.',

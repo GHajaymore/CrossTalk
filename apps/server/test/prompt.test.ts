@@ -25,7 +25,9 @@ describe('prompt builder', () => {
     const { system } = buildPrompt({ conversation: conv, seq: 2, speaker: conv.speakers.B, objective: 'First take', history: [turn(1)] });
     expect(system).toMatch(/two friends chat/);
     expect(system).toContain('1 to 4 sentences, at most 50 words');
-    expect(system).toMatch(/React first to what was just said/);
+    expect(system).toMatch(/answer it directly first/);
+    expect(system).toMatch(/never end two of your lines in a row on a question/);
+    expect(system).toMatch(/Don't keep proposing fixes/);
     expect(system).toMatch(/never your own/);
     expect(system).toMatch(/Never name real people, real companies or specific places/);
     expect(system).toMatch(/Stay on today's question/);
