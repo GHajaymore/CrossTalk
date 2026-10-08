@@ -1,0 +1,42 @@
+/* Design tokens: "dark radio booth" (docs/PLAN.md, Design direction). Every colour and type choice lives here. */
+:root {
+  color-scheme: dark;
+  --bg: #111214;
+  --surface: #1A1C1F;
+  --raised: #22252A;
+  --line: #2E3238;
+  --line-soft: #24272c;
+  --text: #ECE8E1;
+  --muted: #A39E96;
+  --a: #E8A55A;              /* Speaker A, warm amber, left seat */
+  --a-soft: rgba(232,165,90,.12);
+  --a-rgb: 232,165,90;
+  --b: #5FB8B0;              /* Speaker B, cool teal, right seat */
+  --b-soft: rgba(95,184,176,.12);
+  --b-rgb: 95,184,176;
+  --cue: #E9D36A;            /* the listener: cues, guest seat, centre line */
+  --cue-soft: rgba(233,211,106,.10);
+  --cue-rgb: 233,211,106;
+  --iris: #B9A4E6;           /* Iris, the Artist */
+  --air: #E5533D;            /* on air: generating only */
+  --bad: #F0806E;
+
+  --f-say: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --f-ui: "Schibsted Grotesk", "Segoe UI", system-ui, sans-serif;
+  --f-tag: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  /* studio set */
+  --set-bg: #0e0d0c;
+  --set-wall: #181512;
+  --set-ink: #bdb4a8;
+  --set-ink-dim: #8f877c;
+  --set-title: #f1e9dd;
+  --set-warm: rgba(255,186,118,.16);
+  --set-calm: rgba(150,185,230,.14);
+  --set-heated: rgba(255,120,80,.2);
+  --rec: #ff3b2f;
+  --rec-text: #ff7a66;
+  --desk-top: #4a3524;
+  --desk-mid: #33241a;
+  --desk-low: #21170f;
+}
