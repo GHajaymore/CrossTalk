@@ -14,6 +14,7 @@ export function exportJson(c: ConversationView, usage: UsageRow[]) {
       id: c.id, title: c.title, topic: c.topic, mode: c.mode, format: c.format, episode: c.episode,
       audience: c.audience, temperature: c.temperature, createdAt: c.createdAt, updatedAt: c.updatedAt,
       state: c.run?.state ?? 'idle', turnsPlanned: turnTotal(c), listenerVerdict: c.verdict ?? null,
+      listenerStance: { start: c.youStart ?? null, end: c.youEnd ?? null },
     },
     speakers: [c.speakers.A, c.speakers.B].map(s => ({ id: s.id, name: s.name, role: s.role ?? '', persona: s.persona, lens: s.lens, modelId: s.modelId })),
     branch: c.parentId ? { parentId: c.parentId, parentTitle: c.parent?.title ?? null, branchTurnId: c.branchTurnId, branchSeq: c.branchSeq, direction: c.branchDirection } : null,
@@ -78,9 +79,10 @@ export function exportMarkdown(c: ConversationView) {
     if (c.branchSeq === t.seq) lines.push(`*✂ The branch starts here: “${safe(c.branchDirection)}”*`, '');
   }
   const mc = mindChange(c.turns);
-  if (mc.A.start != null || mc.B.start != null) {
+  if (mc.A.start != null || mc.B.start != null || c.youStart != null) {
     lines.push('---', '', '## Mind-change meter', '', ...(['A', 'B'] as const).filter(k => mc[k].start != null)
-      .map(k => `- ${sp[k].name}: ${mc[k].start}% on yes${mc[k].end != null ? ` → ${mc[k].end}%` : ''}`), '');
+      .map(k => `- ${sp[k].name}: ${mc[k].start}% on yes${mc[k].end != null ? ` → ${mc[k].end}%` : ''}`),
+      ...(c.youStart != null ? [`- You: ${c.youStart}% on yes${c.youEnd != null ? ` → ${c.youEnd}%` : ''}`] : []), '');
   }
   if (c.verdict) lines.push(`**Who moved you?** ${VERDICTS[c.verdict]}`, '');
   if (c.artist?.state === 'done') {

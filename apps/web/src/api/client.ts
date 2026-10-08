@@ -52,6 +52,7 @@ export const api = {
   askIris: (id: string) => call<ConversationView>(`/conversations/${id}/artist`, { method: 'POST' }),
   irisFeedback: () => call<IrisFeedback[]>('/iris/feedback'),
   sendIrisFeedback: (f: { conversationId: string | null; rating: 'up' | 'down'; note: string }) => call<IrisFeedback[]>('/iris/feedback', { method: 'POST', body: JSON.stringify(f) }),
+  setYou: (id: string, patch: { start?: number | null; end?: number | null }) => call<ConversationView>(`/conversations/${id}/you`, { method: 'PUT', body: JSON.stringify(patch) }),
   setArtStyle: (id: string, style: PaintStyle) => call<ConversationView>(`/conversations/${id}/artist/style`, { method: 'PUT', body: JSON.stringify({ style }) }),
   forgetIrisFeedback: (id: string) => call<IrisFeedback[]>(`/iris/feedback/${id}`, { method: 'DELETE' }),
   eventsUrl: (id: string) => `/api/conversations/${id}/events`,

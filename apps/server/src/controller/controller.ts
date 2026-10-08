@@ -140,6 +140,8 @@ export class ConversationController {
       scoutTopicId: input.scoutTopicId ?? null,
       publish: null,
       verdict: null,
+      youStart: null,
+      youEnd: null,
       createdAt: at,
       updatedAt: at,
     };
@@ -273,6 +275,8 @@ export class ConversationController {
       title: input.direction,
       publish: null,
       verdict: null,
+      // Same listener, same question: where you stood before carries over; where you land is asked again.
+      youEnd: null,
       // The mood at the cut, not wherever the original ended up.
       temperature: this.repo.temperatureAt(conversationId, input.fromSeq),
       parentId: parent.id,

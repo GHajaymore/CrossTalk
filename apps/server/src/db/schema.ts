@@ -233,4 +233,9 @@ export const MIGRATIONS: string[] = [
   -- Iris paints: set when the listener picks the style themselves, so she can learn their taste.
   ALTER TABLE artist_notes ADD COLUMN style_by_listener INTEGER NOT NULL DEFAULT 0;
   `,
+  `
+  -- Where do you stand? The listener's own 0-100 on the question, before and after the episode.
+  ALTER TABLE conversations ADD COLUMN you_start INTEGER;
+  ALTER TABLE conversations ADD COLUMN you_end INTEGER;
+  `,
 ];

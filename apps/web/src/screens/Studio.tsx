@@ -107,6 +107,16 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
   }[st];
 
   const lastTurn = view.turns[view.turns.length - 1];
+  const you = { start: view.youStart, end: view.youEnd };
+  const setYou = async (patch: { start?: number | null; end?: number | null }) => {
+    try {
+      setView(await api.setYou(id, patch));
+      if (patch.end != null && view.youStart != null) {
+        const d = patch.end - view.youStart;
+        toast(Math.abs(d) < 3 ? 'You held your ground' : `You moved ${Math.abs(d)} toward ${d > 0 ? 'yes' : 'no'}`);
+      }
+    } catch (e) { toast((e as Error).message); }
+  };
   const listening = play.state !== 'idle' && play.speakerId;
   // A guest who took the mic keeps the gold seat for the rest of the episode; their words show while they wait to be answered.
   const guests = view.interventions.filter(c => c.kind === 'guest');
@@ -170,7 +180,7 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
   const transcript = (
     <>
       {view.brief && <BriefBox brief={view.brief} note={view.brief.sources.join(', ')} />}
-      <MindMeter turns={view.turns} speakers={sp} />
+      <MindMeter turns={view.turns} speakers={sp} you={you} done={st === 'completed'} onYou={setYou} />
       <div className="table">
         {!view.turns.length && !live && st === 'idle' && (
           <div className="empty-stage"><p>Both seats are ready. Press Start to hear {sp.A.name} open.</p></div>
@@ -244,7 +254,7 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
           {view.brief && <details className="brief stage-brief"><summary>Today's brief · {view.brief.sources.join(', ')}</summary><BriefBox brief={view.brief} /></details>}
           <TurnRail turns={view.turns} liveSeq={live?.seq ?? null} failedSeq={failedSeq} speakers={sp}
             branchSeq={view.branchSeq} cueSeqs={view.interventions.filter(c => c.status === 'queued').map(c => c.appliesBeforeSeq)} />
-          <MindMeter turns={view.turns} speakers={sp} compact />
+          <MindMeter turns={view.turns} speakers={sp} compact you={you} done={st === 'completed'} onYou={setYou} />
         </>}
         <div className="status-line" aria-live="polite">
           <span><b>{statusWord}</b>{view.run?.pauseRequested ? ' · pausing after this turn' : ''}</span>

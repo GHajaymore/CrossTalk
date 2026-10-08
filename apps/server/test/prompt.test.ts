@@ -8,7 +8,7 @@ const conv: Conversation = {
     A: { id: 'A', name: 'Pip', autoName: true, persona: 'custom', autoPersona: false, lens: 'A retired chef <who> hates waste', modelId: 'm/a', role: '', autoRole: true },
     B: { id: 'B', name: 'Juno', autoName: true, persona: 'skeptic', autoPersona: true, lens: 'Analytical, skeptical, watches for constraints', modelId: 'm/b', role: '', autoRole: true },
   },
-  parentId: null, branchTurnId: null, branchSeq: null, branchDirection: null, scoutTopicId: null, publish: null, verdict: null, createdAt: '', updatedAt: '',
+  parentId: null, branchTurnId: null, branchSeq: null, branchDirection: null, scoutTopicId: null, publish: null, verdict: null, youStart: null, youEnd: null, createdAt: '', updatedAt: '',
 };
 const turn = (seq: number): Turn => ({ id: `t${seq}`, conversationId: 'c1', seq, speakerId: seq % 2 ? 'A' : 'B', modelId: 'm', objective: 'x', text: `Opening words of line ${seq} go here and on. Second sentence.`, status: 'completed', createdAt: '', stance: null });
 
