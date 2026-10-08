@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { AUDIENCES, CUE_TEXT_MAX, FORMATS, LENS_MAX, MODES, NAME_MAX, PERSONAS, ROLE_MAX, TEMPERATURES, TOPIC_MAX } from './constants';
+import { AUDIENCES, CUE_TEXT_MAX, TITLE_MAX, FORMATS, LENS_MAX, MODES, NAME_MAX, PERSONAS, ROLE_MAX, TEMPERATURES, TOPIC_MAX } from './constants';
 
 const keys = <T extends Record<string, unknown>>(o: T) => Object.keys(o) as [keyof T & string, ...(keyof T & string)[]];
 
@@ -114,6 +114,11 @@ export const CueInput = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('temp'), direction: z.enum(['up', 'down']) }),
 ]);
 export type CueInput = z.infer<typeof CueInput>;
+
+/** Rename an episode in the library. */
+export const RenameInput = z.object({
+  title: z.string().transform(s => s.replace(/\s+/g, ' ').trim()).pipe(z.string().min(1, 'Give it a title.').max(TITLE_MAX, `Keep it under ${TITLE_MAX} characters.`)),
+});
 
 /** Branch from a finished turn in a new direction. */
 export const BranchInput = z.object({

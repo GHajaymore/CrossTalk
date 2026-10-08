@@ -4,7 +4,8 @@ import { api, type Access } from './api/client';
 import { Lock } from './screens/Lock';
 import { Create } from './screens/Create';
 import { IrisPage } from './screens/Iris';
-import { ControlRoom, Library, Settings } from './screens/Others';
+import { Episodes } from './screens/Episodes';
+import { ControlRoom, Settings } from './screens/Others';
 import { Studio, STUDIO_TABS, type StudioTab } from './screens/Studio';
 
 // Routes live in the URL hash (#/studio/<id>/<tab>), so a refresh reopens the same discussion and view.
@@ -61,7 +62,7 @@ export function App() {
 
   let screen;
   if (loc.route === 'studio') screen = loc.id ? <Studio key={loc.id} id={loc.id} tab={loc.tab} config={config} refreshConfig={refreshConfig} toast={toast} /> : <div className="empty-stage">Opening the studio…</div>;
-  else if (loc.route === 'episodes') screen = <Library config={config} />;
+  else if (loc.route === 'episodes') screen = <Episodes config={config} toast={toast} />;
   else if (loc.route === 'iris') screen = <IrisPage config={config} />;
   else if (loc.route === 'settings') screen = <Settings config={config} refreshConfig={refreshConfig} />;
   else if (loc.route === 'control') screen = <ControlRoom config={config} />;

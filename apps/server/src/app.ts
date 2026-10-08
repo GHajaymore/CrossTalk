@@ -1,8 +1,8 @@
-import { createReadStream, existsSync, readFileSync, statSync } from 'node:fs';
+import { createReadStream, existsSync, readFileSync, rmSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import Fastify, { type FastifyServerOptions } from 'fastify';
 import { randomUUID } from 'node:crypto';
-import { BranchInput, CreateConversation, CueInput, IrisFeedbackInput, MockSettings, type AppConfig, type ConversationView, type EpisodeAudio, type StreamEvent } from '@crosstalk/shared';
+import { BranchInput, CreateConversation, CueInput, RenameInput, IrisFeedbackInput, MockSettings, type AppConfig, type ConversationView, type EpisodeAudio, type StreamEvent } from '@crosstalk/shared';
 import { Iris, mockArtist, type ArtistBackend } from './artist/iris';
 import { ConversationController, ControllerError, type ControllerEvent } from './controller/controller';
 import { openDb, Repo } from './db/repo';
@@ -133,7 +133,23 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
   });
 
   app.get('/api/conversations', async () =>
-    repo.listConversations().map(c => ({ ...c, run: repo.latestRun(c.id), turnCount: repo.lastSeq(c.id), artist: repo.getArtist(c.id) })));
+    repo.listConversations().map(c => ({ ...c, run: repo.latestRun(c.id), turnCount: repo.lastSeq(c.id), artist: repo.getArtist(c.id), branchCount: repo.branchCount(c.id) })));
+
+  app.patch<{ Params: { id: string } }>('/api/conversations/:id', async req => {
+    const parsed = RenameInput.safeParse(req.body);
+    if (!parsed.success) throw new ControllerError(parsed.error.issues[0]?.message ?? 'Invalid title.', 400);
+    view(req.params.id);
+    repo.rename(req.params.id, parsed.data.title);
+    controller.notify(req.params.id);
+    return view(req.params.id);
+  });
+
+  app.delete<{ Params: { id: string } }>('/api/conversations/:id', async (req, reply) => {
+    controller.remove(req.params.id);
+    // Its rendered recording goes too.
+    if (audioDir && safeId(req.params.id)) for (const ext of ['mp3', 'json']) rmSync(join(audioDir, `${req.params.id}.${ext}`), { force: true });
+    return reply.status(204).send();
+  });
 
   app.post('/api/conversations', async (req, reply) => {
     const parsed = CreateConversation.safeParse(req.body);

@@ -129,6 +129,17 @@ export class ConversationController {
     return this.repo.view(c.id)!;
   }
 
+  /** Removes an episode for good. Not while it's generating, and not while branches still read its turns. */
+  remove(conversationId: string) {
+    if (!this.repo.getConversation(conversationId)) throw new ControllerError('Conversation not found.', 404);
+    if (this.active?.conversationId === conversationId || this.repo.latestRun(conversationId)?.state === 'generating') {
+      throw new ControllerError('Stop the episode before deleting it.', 409);
+    }
+    const n = this.repo.branchCount(conversationId);
+    if (n) throw new ControllerError(`This episode has ${n} branch${n === 1 ? ' that reads' : 'es that read'} its turns. Delete ${n === 1 ? 'it' : 'them'} first.`, 409);
+    this.repo.deleteConversation(conversationId);
+  }
+
   /** The last turn a conversation generates: the episode length, or a branch point plus 4. */
   private limitFor(c: Conversation) {
     return c.branchSeq ? c.branchSeq + BRANCH_TURNS : this.opts.maxTurns;
@@ -207,7 +218,7 @@ export class ConversationController {
     const c: Conversation = {
       ...parent,
       id: randomUUID(),
-      title: `${parent.topic} · ${input.direction}`,
+      title: input.direction,
       // The mood at the cut, not wherever the original ended up.
       temperature: this.repo.temperatureAt(conversationId, input.fromSeq),
       parentId: parent.id,

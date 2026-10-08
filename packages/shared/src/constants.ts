@@ -26,6 +26,7 @@ export const CUE_TEXT_MAX = 200;
 export const BRANCH_TURNS = 4;
 export const BRANCH_JOBS = ['New direction', 'Pressure test', 'Example', 'Close'] as const;
 export const TOPIC_MAX = 200;
+export const TITLE_MAX = 120;
 export const NAME_MAX = 28;
 export const LENS_MAX = 120;
 export const ROLE_MAX = 80;

@@ -1,48 +1,8 @@
-import { useEffect, useState } from 'react';
-import { sketchSrc } from '../studio/ArtistCard';
-import { MODES, turnTotal, type AppConfig, type MockSettings } from '@crosstalk/shared';
-import { api, type ConversationSummary } from '../api/client';
+import { useState } from 'react';
+import type { AppConfig, MockSettings } from '@crosstalk/shared';
+import { api } from '../api/client';
 import { SetupBanner } from '../lib/Banners';
 import { Footer } from './Footer';
-
-/** Milestone 1 stand-in: a plain list so saved discussions can be reopened. The full Library is Milestone 6. */
-export function Library({ config }: { config: AppConfig | null }) {
-  const [items, setItems] = useState<ConversationSummary[] | null>(null);
-  useEffect(() => { api.list().then(setItems).catch(() => setItems([])); }, []);
-  return (
-    <div className="page">
-      <div><h1>Episodes</h1><p className="hint">Each episode shows Iris's sketch. Her full gallery is on the <a href="#/iris">Iris</a> page. Rename, export, delete and branches arrive in Milestone 6.</p></div>
-      {!items ? <p className="hint">Loading…</p> : !items.length ? <p className="hint">No discussions yet. Start one from Create.</p> : (
-        <ul className="lib-list">
-          {items.map(c => {
-            const st = c.run?.state ?? 'idle';
-            return (
-              <li className="lib-item" key={c.id}>
-                <div className="lib-row">
-                {c.artist?.sketchSvg && <a href={`#/studio/${c.id}`}><img className="thumb" src={sketchSrc(c.artist.sketchSvg)} alt={`Iris's sketch: ${c.artist.artTitle}`} /></a>}
-                <div style={{ minWidth: 0 }}>
-                  <div className="lib-title">{c.title}</div>
-                  <div className="lib-meta">
-                    <span className={`status ${st}`}>{c.run?.stopReason === 'interrupted' ? 'interrupted' : st}</span>
-                    <span>Ep. {String(c.episode).padStart(2, '0')}</span>
-                    {c.parentId && <span className="lib-branch">✂ Branch from turn {c.branchSeq}</span>}
-                    <span>{MODES[c.mode].label}</span>
-                    <span>{c.turnCount} of {turnTotal(c)} turns</span>
-                    <span>{new Date(c.createdAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>
-                    {c.artist?.state === 'done' && <span>“{c.artist.artTitle}”</span>}
-                  </div>
-                </div>
-                </div>
-                <a className="btn sm" href={`#/studio/${c.id}`}>Open</a>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-      <Footer config={config} />
-    </div>
-  );
-}
 
 export function Settings({ config, refreshConfig }: { config: AppConfig | null; refreshConfig: () => void }) {
   const [checking, setChecking] = useState(false);
