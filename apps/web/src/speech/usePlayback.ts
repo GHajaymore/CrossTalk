@@ -3,6 +3,17 @@ import type { SpeakerId, Turn } from '@crosstalk/shared';
 import { BrowserSpeech, englishVoices, loadPrefs, savePrefs, type VoicePrefs } from './BrowserSpeech';
 import type { PlaybackState } from './types';
 
+/** The sentence being spoken, so captions stay short and follow the voice. */
+function sentenceAt(text: string, charIndex: number) {
+  const parts = text.split(/(?<=[.?!]["'”’)]*)\s+/);
+  let pos = 0;
+  for (const p of parts) {
+    if (charIndex < pos + p.length + 1) return p;
+    pos += p.length + 1;
+  }
+  return parts[parts.length - 1] ?? text;
+}
+
 export type Playback = {
   available: boolean;
   state: PlaybackState;
@@ -54,8 +65,8 @@ export function usePlayback(turns: Turn[], prefs: VoicePrefs): Playback {
     if (!items.length) return;
     setState('speaking');
     speech.speak(items, {
-      onChunk: (item, text) => { setSeq(Number(item.key)); setSpeakerId(item.speakerId); setCaption(text); setPulse(0.5 + Math.random() * 0.3); },
-      onWord: () => setPulse(0.25 + Math.random() * 0.35),
+      onChunk: (item, text) => { setSeq(Number(item.key)); setSpeakerId(item.speakerId); setCaption(sentenceAt(text, 0)); setPulse(0.5 + Math.random() * 0.3); },
+      onWord: (_item, text, at) => { setPulse(0.25 + Math.random() * 0.35); setCaption(sentenceAt(text, at)); },
       onDone: reset,
     });
   }, [turns, speech]);

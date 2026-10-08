@@ -70,7 +70,7 @@ export class BrowserSpeech implements SpeechProvider {
       // A small pitch difference keeps two hosts apart when a device has only one good voice.
       u.pitch = voices.A === voices.B ? (q.item.speakerId === 'A' ? 0.9 : 1.12) : 1;
       u.onstart = () => h.onChunk?.(q.item, q.text);
-      u.onboundary = () => h.onWord?.(q.item);
+      u.onboundary = e => h.onWord?.(q.item, q.text, e.charIndex ?? 0);
       u.onend = u.onerror = () => { if (my !== this.token) return; if (q.last) h.onItemEnd?.(q.item); next(); };
       s.speak(u);
     };

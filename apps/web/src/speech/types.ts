@@ -6,8 +6,8 @@ export type SpeechItem = { key: string; speakerId: SpeakerId; text: string };
 export type SpeechHandlers = {
   /** A new piece of text started (for captions). */
   onChunk?: (item: SpeechItem, text: string) => void;
-  /** Roughly every spoken word (for the voice meter). */
-  onWord?: (item: SpeechItem) => void;
+  /** Roughly every spoken word (for the voice meter and captions); charIndex is within the chunk. */
+  onWord?: (item: SpeechItem, text: string, charIndex: number) => void;
   /** A whole item finished. */
   onItemEnd?: (item: SpeechItem) => void;
   /** Everything finished, or playback was stopped. */
