@@ -30,11 +30,15 @@ export function exportHtml(c: ConversationView): string {
 
   const host = (k: 'A' | 'B') => `<span class="host"><span class="flag ${k}" aria-hidden="true">${k}</span><b>${esc(sp[k].name)}</b>${sp[k].role ? ` <span class="muted">${esc(sp[k].role)}</span>` : ''}</span>`;
 
-  const meter = (['A', 'B'] as const).filter(k => mc[k].start != null).map(k => {
-    const s = mc[k].start!, e = mc[k].end;
+  type Row = { flag: 'A' | 'B' | 'Y'; name: string; s: number; e: number | null };
+  const rows: Row[] = [
+    ...(['A', 'B'] as const).filter(k => mc[k].start != null).map(k => ({ flag: k, name: sp[k].name, s: mc[k].start!, e: mc[k].end })),
+    ...(c.youStart != null ? [{ flag: 'Y' as const, name: 'You', s: c.youStart, e: c.youEnd }] : []),
+  ];
+  const meter = rows.map(({ flag: k, name, s, e }) => {
     const moved = e == null ? '' : e === s ? 'held steady' : `moved ${Math.abs(e - s)} toward ${e > s ? 'yes' : 'no'}`;
-    return `<div class="mrow"><span class="flag ${k}" aria-hidden="true">${k}</span><b>${esc(sp[k].name)}</b>
-      <div class="track" role="img" aria-label="${esc(sp[k].name)}: ${s}% on yes at the start${e != null ? `, ${e}% at the end` : ''}">
+    return `<div class="mrow"><span class="flag ${k}" aria-hidden="true">${k}</span><b>${esc(name)}</b>
+      <div class="track" role="img" aria-label="${esc(name)}: ${s}% on yes at the start${e != null ? `, ${e}% at the end` : ''}">
         <i class="dot start ${k}" style="left:${s}%"></i>${e != null ? `<i class="dot end ${k}" style="left:${e}%"></i>` : ''}</div>
       <span class="muted">${s}%${e != null ? ` → ${e}% · ${moved}` : ''}</span></div>`;
   }).join('');
@@ -87,7 +91,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--cue);outline-offset
 .meter{display:grid;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
 .mrow{display:grid;grid-template-columns:auto auto 1fr;gap:4px 10px;align-items:center}.mrow .muted{grid-column:1/-1;font-size:13px}
 .track{position:relative;height:8px;border-radius:4px;background:linear-gradient(90deg,#3a2e2e,#2e3a39)}
-.dot{position:absolute;top:50%;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;border:2px solid var(--bg)}.dot.start{background:transparent;border:2px solid var(--muted)}.dot.end.A{background:var(--a)}.dot.end.B{background:var(--b)}
+.dot{position:absolute;top:50%;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;border:2px solid var(--bg)}.dot.start{background:transparent;border:2px solid var(--muted)}.dot.end.A{background:var(--a)}.dot.end.B{background:var(--b)}.dot.end.Y{background:var(--cue)}.flag.Y{background:var(--cue)}
 .scale{display:flex;justify-content:space-between;font:11px var(--tag);color:var(--muted)}
 .turns{display:grid;gap:12px;margin-top:8px}
 .turn{border:1px solid var(--line);border-radius:12px;padding:12px 14px;max-width:88%}

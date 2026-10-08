@@ -87,6 +87,20 @@ test("Iris's card shows her sketch, perspective, and learns from feedback", asyn
   await expect(page.locator('.learned')).toContainText('Love the warm colours');
 });
 
+test('where do you stand: before and after, next to the hosts', async ({ page, request }) => {
+  const id = await finishedEpisode(request);
+  await page.goto(`/#/studio/${id}/read`);
+  const meter = page.getByRole('region', { name: 'Mind-change meter' }).first();
+  await expect(meter).toContainText('Before you listen: where do you stand?');
+  await meter.getByRole('slider').fill('30');
+  await meter.getByRole('button', { name: "That's me" }).click();
+  await expect(meter).toContainText('Where are you now?');
+  await meter.getByRole('slider').fill('70');
+  await meter.getByRole('button', { name: 'Save' }).click();
+  await expect(meter).toContainText('30% → 70% · you moved 40 toward yes');
+  expect(await (await request.get(`/api/conversations/${id}`)).json()).toMatchObject({ youStart: 30, youEnd: 70 });
+});
+
 test('export downloads Markdown and JSON with models, turns and cues', async ({ page, request }, info) => {
   const id = await finishedEpisode(request);
   await page.goto(`/#/studio/${id}/read`);

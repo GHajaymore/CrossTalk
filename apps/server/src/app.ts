@@ -388,6 +388,22 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
   });
   app.post('/api/scout/run', async () => { await scout.run(false); return scoutView(); });
 
+  // Where do you stand? The listener's own 0-100 before listening, and again once the episode is finished.
+  app.put<{ Params: { id: string }; Body: { start?: unknown; end?: unknown } }>('/api/conversations/:id/you', async req => {
+    const c = repo.getConversation(req.params.id);
+    if (!c) throw new ControllerError('Conversation not found.', 404);
+    const read = (v: unknown, now: number | null) => v === undefined ? now : v === null ? null
+      : Number.isInteger(v) && (v as number) >= 0 && (v as number) <= 100 ? v as number : NaN;
+    const start = read(req.body?.start, c.youStart), end = read(req.body?.end, c.youEnd);
+    if (Number.isNaN(start) || Number.isNaN(end)) throw new ControllerError('Pick a whole number from 0 (no) to 100 (yes).', 400);
+    if (end != null && start == null) throw new ControllerError('Say where you stood before listening first.', 409);
+    if (end != null && end !== c.youEnd && repo.latestRun(c.id)?.state !== 'completed') throw new ControllerError('Say where you landed once the episode has finished.', 409);
+    repo.setYou(c.id, start, end);
+    repo.touchConversation(c.id, new Date().toISOString());
+    controller.notify(c.id);
+    return view(c.id);
+  });
+
   // Hot seat: the listener says who moved them, once the episode is finished.
   app.post<{ Params: { id: string }; Body: { verdict?: unknown } }>('/api/conversations/:id/verdict', async req => {
     const c = repo.getConversation(req.params.id);

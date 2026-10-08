@@ -528,3 +528,13 @@ img.living{object-fit:cover}
 .first-run p{max-width:46ch;margin:0 0 8px}
 .brand-mark.big i{width:16px;height:34px;border-radius:3px}
 .brand-mark.big{gap:5px}
+
+/* Where do you stand: your row on the mind-change meter */
+.flag.Y{background:var(--cue)}
+.mm-row.Y{color:var(--cue)}
+.mm-slider{display:flex;align-items:center;min-width:0}
+.mm-slider input{width:100%;accent-color:var(--cue);margin:0}
+.mm-askbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.mm-askbar .mm-text b{color:var(--text);font-variant-numeric:tabular-nums}
+.mm-ask{padding:8px 10px;margin:2px -10px 0;border:1px dashed rgba(var(--cue-rgb),.45);border-radius:8px;background:var(--cue-soft)}
+.linkish{background:none;border:0;padding:0 0 0 8px;color:var(--cue);text-decoration:underline;cursor:pointer;font:inherit}

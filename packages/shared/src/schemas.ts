@@ -226,6 +226,9 @@ export const Conversation = z.object({
   publish: z.enum(['waiting', 'approved', 'held']).nullable().default(null),
   /** Hot seat: who moved the listener, in their own vote. */
   verdict: z.enum(['held', 'won', 'torn']).nullable().default(null),
+  /** Where do you stand? The listener's own 0 (no) to 100 (yes), before listening and after. */
+  youStart: z.number().int().min(0).max(100).nullable().default(null),
+  youEnd: z.number().int().min(0).max(100).nullable().default(null),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
