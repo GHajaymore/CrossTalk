@@ -51,15 +51,19 @@ export class HackerNewsSource implements TopicSource {
   }
 }
 
-/** Wikipedia's most-read articles for yesterday (Wikimedia REST API, no key). */
+/** Wikipedia's most-read articles (Wikimedia REST API, no key): yesterday's list, from today's feed. */
 export class WikipediaSource implements TopicSource {
   readonly name = 'Wikipedia most-read';
   constructor(private f: Fetch, private day: () => Date, private limit = 15) {}
   async gather(signal: AbortSignal) {
-    const d = new Date(this.day().getTime() - 24 * 3600_000);
-    const path = `${d.getUTCFullYear()}/${String(d.getUTCMonth() + 1).padStart(2, '0')}/${String(d.getUTCDate()).padStart(2, '0')}`;
     type Feed = { mostread?: { articles?: { titles?: { normalized?: string }; extract?: string; views?: number; content_urls?: { desktop?: { page?: string } } }[] } };
-    const feed = await getJson<Feed>(this.f, `https://en.wikipedia.org/api/rest_v1/feed/featured/${path}`, signal);
+    const path = (d: Date) => `${d.getUTCFullYear()}/${String(d.getUTCMonth() + 1).padStart(2, '0')}/${String(d.getUTCDate()).padStart(2, '0')}`;
+    // Today's feed lists yesterday's most-read; early in the (UTC) day it may not be ready, so fall back a day.
+    const today = this.day();
+    let feed = await getJson<Feed>(this.f, `https://en.wikipedia.org/api/rest_v1/feed/featured/${path(today)}`, signal).catch(() => ({} as Feed));
+    if (!feed.mostread?.articles?.length) {
+      feed = await getJson<Feed>(this.f, `https://en.wikipedia.org/api/rest_v1/feed/featured/${path(new Date(today.getTime() - 24 * 3600_000))}`, signal);
+    }
     return (feed.mostread?.articles ?? []).slice(0, this.limit).flatMap(a => {
       const title = a.titles?.normalized, url = a.content_urls?.desktop?.page;
       if (!title || !url) return [];
@@ -68,11 +72,13 @@ export class WikipediaSource implements TopicSource {
   }
 }
 
+const safeChar = (n: number) => (n > 0 && n <= 0x10ffff ? String.fromCodePoint(n) : '');
 const decode = (s: string) => s
   .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
   .replace(/<[^>]+>/g, ' ')
   .replace(/&(amp|lt|gt|quot|#39|apos|nbsp);/g, (_, e) => ({ amp: '&', lt: '<', gt: '>', quot: '"', '#39': "'", apos: "'", nbsp: ' ' } as Record<string, string>)[e])
-  .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
+  .replace(/&#x([0-9a-f]+);/gi, (_, n) => safeChar(parseInt(n, 16)))
+  .replace(/&#(\d+);/g, (_, n) => safeChar(Number(n)))
   // Feeds often escape their HTML, so tags can appear only after decoding.
   .replace(/<[^>]+>/g, ' ')
   .replace(/\s+/g, ' ').trim();
@@ -83,7 +89,7 @@ export class RssSource implements TopicSource {
   readonly name = 'RSS';
   constructor(private f: Fetch, private feeds: string[], private perFeed = 10) {}
   async gather(signal: AbortSignal) {
-    const results = await Promise.allSettled(this.feeds.map(async feed => {
+    const results = await Promise.allSettled(this.feeds.map(async (feed, f) => {
       const res = await this.f(feed, { headers: { ...HEADERS, Accept: 'application/rss+xml, application/atom+xml, application/xml, text/xml' }, signal });
       if (!res.ok) throw new Error(`${new URL(feed).host} answered ${res.status}`);
       const xml = await res.text();
@@ -93,7 +99,8 @@ export class RssSource implements TopicSource {
         const title = decode(tag(e, 'title'));
         const link = decode(tag(e, 'link')) || (e.match(/<link[^>]*href="([^"]+)"/i)?.[1] ?? '');
         if (!title || !/^https?:\/\//.test(link)) return [];
-        return [{ id: `rss:${new URL(feed).host}:${i}`, source: `RSS: ${name}`, title, url: link, excerpt: decode(tag(e, 'description') || tag(e, 'summary')).slice(0, 400) }];
+        // The feed's position keeps ids unique even when two feeds share a site.
+        return [{ id: `rss:${f}:${i}`, source: `RSS: ${name}`, title, url: link, excerpt: decode(tag(e, 'description') || tag(e, 'summary')).slice(0, 400) }];
       });
     }));
     const ok = results.flatMap(r => (r.status === 'fulfilled' ? r.value : []));

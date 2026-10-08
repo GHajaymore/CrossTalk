@@ -137,7 +137,8 @@ export function extractStance(text: string): { text: string; stance: number | nu
   return { text: clean, stance };
 }
 /** While a line streams in, hide a stance tag that's still being written. */
-export const hideStanceTag = (live: string) => extractStance(live).text.replace(/\[\s*s?t?a?n?c?e?[^\]]*$/i, '').trimEnd();
+export const hideStanceTag = (live: string) =>
+  extractStance(live).text.replace(/\[(\s*s(t(a(n(c(e[\s:]*\d{0,3}%?\s*)?)?)?)?)?)?$/i, '').trimEnd();
 
 /** Where each host started and ended on the Mind-change meter, from their stance lines. */
 export function mindChange(turns: { seq: number; speakerId: SpeakerId; objective: string; stance?: number | null }[]) {

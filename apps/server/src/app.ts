@@ -2,7 +2,7 @@ import { createReadStream, existsSync, readFileSync, rmSync, statSync } from 'no
 import { dirname, join } from 'node:path';
 import Fastify, { type FastifyServerOptions } from 'fastify';
 import { randomUUID } from 'node:crypto';
-import { BranchInput, CreateConversation, CueInput, RenameInput, ScoutPrefs, IrisFeedbackInput, MockSettings, type AppConfig, type ConversationView, type EpisodeAudio, type StreamEvent } from '@crosstalk/shared';
+import { BranchInput, CreateConversation, CueInput, isSensitive, RenameInput, ScoutPrefs, IrisFeedbackInput, MockSettings, type AppConfig, type ConversationView, type EpisodeAudio, type StreamEvent } from '@crosstalk/shared';
 import { Iris, mockArtist, type ArtistBackend } from './artist/iris';
 import { ConversationController, ControllerError, type ControllerEvent } from './controller/controller';
 import { openDb, Repo } from './db/repo';
@@ -98,7 +98,6 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
       await controller.start(v.id);
       return v.id;
     },
-    onChange: () => {},
     now: opts.now,
     today: () => controller.today(),
     time: cfg.scoutTime,
@@ -196,7 +195,11 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
   app.post('/api/conversations', async (req, reply) => {
     const parsed = CreateConversation.safeParse(req.body);
     if (!parsed.success) throw new ControllerError(parsed.error.issues[0]?.message ?? 'Invalid conversation.', 400);
-    if (parsed.data.scoutTopicId && !repo.getTopic(parsed.data.scoutTopicId)) throw new ControllerError("That Scout topic isn't available any more.", 400);
+    if (parsed.data.scoutTopicId) {
+      const t = repo.getTopic(parsed.data.scoutTopicId);
+      if (!t) throw new ControllerError("That Scout topic isn't available any more.", 400);
+      if (parsed.data.audience === 'kids' && isSensitive(t)) throw new ControllerError("Politics and scandals aren't used for Kids episodes. Pick another topic or audience.", 400);
+    }
     // Real mode: one free request writes host roles that fit this topic. Any problem falls back to
     // the keyword rule, and creating a conversation never fails because of it.
     let roles: [string, string] | undefined;

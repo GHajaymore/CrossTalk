@@ -65,7 +65,9 @@ test("Iris's card shows her sketch, perspective, and learns from feedback", asyn
   const id = await finishedEpisode(request);
   await page.goto(`/#/studio/${id}/read`);
   const card = page.getByRole('region', { name: "Iris's perspective" });
-  await expect(card.locator('img.sketch')).toBeVisible();
+  await expect(card.getByRole('img', { name: /Iris's sketch/ })).toBeVisible();
+  await card.getByRole('button', { name: /Watch her draw/ }).click();
+  await expect(card.getByRole('button', { name: /Drawing/ })).toBeDisabled();
   await expect(card.locator('.persp')).not.toBeEmpty();
   await card.getByRole('button', { name: /Got it right/ }).click();
   await card.getByRole('textbox').fill('Love the warm colours');

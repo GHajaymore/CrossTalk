@@ -22,7 +22,7 @@ export type ScoutOptions = {
   countRequest: () => void;
   /** Starts the top pick as an episode; returns its id. */
   autopilot: (topic: ScoutTopic) => Promise<string>;
-  onChange: () => void;
+  onChange?: () => void;
   now?: () => Date;
   today: () => string;
   /** SCOUT_TIME, "HH:MM" server time. */
@@ -47,7 +47,7 @@ export class Scout {
     const saved = ScoutPrefs.safeParse(this.repo.getSetting(PREFS_KEY));
     return saved.success ? saved.data : DEFAULT_SCOUT_PREFS;
   }
-  setPrefs(p: ScoutPrefs) { this.repo.setSetting(PREFS_KEY, p); this.opts.onChange(); }
+  setPrefs(p: ScoutPrefs) { this.repo.setSetting(PREFS_KEY, p); this.opts.onChange?.(); }
 
   status(): ScoutStatus {
     const last = this.repo.latestScoutRun();
@@ -56,11 +56,8 @@ export class Scout {
 
   /** The latest successful run's topics (they stay until the next one works). */
   tray(): ScoutTopic[] {
-    const runs = this.repo.scoutRunsOn(this.opts.today()).filter(r => r.state === 'ok');
-    const last = runs.at(-1) ?? null;
-    if (last) return this.repo.topicsForRun(last.id);
-    const latest = this.repo.latestScoutRun();
-    return latest?.state === 'ok' ? this.repo.topicsForRun(latest.id) : [];
+    const ok = this.repo.latestOkScoutRun();
+    return ok ? this.repo.topicsForRun(ok.id) : [];
   }
 
   /** Resolves when the current run has finished (for tests). */
@@ -69,9 +66,9 @@ export class Scout {
   /** One Scout run. Refused while another is going. */
   run(scheduled = false): Promise<void> {
     if (this.running) throw new ScoutError('The Scout is already looking. Give it a moment.', 409);
-    const p = this.doRun(scheduled).finally(() => { this.running = null; this.opts.onChange(); });
+    const p = this.doRun(scheduled).finally(() => { this.running = null; this.opts.onChange?.(); });
     this.running = p;
-    this.opts.onChange();
+    this.opts.onChange?.();
     return p;
   }
 

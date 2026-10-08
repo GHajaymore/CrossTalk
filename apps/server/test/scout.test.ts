@@ -214,3 +214,47 @@ describe('live sources read the real formats', () => {
     ]);
   });
 });
+
+describe('Topic Scout: review fixes', () => {
+  it("a failed run never hides the last good topics", async () => {
+    const good = new SampleSource('Hacker News', SAMPLE_HN);
+    let fail = false;
+    const flaky = { name: 'Hacker News', gather: async () => { if (fail) throw new Error('down'); return good.gather(); } };
+    const { app, scout } = buildApp(mockConfig({ dbPath: ':memory:' }), { timing: INSTANT, scoutSources: [flaky] });
+    try {
+      await scout.run();
+      const before = scout.tray().map(t => t.id);
+      fail = true;
+      await scout.run();
+      expect(scout.status().lastRun?.state).toBe('failed');
+      expect(scout.tray().map(t => t.id)).toEqual(before);
+    } finally { await app.close(); }
+  });
+
+  it('two feeds on one site keep separate ids', async () => {
+    const xml = (t: string) => `<rss><channel><title>${t}</title><item><title>${t} story</title><link>https://same.example/${t}</link></item></channel></rss>`;
+    const f = (async (url: string) => new Response(xml(String(url).endsWith('world') ? 'World' : 'Tech'))) as unknown as typeof fetch;
+    const items = await new RssSource(f, ['https://same.example/world', 'https://same.example/tech']).gather(new AbortController().signal);
+    expect(new Set(items.map(i => i.id)).size).toBe(2);
+  });
+
+  it('one malformed topic never sinks the whole ranking', () => {
+    const cands: Candidate[] = [{ id: 'hn:1', source: 'Hacker News', title: 'T', url: 'https://example.com/a', excerpt: '' }];
+    const ok = { question: 'Fine?', category: 'tech', region: 'world', arguability: 'high', bullets: [{ text: 'a', sourceId: 'hn:1' }, { text: 'b', sourceId: 'hn:1' }] };
+    const topics = parseRanking(JSON.stringify({ topics: [{ nonsense: true }, ok, ...Array(12).fill(ok)] }), cands, meta);
+    expect(topics[0]).toMatchObject({ question: 'Fine?', split: 75 });
+    expect(topics).toHaveLength(5);
+  });
+
+  it('politics and scandals are refused for Kids on the server too', async () => {
+    const { app, repo } = buildApp(mockConfig({ dbPath: ':memory:' }), { timing: INSTANT });
+    try {
+      repo.insertScoutRun('r1', '2026-10-08', '', false);
+      repo.insertTopics([{ id: 'pol', runId: 'r1', date: '2026-10-08', question: 'Should voting be mandatory?', category: 'politics', region: 'na', split: 52, buzz: 80, bullets: [{ text: 'x', url: 'https://example.com', source: 'RSS' }], sources: ['RSS'], createdAt: '' }]);
+      const kids = await app.inject({ method: 'POST', url: '/api/conversations', payload: { ...draft('Should voting be mandatory?'), audience: 'kids', scoutTopicId: 'pol' } });
+      expect(kids.statusCode).toBe(400);
+      expect(kids.json().error).toMatch(/aren't used for Kids/);
+      expect((await app.inject({ method: 'POST', url: '/api/conversations', payload: { ...draft('Should voting be mandatory?'), scoutTopicId: 'pol' } })).statusCode).toBe(201);
+    } finally { await app.close(); }
+  });
+});

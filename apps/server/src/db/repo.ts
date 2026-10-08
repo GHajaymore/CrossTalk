@@ -321,6 +321,10 @@ export class Repo {
     const r = this.db.prepare(`SELECT * FROM scout_runs WHERE state != 'running' ORDER BY started_at DESC, rowid DESC LIMIT 1`).get() as ScoutRunRow | undefined;
     return r ? toScoutRun(r) : null;
   }
+  latestOkScoutRun(): ScoutRun | null {
+    const r = this.db.prepare(`SELECT * FROM scout_runs WHERE state = 'ok' ORDER BY started_at DESC, rowid DESC LIMIT 1`).get() as ScoutRunRow | undefined;
+    return r ? toScoutRun(r) : null;
+  }
   scoutRunsOn(date: string): ScoutRun[] {
     return (this.db.prepare('SELECT * FROM scout_runs WHERE date = ? ORDER BY started_at').all(date) as ScoutRunRow[]).map(toScoutRun);
   }

@@ -82,7 +82,8 @@ export function sketchProgress(view: ConversationView, play: Playback): number {
     const end = view.audio?.timings.find(t => t.seq === moment)?.end ?? play.clock.duration;
     return play.clock.position / Math.max(1, end);
   }
-  return (play.seq ?? 0) / moment;
+  // Device voices give no clock: the drawing advances turn by turn and finishes after the chosen turn.
+  return Math.max(0, (play.seq ?? 1) - 1) / moment;
 }
 
 /** A replay: the drawing from blank to whole over a few seconds, for "Watch her draw". */

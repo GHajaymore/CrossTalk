@@ -11,6 +11,10 @@ Iris listens to every finished episode and responds like a thoughtful listener: 
 - **Never breaks an episode:** her failure leaves the discussion untouched.
 - **Hears your cues (Milestone 4):** challenges, guests on the mic, go-deeper requests and temperature changes appear in her episode where they landed, and she prefers to draw the turn that answered you. In a branch she knows where you steered the show.
 
+- **Living sketch:** her drawing draws itself while the episode plays (Listen cover, a corner of the
+  Watch set) and finishes on the turn she chose; "Watch her draw" replays it on her card. It is rebuilt
+  shape by shape from the checked SVG, never inserted as markup.
+
 ## How she learns
 
 1. Under each drawing, the listener taps 👍 or 👎 and can say what to keep or change.

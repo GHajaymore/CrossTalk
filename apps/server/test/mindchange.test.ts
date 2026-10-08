@@ -46,3 +46,28 @@ describe('Mind-change meter', () => {
     expect(exportMarkdown(v)).toContain(`## Mind-change meter\n\n- ${v.speakers.A.name}: ${m.A.start}% on yes → ${m.A.end}%`);
   });
 });
+
+describe('Mind-change meter: review fixes', () => {
+  it('only a stance tag being written is hidden while streaming, not other brackets', () => {
+    expect(hideStanceTag('That is the [quote')).toBe('That is the [quote');
+    expect(hideStanceTag('About 60%. [stance: 6')).toBe('About 60%.');
+    expect(hideStanceTag('About 60%. [')).toBe('About 60%.');
+  });
+});
+
+describe('Mind-change meter: trimming', () => {
+  it('drops the number when trimming cuts the sentence that said it', async () => {
+    const repo = new Repo(openDb(':memory:'));
+    const long = Array(12).fill('This is a fairly long sentence that keeps going for a while.').join(' ');
+    const provider = { name: 'fake', generateTurn: async (req: TurnRequest) => ({
+      text: req.seq === 1 ? `${long} I am now about 55% on yes. [stance: 55]` : `Short line. About 40% for me. [stance: 40]`, usage: null }) };
+    const controller = new ConversationController(repo, provider, { maxTurns: 2, dailyLimit: 100, models: { A: 'a', B: 'b' } });
+    const c = controller.create(draft());
+    await controller.start(c.id);
+    await controller.settled(c.id);
+    const [t1, t2] = repo.view(c.id)!.turns;
+    expect(t1.text).not.toContain('55%');
+    expect(t1.stance).toBeNull();
+    expect(t2.stance).toBe(40);
+  });
+});

@@ -364,7 +364,10 @@ export class ConversationController {
         log('ok', res.usage, null);
         // The Mind-change meter's tag is data, not speech: it comes out before the line is saved or read aloud.
         const { text, stance } = extractStance(res.text);
-        return { text: fitToLength(text, conv.audience === 'kids' ? MAX_SPOKEN_WORDS.kids : MAX_SPOKEN_WORDS.other), stance };
+        const spoken = fitToLength(text, conv.audience === 'kids' ? MAX_SPOKEN_WORDS.kids : MAX_SPOKEN_WORDS.other);
+        // Keep the number only if the line still says it aloud after trimming.
+        const said = spoken === text || /\d\s*(%|percent)|percent/i.test(spoken);
+        return { text: spoken, stance: said ? stance : null };
       } catch (e) {
         if (e instanceof AbortedError || signal.aborted) { log('error', null, 'stopped'); return null; }
         const err = e instanceof ProviderError ? e : new ProviderError(e instanceof Error ? e.message : 'The provider failed.');

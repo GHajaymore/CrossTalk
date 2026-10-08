@@ -31,15 +31,15 @@ export function buildRankPrompt(candidates: Candidate[], place: string) {
   return { system, user };
 }
 
-const Reply = z.object({
-  topics: z.array(z.object({
-    question: z.string(),
-    category: z.string(),
-    region: z.string(),
-    arguability: z.coerce.number(),
-    bullets: z.array(z.object({ text: z.string(), sourceId: z.string() })),
-  })).max(10),
+// Each topic is checked on its own, so one malformed entry never costs the whole day's ranking.
+const RawTopic = z.object({
+  question: z.string(),
+  category: z.string(),
+  region: z.string(),
+  arguability: z.unknown(),
+  bullets: z.array(z.object({ text: z.string(), sourceId: z.string() }).passthrough()),
 });
+const Reply = z.object({ topics: z.array(z.unknown()) });
 
 /** First {...} block in a reply, in case a model wraps its JSON in prose or fences. */
 const jsonIn = (s: string) => { const a = s.indexOf('{'), b = s.lastIndexOf('}'); return a >= 0 && b > a ? s.slice(a, b + 1) : s; };
@@ -52,11 +52,12 @@ const jsonIn = (s: string) => { const a = s.indexOf('{'), b = s.lastIndexOf('}')
 export function parseRanking(reply: string, candidates: Candidate[], meta: { runId: string; date: string; at: string }): ScoutTopic[] {
   let raw: z.infer<typeof Reply>;
   try { raw = Reply.parse(JSON.parse(jsonIn(reply))); } catch { throw new Error("The Scout's ranking reply wasn't valid JSON."); }
+  const entries = raw.topics.flatMap(t => { const r = RawTopic.safeParse(t); return r.success ? [r.data] : []; }).slice(0, 10);
   const byId = new Map(candidates.map(c => [c.id, c]));
   const maxBuzz = Math.max(1, ...candidates.map(c => (c.comments ?? 0) + (c.points ?? 0) + (c.views ?? 0) / 1000));
 
   const topics: ScoutTopic[] = [];
-  for (const t of raw.topics) {
+  for (const t of entries) {
     const question = clean(t.question).slice(0, 200);
     const category = ScoutCat.safeParse(t.category), region = ScoutRegion.safeParse(t.region);
     if (!question || isNoGo(question) || !category.success || !region.success) continue;
@@ -69,7 +70,8 @@ export function parseRanking(reply: string, candidates: Candidate[], meta: { run
     const cited = t.bullets.map(b => byId.get(b.sourceId)).filter((c): c is Candidate => !!c);
     // "The Split": the model's arguability, nudged up when people comment more than they upvote.
     const heated = cited.some(c => (c.comments ?? 0) > (c.points ?? Infinity));
-    const arguability = Math.max(0, Math.min(100, Math.round(t.arguability) + (heated ? 10 : 0)));
+    const said = Number(t.arguability);
+    const arguability = Math.max(0, Math.min(100, Math.round(Number.isFinite(said) ? said : 50) + (heated ? 10 : 0)));
     const buzz = Math.round(100 * Math.max(...cited.map(c => (c.comments ?? 0) + (c.points ?? 0) + (c.views ?? 0) / 1000)) / maxBuzz);
     topics.push({
       id: randomUUID(), runId: meta.runId, date: meta.date, question, category: category.data, region: region.data,

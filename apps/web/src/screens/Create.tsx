@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import {
-  ARTIST, AUDIENCES, episodeLabel, FORMATS, hostSubtitle, LENS_MAX, MAX_TURNS, MODES, NAME_MAX, PERSONAS, PRESETS, resolveSpeakers, ROLE_MAX,
+  ARTIST, AUDIENCES, episodeLabel, FORMATS, hostSubtitle, isSensitive, LENS_MAX, MAX_TURNS, MODES, NAME_MAX, PERSONAS, PRESETS, resolveSpeakers, ROLE_MAX,
   TEMPERATURE_ORDER, TEMPERATURES, TOPIC_MAX,
   type AppConfig, type Audience, type CreateConversation, type Format, type Mode, type PersonaKey, type ScoutTopic, type SpeakerDraft, type SpeakerId, type Temperature,
 } from '@crosstalk/shared';
@@ -27,7 +27,8 @@ export function Create({ config, go, refreshConfig, toast }: Props) {
   const [starting, setStarting] = useState(false);
   // A topic from the Today tray brings its brief; editing the question away from it drops the brief.
   const [scoutTopic, setScoutTopic] = useState<ScoutTopic | null>(null);
-  const briefOn = !!scoutTopic && topic.trim() === scoutTopic.question;
+  const kidsBlocked = !!scoutTopic && audience === 'kids' && isSensitive(scoutTopic);
+  const briefOn = !!scoutTopic && topic.trim() === scoutTopic.question && !kidsBlocked;
 
   const models = config?.models ?? { A: 'mock/wren-v1', B: 'mock/hale-v1' };
   // The same rule the server uses, so what you see is what gets saved.
@@ -129,7 +130,8 @@ export function Create({ config, go, refreshConfig, toast }: Props) {
         <label className="tag" htmlFor="topic">Topic</label>
         <textarea id="topic" maxLength={TOPIC_MAX} placeholder="Ask a question worth two perspectives" value={topic} onChange={e => setTopic(e.target.value)} />
         {briefOn && <BriefBox brief={scoutTopic!} note="from the Scout" />}
-        {scoutTopic && !briefOn && <p className="hint">You changed the question, so the Scout's brief won't be used. <button className="link-btn" onClick={() => setTopic(scoutTopic.question)}>Put it back</button></p>}
+        {kidsBlocked && <p className="hint">Politics and scandals aren't used for Kids episodes, so this topic's brief is off. Pick another topic or audience.</p>}
+        {scoutTopic && !briefOn && !kidsBlocked && <p className="hint">You changed the question, so the Scout's brief won't be used. <button className="link-btn" onClick={() => setTopic(scoutTopic.question)}>Put it back</button></p>}
         <div className="chips" role="group" aria-label="Preset topics">
           {PRESETS.map(p => <button key={p} className="chip" aria-pressed={topic === p} onClick={() => setTopic(p)}>{p}</button>)}
         </div>
