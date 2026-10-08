@@ -5,7 +5,41 @@ import {
   type Conversation, type ConversationView, type CreateConversation, type LiveTurn, type Run, type RunState, type StreamEvent,
 } from '@crosstalk/shared';
 import type { Repo } from '../db/repo';
-import { AbortedError, type Provider } from '../providers/types';
+import { AbortedError, ProviderError, type Provider, type Usage } from '../providers/types';
+
+/** A 429 may be waited out once, up to this long. Longer waits pause the run instead. */
+export const MAX_RETRY_WAIT_MS = 20_000;
+/** A busy model (429 without Retry-After, 5xx, "overloaded") waits this long before its one retry. */
+export const BUSY_WAIT_MS = 10_000;
+/** Timeouts and network errors wait this long. */
+export const OTHER_WAIT_MS = 2_000;
+/** Replies longer than this are trimmed to whole sentences (kids get a shorter limit). */
+export const MAX_SPOKEN_WORDS = { kids: 100, other: 150 } as const;
+
+const isBusy = (e: ProviderError) => e.status === 429 || (e.status !== null && e.status >= 500) || /overload|busy|capacity/i.test(e.message);
+const wordCount = (t: string) => t.split(/\s+/).filter(Boolean).length;
+
+/** Keeps whole sentences up to `max` words. Leaves the text alone if trimming would leave too little. */
+export function fitToLength(text: string, max: number): string {
+  if (wordCount(text) <= max) return text;
+  const sentences = text.match(/[^.?!]+[.?!]+["'”’)\]]?(\s+|$)/g) ?? [];
+  let out = '';
+  for (const s of sentences) {
+    if (wordCount(out + s) > max) break;
+    out += s;
+  }
+  return wordCount(out) >= 40 ? out.trim() : text;
+}
+/** At most one automatic retry per turn: two attempts. */
+export const MAX_ATTEMPTS = 2;
+
+const abortableSleep = (ms: number, signal: AbortSignal) =>
+  new Promise<void>((resolve, reject) => {
+    if (signal.aborted) return reject(new AbortedError());
+    const t = setTimeout(() => { signal.removeEventListener('abort', on); resolve(); }, ms);
+    const on = () => { clearTimeout(t); reject(new AbortedError()); };
+    signal.addEventListener('abort', on, { once: true });
+  });
 
 export class ControllerError extends Error {
   constructor(message: string, public status: number) { super(message); }
@@ -16,6 +50,10 @@ export type ControllerOptions = {
   dailyLimit: number;
   models: { A: string; B: string };
   now?: () => Date;
+  /** Checked before every run (config problems, free-model guard). Returns why the run is blocked, or null. */
+  preflight?: () => Promise<string | null>;
+  /** Waiting before a retry. Replaceable in tests. */
+  sleep?: (ms: number, signal: AbortSignal) => Promise<void>;
 };
 
 /** What a subscriber hears for one conversation: stream events, plus "changed" when it should re-read the snapshot. */
@@ -30,6 +68,7 @@ type Active = { conversationId: string; runId: string; abort: AbortController; d
  */
 export class ConversationController {
   private active: Active | null = null;
+  private starting: string | null = null;
   private readonly bus = new EventEmitter();
   private readonly now: () => Date;
 
@@ -88,9 +127,23 @@ export class ConversationController {
     return runs.length;
   }
 
-  start(conversationId: string): Run {
+  async start(conversationId: string): Promise<Run> {
     const conv = this.repo.getConversation(conversationId);
     if (!conv) throw new ControllerError('Conversation not found.', 404);
+    this.assertCanStart(conversationId);
+    this.starting = conversationId;
+    try {
+      const blocked = await this.opts.preflight?.();
+      if (blocked) throw new ControllerError(blocked, 412);
+    } finally {
+      this.starting = null;
+    }
+    this.assertCanStart(conversationId);
+    return this.begin(conversationId);
+  }
+
+  private assertCanStart(conversationId: string) {
+    if (this.starting) throw new ControllerError('A discussion is starting. Try again in a moment.', 409);
     if (this.active) {
       throw new ControllerError(this.active.conversationId === conversationId
         ? 'This discussion is already generating.'
@@ -101,7 +154,13 @@ export class ConversationController {
     if (this.requestsToday() >= this.opts.dailyLimit) {
       throw new ControllerError(`Daily request limit reached (${this.opts.dailyLimit}). It resets tomorrow.`, 429);
     }
+    const run = this.repo.latestRun(conversationId);
+    if (run && (run.state === 'completed' || run.state === 'cancelled')) {
+      throw new ControllerError(`This run is ${run.state} and can't be restarted. Branching arrives in Milestone 4.`, 409);
+    }
+  }
 
+  private begin(conversationId: string): Run {
     let run = this.repo.latestRun(conversationId);
     try {
       if (!run) {
@@ -156,6 +215,63 @@ export class ConversationController {
   }
 
   // ---- internals ----
+  /**
+   * One turn, with at most one automatic retry for timeouts, 429 and 5xx. Every attempt counts
+   * toward the daily limit and is logged. Returns null when the run stopped, paused or failed.
+   */
+  private async generateWithRetry(
+    conversationId: string, runId: string, conv: Conversation, seq: number,
+    speaker: Conversation['speakers']['A'], objective: string, signal: AbortSignal,
+  ): Promise<{ text: string } | null> {
+    const sleep = this.opts.sleep ?? abortableSleep;
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      const run = this.repo.latestRun(conversationId)!;
+      if (this.requestsToday() >= this.opts.dailyLimit) { this.transition(run, 'paused', 'Daily request limit reached'); return null; }
+
+      const live: LiveTurn = { seq, speakerId: speaker.id, objective, modelId: speaker.modelId, text: '' };
+      if (this.active?.runId === runId) this.active.live = live;
+      this.emit(conversationId, { type: 'turn-start', ...live });
+      this.repo.countRequest(this.today());
+
+      const t0 = Date.now();
+      const log = (status: 'ok' | 'error', usage: Usage | null, error: string | null) => this.repo.insertUsage({
+        id: randomUUID(), runId, conversationId, seq, attempt, provider: this.provider.name, modelId: speaker.modelId,
+        status, error, latencyMs: Date.now() - t0, tokensIn: usage?.tokensIn ?? null, tokensOut: usage?.tokensOut ?? null,
+        costUsd: usage?.costUsd ?? null, date: this.today(), createdAt: this.now().toISOString(),
+      });
+
+      try {
+        const res = await this.provider.generateTurn(
+          { conversation: conv, seq, speaker, objective, history: this.repo.listTurns(conversationId) },
+          { signal, onToken: t => { live.text += t; this.emit(conversationId, { type: 'token', seq, text: t }); } },
+        );
+        log('ok', res.usage, null);
+        return { text: fitToLength(res.text, conv.audience === 'kids' ? MAX_SPOKEN_WORDS.kids : MAX_SPOKEN_WORDS.other) };
+      } catch (e) {
+        if (e instanceof AbortedError || signal.aborted) { log('error', null, 'stopped'); return null; }
+        const err = e instanceof ProviderError ? e : new ProviderError(e instanceof Error ? e.message : 'The provider failed.');
+        log('error', null, err.message);
+        const latest = this.repo.latestRun(conversationId);
+        if (latest?.state !== 'generating') return null;
+
+        if (err.retryAfterMs !== null && err.retryAfterMs > MAX_RETRY_WAIT_MS) {
+          this.transition(latest, 'paused', `Rate limited, try again in ${Math.ceil(err.retryAfterMs / 1000)} s`);
+          return null;
+        }
+        if (err.retryable && attempt < MAX_ATTEMPTS) {
+          try { await sleep(err.retryAfterMs ?? (isBusy(err) ? BUSY_WAIT_MS : OTHER_WAIT_MS), signal); } catch { return null; }
+          if (this.repo.latestRun(conversationId)?.state !== 'generating') return null;
+          continue;
+        }
+        this.transition(latest, 'failed', err.retryable && isBusy(err)
+          ? `${err.message} The model is busy right now; wait a minute, then press Retry.`
+          : err.message);
+        return null;
+      }
+    }
+    return null;
+  }
+
   private transition(run: Run, to: RunState, reason: string | null): Run {
     assertTransition(run.state, to);
     const patch = {
@@ -181,24 +297,9 @@ export class ConversationController {
       const conv = this.repo.getConversation(conversationId)!;
       const speaker = conv.speakers[speakerFor(seq)];
       const objective = jobFor(seq);
-      const live: LiveTurn = { seq, speakerId: speaker.id, objective, modelId: speaker.modelId, text: '' };
-      if (this.active?.runId === runId) this.active.live = live;
-      this.emit(conversationId, { type: 'turn-start', ...live });
-      this.repo.countRequest(this.today());
-
-      let text: string;
-      try {
-        ({ text } = await this.provider.generateTurn(
-          { conversation: conv, seq, speaker, objective, history: this.repo.listTurns(conversationId) },
-          { signal, onToken: t => { live.text += t; this.emit(conversationId, { type: 'token', seq, text: t }); } },
-        ));
-      } catch (e) {
-        if (e instanceof AbortedError || signal.aborted) return;
-        const latest = this.repo.latestRun(conversationId);
-        if (latest?.state === 'generating') this.transition(latest, 'failed', e instanceof Error ? e.message : 'The provider failed.');
-        return;
-      }
-      if (signal.aborted) return;
+      const out = await this.generateWithRetry(conversationId, runId, conv, seq, speaker, objective, signal);
+      if (!out || signal.aborted) return;
+      const { text } = out;
 
       const at = this.now().toISOString();
       this.repo.saveTurn({

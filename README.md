@@ -2,7 +2,7 @@
 
 A live broadcast studio where two AI hosts discuss a topic and you steer it. This is a local prototype, built one milestone at a time (see `docs/PLAN.md`).
 
-**Status:** Milestone 1, foundation + mock discussion. All speech is scripted sample text; no model is called and no API key is needed.
+**Status:** Milestone 2, real two-model discussion. Mock mode (scripted text, no API key) still works; real mode uses two free models through OpenRouter.
 
 ## Run it
 
@@ -14,6 +14,14 @@ npm run dev:mock
 ```
 
 Open http://localhost:5173. The local server runs on http://127.0.0.1:8787 and saves discussions to `apps/server/data/crosstalk.sqlite`.
+
+### Real models (free)
+
+1. Copy `.env.example` to `.env` and fill in `PROVIDER_MODE=openrouter`, your `OPENROUTER_API_KEY` and two free model IDs. `docs/MODELS.md` explains how to pick them.
+2. Run `npm run dev` (not `dev:mock`).
+3. Open **Settings** in the app: both models should show ✓ Free. If not, runs are blocked and the reason is shown.
+
+The key stays on the local server and is never sent to the browser. Only models priced at $0 can run unless you set `ALLOW_PAID_MODELS=true` (don't).
 
 ## Other commands
 

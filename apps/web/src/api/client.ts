@@ -15,6 +15,7 @@ export type ConversationSummary = Conversation & { run: Run | null; turnCount: n
 
 export const api = {
   config: () => call<AppConfig>('/config'),
+  checkModels: () => call<AppConfig>('/guard/check', { method: 'POST' }),
   setMock: (m: MockSettings) => call<MockSettings>('/mock', { method: 'PUT', body: JSON.stringify(m) }),
   list: () => call<ConversationSummary[]>('/conversations'),
   get: (id: string) => call<ConversationView>(`/conversations/${id}`),

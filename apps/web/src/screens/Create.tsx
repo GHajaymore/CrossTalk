@@ -5,6 +5,7 @@ import {
   type AppConfig, type Audience, type CreateConversation, type Format, type Mode, type PersonaKey, type SpeakerDraft, type SpeakerId, type Temperature,
 } from '@crosstalk/shared';
 import { api } from '../api/client';
+import { BudgetBanner, realBlocked, SetupBanner } from '../lib/Banners';
 import { HeatMeter } from '../lib/HeatMeter';
 import { StudioSet } from '../studio/StudioSet';
 import { Footer } from './Footer';
@@ -28,7 +29,9 @@ export function Create({ config, go, refreshConfig, toast }: Props) {
   const speakers = useMemo(() => resolveSpeakers(topic, audience, drafts, models), [topic, audience, drafts, models.A, models.B]);
   const edit = (k: SpeakerId, patch: Partial<SpeakerDraft>) => setDrafts(d => ({ ...d, [k]: { ...d[k], ...patch } }));
   const busy = !!config?.activeConversationId;
-  const canStart = !!topic.trim() && !busy && !starting;
+  const overBudget = !!config && config.requestsToday >= config.dailyLimit;
+  const blocked = realBlocked(config);
+  const canStart = !!topic.trim() && !busy && !starting && !overBudget && !blocked;
 
   const pickAudience = (a: Audience) => {
     setAudience(a);
@@ -161,15 +164,19 @@ export function Create({ config, go, refreshConfig, toast }: Props) {
         <span><b>{ARTIST.name}, {ARTIST.role},</b> listens from the booth. When the discussion ends, she shares her perspective as a listener and sketches the moment that stayed with her. <span className="soon">Milestone 5</span></span>
       </div>
 
+      <SetupBanner config={config} />
+      <BudgetBanner config={config} />
       <div className="start-row">
         <button className="btn primary" disabled={!canStart} onClick={start}>● Start recording</button>
         <span className="meta">
-          {busy
+          {blocked ? 'Real mode is blocked; see above.' : overBudget ? 'Daily limit reached.' : busy
             ? <>Another discussion is still generating. <a href={`#/studio/${config!.activeConversationId}`} style={{ color: 'var(--cue)' }}>Open it</a> to pause or stop it first.</>
-            : !topic.trim() ? 'Add a topic first.' : 'Uses up to 9 requests in real mode (8 turns + the Artist).'}
+            : !topic.trim() ? 'Add a topic first.'
+            : config?.providerMode === 'openrouter' ? 'Uses 8 requests to free models (up to 16 if turns are retried).'
+            : 'Mock mode: scripted text, no model is called.'}
         </span>
       </div>
-      <Footer />
+      <Footer config={config} />
     </div>
   );
 }

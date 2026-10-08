@@ -122,14 +122,26 @@ export type StreamEvent =
   | { type: 'token'; seq: number; text: string }
   | { type: 'turn-end'; seq: number };
 
+export type ModelVerdict = { modelId: string; ok: boolean; reason: string };
+
 export type AppConfig = {
   providerMode: 'mock' | 'openrouter';
   models: { A: string; B: string };
+  artistModel: string | null;
   dailyLimit: number;
   requestsToday: number;
   nextEpisode: number;
   activeConversationId: string | null;
   mock: MockSettings;
+  /** Real mode only. Whether a key is configured; the key itself never leaves the server. */
+  apiKeySet: boolean;
+  allowPaidModels: boolean;
+  maxOutputTokens: number;
+  /** Settings that block real runs until fixed (missing key, same model twice…). */
+  problems: string[];
+  /** The free-model guard's latest verdict per model. Empty in mock mode or before the first check. */
+  guard: { checkedAt: string | null; verdicts: ModelVerdict[] };
+  usageToday: { attempts: number; tokensIn: number; tokensOut: number; costUsd: number | null };
 };
 
 export const MockSettings = z.object({

@@ -4,6 +4,12 @@ import { MIGRATIONS } from './schema';
 
 export type DB = Database.Database;
 
+export type UsageRow = {
+  id: string; runId: string; conversationId: string; seq: number; attempt: number; provider: string; modelId: string;
+  status: 'ok' | 'error'; error: string | null; latencyMs: number; tokensIn: number | null; tokensOut: number | null;
+  costUsd: number | null; date: string; createdAt: string;
+};
+
 export function openDb(file: string): DB {
   const db = new Database(file);
   db.pragma('journal_mode = WAL');
@@ -127,6 +133,27 @@ export class Repo {
   requestsOn(date: string): number {
     const r = this.db.prepare('SELECT requests FROM daily_counter WHERE date = ?').get(date) as { requests: number } | undefined;
     return r?.requests ?? 0;
+  }
+
+  insertUsage(u: UsageRow) {
+    this.db.prepare(`INSERT INTO provider_usage (id, run_id, conversation_id, seq, attempt, provider, model_id, status, error, latency_ms, tokens_in, tokens_out, cost_usd, date, created_at)
+      VALUES (@id, @runId, @conversationId, @seq, @attempt, @provider, @modelId, @status, @error, @latencyMs, @tokensIn, @tokensOut, @costUsd, @date, @createdAt)`).run(u);
+  }
+
+  listUsage(conversationId: string): UsageRow[] {
+    return this.db.prepare(`SELECT id, run_id AS runId, conversation_id AS conversationId, seq, attempt, provider, model_id AS modelId, status, error,
+      latency_ms AS latencyMs, tokens_in AS tokensIn, tokens_out AS tokensOut, cost_usd AS costUsd, date, created_at AS createdAt
+      FROM provider_usage WHERE conversation_id = ? ORDER BY created_at, attempt`).all(conversationId) as UsageRow[];
+  }
+
+  /** Totals for a day. Cost is null when any attempt's cost is unknown. */
+  usageOn(date: string): { attempts: number; tokensIn: number; tokensOut: number; costUsd: number | null } {
+    const r = this.db.prepare(`SELECT COUNT(*) AS attempts, COALESCE(SUM(tokens_in), 0) AS tokensIn, COALESCE(SUM(tokens_out), 0) AS tokensOut,
+      SUM(cost_usd) AS cost, SUM(CASE WHEN cost_usd IS NULL AND status = 'ok' THEN 1 ELSE 0 END) AS unknown,
+      SUM(CASE WHEN status = 'ok' THEN 1 ELSE 0 END) AS ok FROM provider_usage WHERE date = ?`).get(date) as
+      { attempts: number; tokensIn: number; tokensOut: number; cost: number | null; unknown: number; ok: number | null };
+    // A failed attempt returns no reply and no price, so only successful attempts can make the total unknown.
+    return { attempts: r.attempts, tokensIn: r.tokensIn, tokensOut: r.tokensOut, costUsd: r.unknown > 0 ? null : r.cost ?? 0 };
   }
 
   countRequest(date: string) {

@@ -7,7 +7,7 @@ describe('conversation controller', () => {
   it('ends a run after 8 completed turns', async () => {
     const { controller, repo } = setup();
     const c = controller.create(draft());
-    controller.start(c.id);
+    await controller.start(c.id);
     await controller.settled(c.id);
 
     const v = repo.view(c.id)!;
@@ -17,7 +17,7 @@ describe('conversation controller', () => {
     expect(v.turns.map(t => t.objective)).toEqual([...JOBS]);
     expect(v.turns[0].modelId).toBe('mock/wren-v1');
     expect(v.turns[1].modelId).toBe('mock/hale-v1');
-    expect(() => controller.start(c.id)).toThrow(ControllerError);
+    await expect(controller.start(c.id)).rejects.toThrow(ControllerError);
   });
 
   it('saves a turn only once for the same conversation and seq', () => {
@@ -35,7 +35,7 @@ describe('conversation controller', () => {
     const { controller, repo } = setup({ timing: QUICK });
     const c = controller.create(draft());
     const third = turnSaved(controller, c.id, 3);
-    controller.start(c.id);
+    await controller.start(c.id);
     await third;
     controller.stop(c.id);
     await controller.settled(c.id);
@@ -45,7 +45,7 @@ describe('conversation controller', () => {
     expect(v.run?.state).toBe('cancelled');
     expect(v.run?.stopReason).toBe('by you');
     expect(v.turns.map(t => t.seq)).toEqual([1, 2, 3]);
-    expect(() => controller.start(c.id)).toThrow(/cancelled/);
+    await expect(controller.start(c.id)).rejects.toThrow(/cancelled/);
     expect(controller.activeConversationId).toBeNull();
   });
 
@@ -53,7 +53,7 @@ describe('conversation controller', () => {
     const { controller, repo } = setup({ timing: QUICK });
     const c = controller.create(draft());
     const first = turnSaved(controller, c.id, 1);
-    controller.start(c.id);
+    await controller.start(c.id);
     await first;
     controller.pause(c.id); // turn 2 is being written now
     await controller.settled(c.id);
@@ -62,7 +62,7 @@ describe('conversation controller', () => {
     expect(v.run?.state).toBe('paused');
     expect(v.turns).toHaveLength(2);
 
-    controller.start(c.id);
+    await controller.start(c.id);
     await controller.settled(c.id);
     v = repo.view(c.id)!;
     expect(v.run?.state).toBe('completed');
@@ -72,7 +72,7 @@ describe('conversation controller', () => {
   it('a failed turn saves nothing, keeps earlier turns, and Retry continues', async () => {
     const { controller, repo } = setup({ mock: { failOnce: true } });
     const c = controller.create(draft());
-    controller.start(c.id);
+    await controller.start(c.id);
     await controller.settled(c.id);
 
     let v = repo.view(c.id)!;
@@ -80,7 +80,7 @@ describe('conversation controller', () => {
     expect(v.run?.stopReason).toMatch(/simulated/);
     expect(v.turns).toHaveLength(4);
 
-    controller.start(c.id);
+    await controller.start(c.id);
     await controller.settled(c.id);
     v = repo.view(c.id)!;
     expect(v.run?.state).toBe('completed');
@@ -109,8 +109,8 @@ describe('conversation controller', () => {
     const { controller } = setup({ timing: QUICK });
     const a = controller.create(draft());
     const b = controller.create(draft('Will AI help independent businesses?'));
-    controller.start(a.id);
-    expect(() => controller.start(b.id)).toThrow(/Another discussion is generating/);
+    await controller.start(a.id);
+    await expect(controller.start(b.id)).rejects.toThrow(/Another discussion is generating/);
     controller.stop(a.id);
     await controller.settled(a.id);
   });
@@ -118,11 +118,11 @@ describe('conversation controller', () => {
   it('pauses when the daily request limit is reached', async () => {
     const { controller, repo } = setup({ controller: { dailyLimit: 3 } });
     const c = controller.create(draft());
-    controller.start(c.id);
+    await controller.start(c.id);
     await controller.settled(c.id);
     expect(repo.view(c.id)!.run).toMatchObject({ state: 'paused', stopReason: 'Daily request limit reached' });
     expect(repo.listTurns(c.id)).toHaveLength(3);
-    expect(() => controller.start(c.id)).toThrow(/Daily request limit/);
+    await expect(controller.start(c.id)).rejects.toThrow(/Daily request limit/);
   });
 
   it('numbers episodes and stores the settings on the conversation', () => {
