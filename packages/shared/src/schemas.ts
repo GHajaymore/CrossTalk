@@ -224,6 +224,8 @@ export const Conversation = z.object({
   scoutTopicId: z.string().nullable().default(null),
   /** Publishing (Control room): every finished episode waits for the owner's OK. Nothing is ever posted without 'approved'. */
   publish: z.enum(['waiting', 'approved', 'held']).nullable().default(null),
+  /** Hot seat: who moved the listener, in their own vote. */
+  verdict: z.enum(['held', 'won', 'torn']).nullable().default(null),
   createdAt: z.string(),
   updatedAt: z.string(),
 });

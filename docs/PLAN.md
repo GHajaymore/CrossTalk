@@ -133,7 +133,7 @@ User preferences (voice per speaker, rate, reduced motion) live in browser stora
 
 **Branches** store `parent_id` + `branch_turn_id`. The child reads the parent's turns 1..N as its history and always generates **4 new turns**. The parent is never changed.
 
-**Export (schema v1):** one JSON with `schemaVersion: 1`, conversation, speakers with model IDs, turns, interventions, Iris's notes, brief and sources (if any), usage summary, and parent/branch metadata. Markdown export is the same content as a readable script.
+**Export (schema v1):** one JSON with `schemaVersion: 1`, conversation, speakers with model IDs, turns, interventions, Iris's notes, brief and sources (if any), usage summary, and parent/branch metadata. Markdown export is the same content as a readable script. Fields added since, all optional so v1 readers can ignore them: `conversation.listenerVerdict` (Hot seat), `turns[].stance` (Mind-change meter), `turns[].fromOriginal` and `interventions[].fromOriginal` (branches), `brief`.
 
 **Run states.** Pause and Stop take effect at the next turn boundary; a server restart turns a generating run into paused (marked "interrupted") instead of rerunning it. Playback has its own separate state (idle, speaking, paused) in the browser.
 

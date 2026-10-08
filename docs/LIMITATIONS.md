@@ -39,6 +39,13 @@ CrossTalk is a prototype for one person. These are the honest gaps.
   use per day on its side, so a run can pause before the app's limit.
 - **Lowering `MAX_TURNS_PER_RUN`** shortens normal episodes, but the screen and prompts still say 16 turns.
 
+## Bold features
+
+- **Hot seat** asks the left host to defend the less popular side. Free models may still drift toward
+  agreement; the listener's vote ("who moved you?") is the only verdict, never Iris's.
+- **The episode poster** is drawn on your device. The fonts it uses come from the page, so a poster made
+  offline may fall back to plain system fonts.
+
 ## Control room
 
 - **One admin, one code.** The Control room's lock is a single shared `ADMIN_CODE`, not accounts.

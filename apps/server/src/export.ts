@@ -1,5 +1,5 @@
 // Transcript export (docs/PLAN.md, "Export (schema v1)"): one JSON document and the same content as a readable script.
-import { ARTIST, AUDIENCES, CUE_LIMIT, episodeLabel, mindChange, MODES, NOTICE, SCOUT_NOTICE, TEMPERATURES, turnTotal, type ConversationView } from '@crosstalk/shared';
+import { ARTIST, AUDIENCES, CUE_LIMIT, episodeLabel, mindChange, MODES, NOTICE, SCOUT_NOTICE, TEMPERATURES, turnTotal, VERDICTS, type ConversationView } from '@crosstalk/shared';
 import type { UsageRow } from './db/repo';
 
 export const EXPORT_SCHEMA_VERSION = 1;
@@ -13,7 +13,7 @@ export function exportJson(c: ConversationView, usage: UsageRow[]) {
     conversation: {
       id: c.id, title: c.title, topic: c.topic, mode: c.mode, format: c.format, episode: c.episode,
       audience: c.audience, temperature: c.temperature, createdAt: c.createdAt, updatedAt: c.updatedAt,
-      state: c.run?.state ?? 'idle', turnsPlanned: turnTotal(c),
+      state: c.run?.state ?? 'idle', turnsPlanned: turnTotal(c), listenerVerdict: c.verdict ?? null,
     },
     speakers: [c.speakers.A, c.speakers.B].map(s => ({ id: s.id, name: s.name, role: s.role ?? '', persona: s.persona, lens: s.lens, modelId: s.modelId })),
     branch: c.parentId ? { parentId: c.parentId, parentTitle: c.parent?.title ?? null, branchTurnId: c.branchTurnId, branchSeq: c.branchSeq, direction: c.branchDirection } : null,
@@ -80,6 +80,7 @@ export function exportMarkdown(c: ConversationView) {
     lines.push('---', '', '## Mind-change meter', '', ...(['A', 'B'] as const).filter(k => mc[k].start != null)
       .map(k => `- ${sp[k].name}: ${mc[k].start}% on yes${mc[k].end != null ? ` → ${mc[k].end}%` : ''}`), '');
   }
+  if (c.verdict) lines.push(`**Who moved you?** ${VERDICTS[c.verdict]}`, '');
   if (c.artist?.state === 'done') {
     lines.push('---', '', `## From the booth: ${ARTIST.name}, ${ARTIST.role}`, '', c.artist.perspective, '',
       `Her sketch, “${c.artist.artTitle}”, is of turn ${c.artist.momentSeq}: “${c.artist.caption}”`, '');

@@ -15,6 +15,8 @@ Iris listens to every finished episode and responds like a thoughtful listener: 
   Watch set) and finishes on the turn she chose; "Watch her draw" replays it on her card. It is rebuilt
   shape by shape from the checked SVG, never inserted as markup.
 
+- **Hot seat:** she knows only the listener decides who moved them, and never says who held, won or lost.
+
 ## How she learns
 
 1. Under each drawing, the listener taps 👍 or 👎 and can say what to keep or change.

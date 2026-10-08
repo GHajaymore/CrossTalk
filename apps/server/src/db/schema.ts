@@ -225,4 +225,8 @@ export const MIGRATIONS: string[] = [
   UPDATE conversations SET publish = 'waiting'
     WHERE publish IS NULL AND id IN (SELECT conversation_id FROM generation_runs WHERE state = 'completed');
   `,
+  `
+  -- Hot seat: the listener's verdict on who moved them.
+  ALTER TABLE conversations ADD COLUMN verdict TEXT;
+  `,
 ];
