@@ -1,10 +1,12 @@
 import { z } from 'zod';
-import { AUDIENCES, CUE_TEXT_MAX, SCOUT_CATS, SCOUT_REGIONS, TITLE_MAX, FORMATS, LENS_MAX, MODES, NAME_MAX, PERSONAS, ROLE_MAX, TEMPERATURES, TOPIC_MAX } from './constants';
+import { AUDIENCES, CUE_TEXT_MAX, SCOUT_CATS, SCOUT_REGIONS, TITLE_MAX, FORMATS, LENGTHS, LENS_MAX, MODES, NAME_MAX, PERSONAS, ROLE_MAX, TEMPERATURES, TOPIC_MAX } from './constants';
 
 const keys = <T extends Record<string, unknown>>(o: T) => Object.keys(o) as [keyof T & string, ...(keyof T & string)[]];
 
 export const Mode = z.enum(keys(MODES));
 export const Format = z.enum(keys(FORMATS));
+export const Length = z.enum(keys(LENGTHS));
+export type Length = z.infer<typeof Length>;
 export const Audience = z.enum(keys(AUDIENCES));
 export const Temperature = z.enum(keys(TEMPERATURES));
 export const PersonaKey = z.enum(keys(PERSONAS));
@@ -50,6 +52,8 @@ export const CreateConversation = z.object({
   speakers: z.object({ A: SpeakerDraft, B: SpeakerDraft }),
   /** A topic picked from the Scout's Today tray: its brief goes to the hosts as the only facts. */
   scoutTopicId: z.string().nullable().optional(),
+  /** Normal (16 turns) when left out. */
+  length: Length.optional(),
 });
 export type CreateConversation = z.infer<typeof CreateConversation>;
 
@@ -231,6 +235,8 @@ export const Conversation = z.object({
   youEnd: z.number().int().min(0).max(100).nullable().default(null),
   /** Round two: the episode this one follows (same hosts, same question), and which round it is. */
   roundOf: z.string().nullable().default(null),
+  /** Short (8 turns), Normal (16) or Long (24). */
+  length: Length.default('normal'),
   round: z.number().int().min(1).default(1),
   createdAt: z.string(),
   updatedAt: z.string(),

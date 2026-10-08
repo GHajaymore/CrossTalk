@@ -17,7 +17,24 @@ export const JOBS = [
   'Big idea', 'Catch', 'Rethink', 'Curveball', 'Common ground', 'Still unsure', 'Takeaway', 'Sign-off',
 ] as const;
 
-export const MAX_TURNS = 16;
+/** The longest episode (Long). Normal is 16, Short is 8. */
+export const MAX_TURNS = 24;
+
+/** Episode length. Every length keeps the shape: opening stances, a story, the catch, a rethink, the takeaway. */
+// Minutes are listening time at a normal pace: a turn is about 45 spoken words, roughly 18 seconds.
+export const LENGTHS = {
+  short: { label: 'Short', minutes: 3, turns: 8, help: '8 turns: the opening, a story, the catch, a rethink and the takeaway. About 9 free requests with Iris.' },
+  normal: { label: 'Normal', minutes: 5, turns: 16, help: '16 short turns: the whole back-and-forth. About 17 free requests with Iris.' },
+  long: { label: 'Long', minutes: 8, turns: 24, help: '24 turns: everything in Normal, plus a second story, the hardest case, a middle path and what changed their minds. About 25 free requests with Iris.' },
+} as const;
+/** Which of Normal's 16 turns each short turn plays. Odd stays odd, so each host keeps their seat. */
+export const SHORT_PLAN = [1, 2, 5, 10, 11, 14, 15, 16] as const;
+/** Long: Normal's first 12 turns, eight deeper ones, then Normal's last 4. Each host keeps their seat. */
+export const LONG_JOBS = [
+  'Hello', 'First take', 'Frame', 'Push back', 'Story', 'React', 'Example', 'Test', 'Big idea', 'Catch', 'Rethink', 'Curveball',
+  'Dig in', 'Counterpoint', 'Second story', 'Hard case', 'Middle path', 'Stress test', 'What changed', 'Open question',
+  'Common ground', 'Still unsure', 'Takeaway', 'Sign-off',
+] as const;
 export const DAILY_LIMIT_DEFAULT = 40;
 /** The default listener cue limit; the Control room can set 0–6. */
 export const CUE_LIMIT = 3;

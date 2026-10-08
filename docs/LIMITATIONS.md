@@ -30,6 +30,9 @@ CrossTalk is a prototype for one person. These are the honest gaps.
   illustration (Picture) needs an image model, and none is free yet. Her picture prompts are saved so
   past episodes can be redrawn.
 - **Very old browsers** may show the painted styles without their washes (they need SVG filters).
+- **Listening times are estimates** (about 18 seconds a turn at a normal pace). Real hosts vary their
+  line length, and a Long episode uses about 25 of the 40 daily requests.
+- **Long episodes in mock mode** use eight general sample lines for the extra beats; real hosts write them.
 - **OpenRouter caps free-model requests per account per day**, across every app and key you use. When
   it's reached, CrossTalk says so plainly, doesn't spend a retry on it, and the episode waits; press
   Retry after the reset (about midnight UTC). OpenRouter raises the cap if you add credit; CrossTalk

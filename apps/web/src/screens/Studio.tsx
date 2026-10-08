@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  artworkSvg, AUDIENCES, CUE_LIMIT, episodeLabel, hideStanceTag, hostSubtitle, jobIn, MODES, paintStyleOf, speakerFor, TEMPERATURES, turnTotal,
+  artworkSvg, AUDIENCES, CUE_LIMIT, LENGTHS, episodeLabel, hideStanceTag, hostSubtitle, jobIn, MODES, paintStyleOf, speakerFor, TEMPERATURES, turnTotal,
   type AppConfig, type ConversationView, type Intervention,
 } from '@crosstalk/shared';
 import { api } from '../api/client';
@@ -146,7 +146,7 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
     <StudioSet
       show={`CrossTalk · ${view.format === 'live' ? '● Live' : episodeLabel(view.episode)}`}
       topic={view.topic}
-      tags={`${view.round > 1 ? `Round ${view.round} · ` : ''}${MODES[view.mode].label} · ${AUDIENCES[view.audience].label} · ${TEMPERATURES[view.temperature].label}`}
+      tags={`${view.round > 1 ? `Round ${view.round} · ` : ''}${view.length !== 'normal' ? `${LENGTHS[view.length].label} · ` : ''}${MODES[view.mode].label} · ${AUDIENCES[view.audience].label} · ${TEMPERATURES[view.temperature].label}`}
       temperature={view.temperature}
       hosts={{ A: { name: sp.A.name, role: hostSubtitle(sp.A) }, B: { name: sp.B.name, role: hostSubtitle(sp.B) } }}
       guest={guests.length ? { name: 'Guest', role: 'You, on the mic' } : null}
@@ -268,7 +268,7 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
             {onAir && <button className="btn sm leave-air" onClick={leaveAir}>Leave On air</button>}
           </div>
           {view.brief && <details className="brief stage-brief"><summary>Today's brief · {view.brief.sources.join(', ')}</summary><BriefBox brief={view.brief} /></details>}
-          <TurnRail turns={view.turns} liveSeq={live?.seq ?? null} failedSeq={failedSeq} speakers={sp}
+          <TurnRail turns={view.turns} liveSeq={live?.seq ?? null} failedSeq={failedSeq} speakers={sp} length={view.length}
             branchSeq={view.branchSeq} cueSeqs={view.interventions.filter(c => c.status === 'queued').map(c => c.appliesBeforeSeq)} />
           <MindMeter turns={view.turns} speakers={sp} compact you={you} done={st === 'completed'} onYou={setYou} />
         </>}

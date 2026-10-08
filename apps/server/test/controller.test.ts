@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { JOBS, MAX_TURNS } from '@crosstalk/shared';
+import { JOBS, LENGTHS } from '@crosstalk/shared';
+
+const NORMAL = LENGTHS.normal.turns;
 import { ControllerError } from '../src/controller/controller';
 import { draft, QUICK, setup, sleep, turnSaved } from './helpers';
 
@@ -12,7 +14,7 @@ describe('conversation controller', () => {
 
     const v = repo.view(c.id)!;
     expect(v.run?.state).toBe('completed');
-    expect(MAX_TURNS).toBe(16);
+    expect(NORMAL).toBe(16);
     expect(v.turns.map(t => t.seq)).toEqual(Array.from({ length: 16 }, (_, i) => i + 1));
     expect(v.turns.map(t => t.speakerId).join('')).toBe('AB'.repeat(8));
     expect(v.turns.map(t => t.objective)).toEqual([...JOBS]);
@@ -67,7 +69,7 @@ describe('conversation controller', () => {
     await controller.settled(c.id);
     v = repo.view(c.id)!;
     expect(v.run?.state).toBe('completed');
-    expect(v.turns).toHaveLength(MAX_TURNS);
+    expect(v.turns).toHaveLength(NORMAL);
   });
 
   it('a failed turn saves nothing, keeps earlier turns, and Retry continues', async () => {
@@ -85,7 +87,7 @@ describe('conversation controller', () => {
     await controller.settled(c.id);
     v = repo.view(c.id)!;
     expect(v.run?.state).toBe('completed');
-    expect(v.turns).toHaveLength(MAX_TURNS);
+    expect(v.turns).toHaveLength(NORMAL);
   });
 
   it('a restart marks a generating run as interrupted instead of rerunning it', async () => {

@@ -1,5 +1,5 @@
-import type { MockSettings } from '@crosstalk/shared';
-import { mockBranchText, mockCueLead, mockRoundOpening, mockStance, mockTurnText } from './mockScripts';
+import { normalSeqFor, type MockSettings } from '@crosstalk/shared';
+import { mockBranchText, mockCueLead, mockLongText, mockRoundOpening, mockStance, mockTurnText } from './mockScripts';
 import { AbortedError, ProviderError, type Provider, type TurnOptions, type TurnRequest } from './types';
 
 export type MockTiming = {
@@ -38,7 +38,9 @@ export class MockProvider implements Provider {
     const { conversation: c, seq, speaker, objective, cues = [], lastRound = null } = req;
     await wait(this.timing.thinkMs(fast), signal);
 
-    const base = c.branchSeq && seq > c.branchSeq ? mockBranchText(objective, c.branchDirection ?? '') : mockTurnText(c.topic, seq, speaker.id, c.temperature);
+    const normalSeq = normalSeqFor(seq, c.length);
+    const base = c.branchSeq && seq > c.branchSeq ? mockBranchText(objective, c.branchDirection ?? '')
+      : normalSeq ? mockTurnText(c.topic, normalSeq, speaker.id, c.temperature) : mockLongText(objective);
     const leads = cues.filter(x => x.status === 'queued' && x.appliesBeforeSeq <= seq)
       .map(x => mockCueLead(x.kind, x.text, x.targetSeq, x.toTemp === 'heated' || (x.toTemp === 'lively' && x.fromTemp === 'calm')));
     // Hot seat: the hosts name their roles on their first lines.
