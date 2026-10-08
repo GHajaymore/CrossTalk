@@ -7,6 +7,8 @@ cd tools/voice
 npm install
 curl -s localhost:8787/api/conversations/<id> > episode.json   # while the app is running
 node render.mjs episode.json episode.mp3
+# To hear it in the Studio, put the two files next to the app's database:
+#   apps/server/data/audio/<id>.mp3 and apps/server/data/audio/<id>.json
 ```
 
 - The first run downloads the model (about 90 MB) from Hugging Face.

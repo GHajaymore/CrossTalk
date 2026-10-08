@@ -1,5 +1,7 @@
+import { createReadStream, existsSync, readFileSync, statSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import Fastify, { type FastifyServerOptions } from 'fastify';
-import { CreateConversation, MockSettings, type AppConfig, type StreamEvent } from '@crosstalk/shared';
+import { CreateConversation, MockSettings, type AppConfig, type ConversationView, type EpisodeAudio, type StreamEvent } from '@crosstalk/shared';
 import { ConversationController, ControllerError, type ControllerEvent } from './controller/controller';
 import { openDb, Repo } from './db/repo';
 import { FreeModelGuard } from './guard/freeModelGuard';
@@ -51,10 +53,24 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
     return reply.status(status).send({ error: status === 500 ? 'Something went wrong on the server.' : (err as Error).message });
   });
 
+  // Rendered recordings (tools/voice) live next to the database: data/audio/<id>.mp3 and <id>.json.
+  const audioDir = cfg.dbPath === ':memory:' ? null : join(dirname(cfg.dbPath), 'audio');
+  const safeId = (id: string) => /^[0-9a-f-]{36}$/i.test(id);
+  const audioFor = (id: string): EpisodeAudio | null => {
+    if (!audioDir || !safeId(id)) return null;
+    const mp3 = join(audioDir, `${id}.mp3`), meta = join(audioDir, `${id}.json`);
+    if (!existsSync(mp3) || !existsSync(meta)) return null;
+    try {
+      const m = JSON.parse(readFileSync(meta, 'utf8')) as Omit<EpisodeAudio, 'url'>;
+      return { url: `/api/conversations/${id}/audio.mp3`, durationSec: m.durationSec, voices: m.voices, timings: m.timings };
+    } catch { return null; }
+  };
+  const withAudio = (v: ConversationView): ConversationView => ({ ...v, audio: audioFor(v.id) });
+
   const view = (id: string) => {
     const v = repo.view(id);
     if (!v) throw new ControllerError('Conversation not found.', 404);
-    return v;
+    return withAudio(v);
   };
 
   const config = (): AppConfig => ({
@@ -110,6 +126,12 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
   });
 
   app.get<{ Params: { id: string } }>('/api/conversations/:id', async req => view(req.params.id));
+  app.get<{ Params: { id: string } }>('/api/conversations/:id/audio.mp3', (req, reply) => {
+    const id = req.params.id;
+    const file = audioDir && safeId(id) ? join(audioDir, `${id}.mp3`) : null;
+    if (!file || !existsSync(file)) return reply.status(404).send({ error: 'No recording for this episode.' });
+    return reply.header('Content-Type', 'audio/mpeg').header('Content-Length', statSync(file).size).send(createReadStream(file));
+  });
   app.get<{ Params: { id: string } }>('/api/conversations/:id/usage', async req => { view(req.params.id); return repo.listUsage(req.params.id); });
 
   app.post<{ Params: { id: string } }>('/api/conversations/:id/start', async req => {
@@ -133,7 +155,7 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
     const res = reply.raw;
     res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
     const send = (e: StreamEvent) => res.write(`data: ${JSON.stringify(e)}\n\n`);
-    const snapshot = () => { const v = repo.view(id); if (v) send({ type: 'snapshot', conversation: v, live: controller.liveTurn(id) }); };
+    const snapshot = () => { const v = repo.view(id); if (v) send({ type: 'snapshot', conversation: withAudio(v), live: controller.liveTurn(id) }); };
     snapshot();
     const off = controller.subscribe(id, (e: ControllerEvent) => (e.type === 'changed' ? snapshot() : send(e)));
     const ping = setInterval(() => res.write(': ping\n\n'), 20000);

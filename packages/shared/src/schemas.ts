@@ -108,12 +108,19 @@ export const Conversation = z.object({
 });
 export type Conversation = z.infer<typeof Conversation>;
 
+/** When each turn starts and ends in a rendered audio file, in seconds. */
+export type AudioTiming = { seq: number; speakerId: SpeakerId; start: number; end: number };
+/** A rendered episode recording (natural voices), if one exists. */
+export type EpisodeAudio = { url: string; durationSec: number; voices: { A: string; B: string }; timings: AudioTiming[] };
+
 /** A conversation with everything the Studio needs to draw it. */
 export type ConversationView = Conversation & {
   turns: Turn[];
   run: Run | null;
   /** Cue cards. Always empty until Milestone 4. */
   interventions: Intervention[];
+  /** The rendered recording, when tools/voice has made one. */
+  audio?: EpisodeAudio | null;
 };
 
 /** Events sent from the server over Server-Sent Events. */

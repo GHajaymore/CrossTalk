@@ -13,6 +13,7 @@ import { TurnRail } from '../studio/TurnRail';
 import { BudgetBanner, realBlocked, SetupBanner } from '../lib/Banners';
 import { BrowserSpeech } from '../speech/BrowserSpeech';
 import { usePlayback, useVoices } from '../speech/usePlayback';
+import { useRecording } from '../speech/useRecording';
 import { VoicePicker } from '../speech/VoicePicker';
 import { lastSentence, spokenSeconds, tail } from '../lib/text';
 import { Footer } from './Footer';
@@ -25,7 +26,10 @@ export function Studio({ id, config, refreshConfig, toast }: Props) {
   const [busy, setBusy] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
   const { voices, prefs, update } = useVoices();
-  const play = usePlayback(view?.turns ?? [], prefs);
+  const browserPlay = usePlayback(view?.turns ?? [], prefs);
+  const recording = useRecording(view?.turns ?? [], view?.audio);
+  // A rendered recording (natural voices) wins over the device's built-in voices.
+  const play = recording ?? browserPlay;
   // Live format: each finished turn is read aloud as soon as it lands.
   const lastSaved = view?.turns[view.turns.length - 1]?.seq ?? 0;
   useEffect(() => {
@@ -145,7 +149,7 @@ export function Studio({ id, config, refreshConfig, toast }: Props) {
               {play.state === 'speaking' && <button className="btn" onClick={play.pause}>Pause</button>}
               {play.state === 'paused' && <button className="btn" onClick={play.resume}>Resume</button>}
               {play.state !== 'idle' && <button className="btn ghost" onClick={play.stop}>Stop audio</button>}
-              {play.available && <span className="state">{play.state === 'idle' ? 'Not playing' : <>{play.state === 'paused' ? 'Paused' : 'Speaking'}: <b>{play.speakerId && sp[play.speakerId].name}</b>, turn {play.seq}</>}</span>}
+              {play.available && <span className="state">{play.state === 'idle' ? (recording ? `Recorded audio · ${Math.round((view.audio?.durationSec ?? 0) / 60)} min · natural voices` : 'Not playing') : <>{play.state === 'paused' ? 'Paused' : 'Speaking'}: <b>{play.speakerId && sp[play.speakerId].name}</b>, turn {play.seq}</>}</span>}
             </div>
           </div>
         </div>
