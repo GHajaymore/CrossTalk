@@ -104,12 +104,30 @@ export function paintSvg(svg: string, style: PaintStyle, seedText: string): stri
     + '</svg>';
 }
 
-/** Iris's own pick when she hasn't said: practical, calm talk stays a sketch; big ideas dream; hot talk paints. */
-export function defaultPaintStyle(e: { mode: string; temperature: string }): PaintStyle {
-  if (e.temperature === 'calm') return 'sketch';
-  if (e.mode === 'explore') return 'dreamscape';
-  return 'painting';
+/**
+ * Iris's own pick when she hasn't said: practical, calm talk stays a sketch; big ideas dream; hot talk
+ * paints. Only from the styles the listener has ticked; the next closest one if her first choice isn't.
+ */
+export function defaultPaintStyle(e: { mode: string; temperature: string }, allowed: readonly PaintStyle[] = PAINT_STYLES): PaintStyle {
+  const order: PaintStyle[] = e.temperature === 'calm' ? ['sketch', 'painting', 'dreamscape']
+    : e.mode === 'explore' ? ['dreamscape', 'painting', 'sketch'] : ['painting', 'dreamscape', 'sketch'];
+  return order.find(s => allowed.includes(s)) ?? order[0];
 }
+
+/** The listener's ticked styles, cleaned up: known styles only, in order, never empty. */
+export function cleanStyles(input: unknown): PaintStyle[] {
+  const list = Array.isArray(input) ? PAINT_STYLES.filter(s => input.includes(s)) : [];
+  return list.length ? list : [...PAINT_STYLES];
+}
+
+/** One saved piece in Iris's gallery: a drawing version, in one style. */
+export type Artwork = { id: number; version: number; style: PaintStyle; title: string; caption: string; momentSeq: number; svg: string; createdAt: string };
+/** An episode's shelf in the gallery: what's showing now, and everything she has made for it. */
+export type GalleryEpisode = {
+  conversationId: string; title: string; topic: string; episode: number; parentId: string | null; round: number;
+  current: { version: number; style: PaintStyle } | null;
+  artworks: Artwork[];
+};
 
 /** The style to show for saved art ("picture" isn't available yet, so it shows as a sketch). */
 export const paintStyleOf = (s: string | null | undefined): PaintStyle => (PAINT_STYLES as readonly string[]).includes(s ?? '') ? s as PaintStyle : 'sketch';

@@ -87,6 +87,32 @@ test("Iris's card shows her sketch, perspective, and learns from feedback", asyn
   await expect(page.locator('.learned')).toContainText('Love the warm colours');
 });
 
+test("Iris: tick your styles, and the gallery keeps every version", async ({ page, request }) => {
+  await page.goto('/#/iris');
+  const picks = page.getByRole('group', { name: 'Styles Iris may use' });
+  // Untick Sketch and Dreamscape: Painting only.
+  await picks.getByRole('button', { name: /Sketch/ }).click();
+  await expect(page.getByRole('status')).toContainText('choose among Painting, Dreamscape');
+  await picks.getByRole('button', { name: /Dreamscape/ }).click();
+  await expect(page.getByRole('status')).toContainText('use Painting for every new drawing');
+  await picks.getByRole('button', { name: /Painting/ }).click();
+  await expect(page.getByRole('status')).toContainText('Keep at least one style ticked');
+
+  const id = await finishedEpisode(request);
+  expect((await (await request.get(`/api/conversations/${id}`)).json()).artist.artStyle).toBe('painting');
+  await page.goto(`/#/studio/${id}/read`);
+  await page.getByRole('region', { name: "Iris's perspective" }).getByRole('button', { name: 'Sketch', exact: true }).click();
+  await expect(page.getByRole('region', { name: "Iris's perspective" }).getByRole('img', { name: /Iris's sketch/ })).toBeVisible();
+
+  await page.goto('/#/iris');
+  const versions = page.getByRole('group', { name: /Every version for/ }).first();
+  await expect(versions.getByRole('button')).toHaveCount(2);
+  await versions.getByRole('button', { name: 'Painting' }).click();
+  await expect(page.locator('.g-card').first().getByRole('img', { name: /Iris's painting/ })).toBeVisible();
+  // Put the styles back for the other tests.
+  await request.put('/api/iris/styles', { data: { styles: ['sketch', 'painting', 'dreamscape'] } });
+});
+
 test('up next: when an episode plays through, the next one starts on its own', async ({ page, request }) => {
   // No real voices in the test browser: a stand-in speaks each line instantly.
   await page.addInitScript(() => {

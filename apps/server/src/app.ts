@@ -2,7 +2,7 @@ import { createReadStream, existsSync, readFileSync, rmSync, statSync } from 'no
 import { dirname, join } from 'node:path';
 import Fastify, { type FastifyServerOptions } from 'fastify';
 import { randomUUID } from 'node:crypto';
-import { BranchInput, CreateConversation, CueInput, DEFAULT_RULES, isSensitive, NoteInput, PAINT_STYLES, RenameInput, Rules, SCOUT_CATS, ScoutPrefs, type Overview, IrisFeedbackInput, MockSettings, type AppConfig, type ConversationView, type EpisodeAudio, type StreamEvent } from '@crosstalk/shared';
+import { BranchInput, CreateConversation, CueInput, DEFAULT_RULES, cleanStyles, isSensitive, NoteInput, PAINT_STYLES, RenameInput, Rules, SCOUT_CATS, ScoutPrefs, type Overview, IrisFeedbackInput, MockSettings, type AppConfig, type ConversationView, type EpisodeAudio, type StreamEvent } from '@crosstalk/shared';
 import { Iris, mockArtist, type ArtistBackend } from './artist/iris';
 import { ConversationController, ControllerError, type ControllerEvent } from './controller/controller';
 import { openDb, Repo } from './db/repo';
@@ -264,6 +264,19 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
     if (!style) throw new ControllerError('Pick Sketch, Painting or Dreamscape.', 400);
     if (!repo.setArtStyle(req.params.id, style)) throw new ControllerError("Iris hasn't finished a drawing for this episode yet.", 409);
     return view(req.params.id);
+  });
+
+  // Iris's gallery: every version of every drawing, in each style it was shown in.
+  app.get('/api/iris/gallery', async () => repo.gallery());
+  // The styles the listener lets Iris use (one or more).
+  app.get('/api/iris/styles', async () => ({ styles: cleanStyles(repo.getSetting('iris_styles')) }));
+  app.put<{ Body: { styles?: unknown } }>('/api/iris/styles', async req => {
+    const styles = req.body?.styles;
+    if (!Array.isArray(styles) || !styles.length || styles.some(s => !(PAINT_STYLES as readonly unknown[]).includes(s))) {
+      throw new ControllerError('Pick at least one of Sketch, Painting or Dreamscape.', 400);
+    }
+    repo.setSetting('iris_styles', cleanStyles(styles));
+    return { styles: cleanStyles(styles) };
   });
 
   // What the listener tells Iris about her work. She reads the latest notes before every drawing.

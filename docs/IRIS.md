@@ -17,6 +17,15 @@ Iris listens to every finished episode and responds like a thoughtful listener: 
 
 - **Poster and comic strip:** her sketch and quote are at the heart of both share images, made on the
   device. If she couldn't draw, the comic says so plainly.
+- **Your styles:** on the Iris page you tick the styles she may use (one or more, saved as the
+  `iris_styles` setting). She picks only from those: her own choice, then your learned taste, then the
+  closest one to the episode's feel. A real model is told the ticked styles only.
+- **Her gallery keeps every version** (`artworks` table): each drawing, each "Ask Iris again", and
+  each style you chose, once each. The Iris page shows the current one per episode with the others as
+  thumbnails. Deleting an episode removes its pieces. Online, they survive restarts only with the backup.
+- **How she draws (real mode):** an illustrator's brief: one clear subject near the middle, a horizon,
+  depth through overlap and fainter distant shapes, curves for living things, heavier lines on the
+  subject, two or three colours. Mock mode reuses six hand-drawn scenes, so its art repeats by topic.
 - **Round two:** she's told when an episode is a later round of the same question.
 - **Hot seat:** she knows only the listener decides who moved them, and never says who held, won or lost.
 - **She paints:** three styles, all made from her own checked lines in the browser (`packages/shared/src/paint.ts`):
