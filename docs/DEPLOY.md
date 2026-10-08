@@ -7,9 +7,9 @@ domain points at it. Nothing here costs money. Set aside about 15 minutes, plus 
 
 - **It sleeps.** After 15 minutes with nobody using it, Render pauses it. The next visit takes about
   a minute to wake it up.
-- **It forgets.** Saved episodes, Iris's sketches and her notes are wiped when the server restarts
-  or redeploys. That's fine for trying it on your phone. Keeping episodes needs a host with a disk
-  (for example a Google Cloud always-free VM), which can come later.
+- **It forgets, unless you add the free backup.** Render wipes its disk when the server restarts,
+  sleeps or redeploys. Add a free Backblaze bucket (see **Keep episodes for good** below) and
+  episodes, Iris's sketches, her notes and your settings come back by themselves.
 - **Rendered recordings aren't uploaded.** Episodes play with your phone's own voices there.
 
 ## The lock
@@ -58,6 +58,50 @@ added; the existing `@` and `www` records stay as they are.
    to Home Screen** (iPhone) or **⋮ → Install app** (Android). It opens full screen like an app.
 
  an app.
+
+## Keep episodes for good (free, about 10 minutes)
+
+CrossTalk keeps everything in one database: episodes, transcripts, **Iris's sketches**, her
+listener notes, the Scout's topics and the Control room's rules. With a backup set up, a small free
+tool (Litestream) copies every change to your own private cloud bucket within about 10 seconds.
+When Render wakes or redeploys the app, it copies everything back before it opens.
+
+**1. Make a free Backblaze B2 bucket** (10 GB free)
+
+1. Sign up at **backblaze.com → B2 Cloud Storage**.
+2. **Buckets → Create a Bucket.** Pick any unique name (for example `crosstalk-yourname`). Keep
+   **Files in Bucket** set to **Private**. Leave encryption and object lock off.
+3. On the new bucket's card, copy the **Endpoint**, for example `s3.us-west-004.backblazeb2.com`.
+   The middle part (`us-west-004`) is your **region**.
+4. **Application Keys → Add a New Application Key.** Name it `crosstalk`, allow access to **only
+   that bucket**, type **Read and Write**. Copy the **keyID** and **applicationKey** straight into
+   step 2. Backblaze shows the applicationKey only once.
+
+**2. Tell Render** (Environment page, then **Save, rebuild, and deploy**)
+
+| Key | Value |
+|---|---|
+| `BACKUP_BUCKET` | your bucket name |
+| `BACKUP_ENDPOINT` | `https://` + the endpoint, e.g. `https://s3.us-west-004.backblazeb2.com` |
+| `BACKUP_REGION` | the region, e.g. `us-west-004` |
+| `BACKUP_KEY_ID` | the keyID |
+| `BACKUP_SECRET` | the applicationKey |
+
+Paste the keys only into Render's page, never into a chat, a file or this repo.
+
+**3. Check it.** Make an episode and wait until Iris has drawn it. Then, in Render, use **Manual
+Deploy → Restart service**. When the app comes back, the episode and its sketch are still there.
+In Render's **Logs** you'll see `restoring snapshot` at start-up and `wal segment written` as you
+make episodes.
+
+Good to know:
+
+- If one of the five settings is missing, the app starts without a backup and says so in the logs.
+- If the bucket can't be reached at start-up, the app doesn't start empty (an empty start could
+  overwrite your backup). Render tries again, and the log says why.
+- Litestream keeps 7 days of history. Even busy use stays far inside the free 10 GB.
+- Rendered recordings (`tools/voice`) are files, not database rows, so they aren't backed up. Online,
+  episodes play with the phone's own voices anyway.
 
 ## Real models later (still free)
 

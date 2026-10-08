@@ -54,7 +54,7 @@ CrossTalk is a prototype for one person. These are the honest gaps.
 
 - **One admin, one code.** The Control room's lock is a single shared `ADMIN_CODE`, not accounts.
 - **The audit log lives in the app's database**, so on the free Render plan it is wiped with everything
-  else on restart.
+  else on restart unless the free backup is set up (docs/DEPLOY.md → Keep episodes for good).
 - **Publishing queues aren't connected yet.** Approving an episode puts it in the publish queue; nothing
   is sent anywhere until podcast, social and shop publishers exist (Phase 2), and never without approval.
 - **Blocked words are matched as whole words**, so variants ("cryptocurrency" for "crypto") need their own line.
@@ -62,8 +62,10 @@ CrossTalk is a prototype for one person. These are the honest gaps.
 ## Hosting (the free Render plan)
 
 - It sleeps after 15 idle minutes; the next visit takes about a minute.
-- Its disk is wiped on every restart or deploy, so hosted episodes don't last. Keeping them needs a
-  host with a persistent disk.
+- Its disk is wiped on every restart or deploy. With the free Backblaze backup set up, episodes,
+  Iris's sketches and settings come back on start-up. Without it, they're lost.
+- The backup copies changes about every 10 seconds, so a crash can lose the last few seconds.
+  Rendered recordings are files and aren't backed up.
 
 ## Before opening it to the public
 

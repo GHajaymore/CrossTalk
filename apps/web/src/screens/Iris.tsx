@@ -36,6 +36,8 @@ export function IrisPage({ config }: { config: AppConfig | null }) {
             <span><b>{notes ? notes.length : '…'}</b> notes from you</span>
             <span><b>{notes ? liked : '…'}</b> she got right</span>
           </div>
+          {config?.storage === 'backed-up' && <p className="hint">☁ Her sketches and notes are backed up, so they stay when the server restarts.</p>}
+          {config?.storage === 'forgets' && <p className="hint">⚠ Online without a backup, her sketches are forgotten when the server restarts. docs/DEPLOY.md → Keep episodes for good.</p>}
         </div>
       </header>
 

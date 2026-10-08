@@ -320,6 +320,8 @@ export type AppConfig = {
   rules: Rules;
   /** Whether the Control room needs its admin code here (online), and whether this device has it. */
   admin: { required: boolean; ok: boolean; configured: boolean };
+  /** Where episodes and Iris's sketches are kept: this computer's disk, a disk with a cloud backup, or a disk the host wipes. */
+  storage: 'local' | 'backed-up' | 'forgets';
 };
 
 export const MockSettings = z.object({

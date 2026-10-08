@@ -15,3 +15,6 @@ tools/voice/node_modules/
 test-results/
 playwright-report/
 e2e/.data/
+
+# Litestream binary (scripts/install-litestream.sh)
+bin/

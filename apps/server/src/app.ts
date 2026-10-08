@@ -164,6 +164,7 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
     usageToday: repo.usageOn(controller.today()),
     rules: rules(),
     admin: admin.state(cookie),
+    storage: !cfg.hosted ? 'local' : cfg.backup ? 'backed-up' : 'forgets',
   });
 
   app.get('/api/config', async req => config(req.headers.cookie));
