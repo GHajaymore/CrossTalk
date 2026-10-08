@@ -49,6 +49,9 @@ export class Iris {
 
   get modelId() { return this.backend?.modelId ?? ''; }
 
+  /** True while she is listening to or drawing this episode. */
+  isWorking(conversationId: string) { return this.busy.has(conversationId); }
+
   /** Resolves when she has finished with this episode (for tests). */
   private pending = new Map<string, Promise<void>>();
   settled(conversationId: string) { return this.pending.get(conversationId) ?? Promise.resolve(); }
@@ -56,7 +59,8 @@ export class Iris {
   /** Listen to a completed episode. Once per episode unless `again` (Ask Iris again). */
   listen(conversationId: string, again = false): Promise<void> {
     if (this.busy.has(conversationId)) return this.settled(conversationId);
-    const p = this.run(conversationId, again).finally(() => { this.busy.delete(conversationId); this.pending.delete(conversationId); });
+    // She never takes the server down: anything unexpected is logged by the caller's onChange path, not thrown.
+    const p = this.run(conversationId, again).catch(() => {}).finally(() => { this.busy.delete(conversationId); this.pending.delete(conversationId); });
     this.busy.add(conversationId);
     this.pending.set(conversationId, p);
     return p;

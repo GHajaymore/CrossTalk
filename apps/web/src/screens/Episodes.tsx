@@ -16,7 +16,9 @@ export function Episodes({ config, toast }: { config: AppConfig | null; toast: (
 
   const all = items ?? [];
   const match = (c: ConversationSummary) => !q.trim() || `${c.title} ${c.topic} ${c.branchDirection ?? ''}`.toLowerCase().includes(q.trim().toLowerCase());
-  const childrenOf = (id: string) => all.filter(c => c.parentId === id);
+  const kids = new Map<string, ConversationSummary[]>();
+  for (const c of all) if (c.parentId) kids.set(c.parentId, [...(kids.get(c.parentId) ?? []), c]);
+  const childrenOf = (id: string) => kids.get(id) ?? [];
   // Show a branch under its original; a match anywhere in a family shows the whole family.
   const family = (c: ConversationSummary): boolean => match(c) || childrenOf(c.id).some(family);
   const roots = all.filter(c => !c.parentId || !all.some(p => p.id === c.parentId)).filter(family);
@@ -100,9 +102,10 @@ function EpisodeRow({ c, depth, onChanged, toast }: { c: ConversationSummary; de
       ) : mode === 'view' && (
         <div className="dock-row lib-actions">
           <a className="btn sm" href={`#/studio/${c.id}/read`}>Open</a>
-          <button className="btn sm ghost" onClick={() => setMode('rename')}>Rename</button>
+          <button className="btn sm ghost" onClick={() => { setTitle(c.title); setMode('rename'); }}>Rename</button>
           {c.turnCount > 0 && <a className="btn sm ghost" href={`/api/conversations/${c.id}/export.md`} download>Export</a>}
-          <button className="btn sm ghost danger" disabled={st === 'generating'} title={st === 'generating' ? 'Stop it first' : undefined} onClick={() => setMode('delete')}>Delete</button>
+          <button className="btn sm ghost danger" disabled={st === 'generating' || c.branchCount > 0}
+            title={st === 'generating' ? 'Stop it first' : c.branchCount ? 'Delete its branches first: they read its turns' : undefined} onClick={() => setMode('delete')}>Delete</button>
         </div>
       )}
     </div>

@@ -30,14 +30,32 @@ describe('episodes library', () => {
       mkdirSync(join(dir, 'audio'), { recursive: true });
       writeFileSync(join(dir, 'audio', `${id}.mp3`), 'x');
       writeFileSync(join(dir, 'audio', `${id}.json`), '{}');
+      const spent = repo.usageOn(controller.today()).attempts;
+      expect(spent).toBeGreaterThan(0);
       expect((await app.inject({ method: 'DELETE', url: `/api/conversations/${branch.id}` })).statusCode).toBe(204);
       expect((await app.inject({ method: 'DELETE', url: `/api/conversations/${id}` })).statusCode).toBe(204);
       expect((await app.inject({ url: `/api/conversations/${id}` })).statusCode).toBe(404);
-      for (const table of ['turns', 'generation_runs', 'provider_usage', 'artist_notes', 'interventions']) {
+      for (const table of ['turns', 'generation_runs', 'artist_notes', 'interventions']) {
         expect((repo.db.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get() as { n: number }).n, table).toBe(0);
       }
+      // What was spent stays on record: today's usage doesn't shrink when an episode is deleted.
+      expect(repo.usageOn(controller.today()).attempts).toBe(spent);
       expect(existsSync(join(dir, 'audio', `${id}.mp3`))).toBe(false);
       expect((await app.inject({ method: 'DELETE', url: `/api/conversations/${id}` })).statusCode).toBe(404);
+    } finally { await app.close(); }
+  });
+
+  it('waits for Iris to finish drawing before an episode can be deleted', async () => {
+    const { app, controller, iris } = buildApp(mockConfig({ dbPath: ':memory:' }), { timing: INSTANT });
+    try {
+      const id = (await app.inject({ method: 'POST', url: '/api/conversations', payload: draft() })).json().id;
+      await controller.start(id); await controller.settled(id);
+      void iris.listen(id, true);
+      const res = await app.inject({ method: 'DELETE', url: `/api/conversations/${id}` });
+      expect(res.statusCode).toBe(409);
+      expect(res.json().error).toMatch(/Iris is still drawing/);
+      await iris.settled(id);
+      expect((await app.inject({ method: 'DELETE', url: `/api/conversations/${id}` })).statusCode).toBe(204);
     } finally { await app.close(); }
   });
 

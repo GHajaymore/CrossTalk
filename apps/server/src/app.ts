@@ -145,6 +145,7 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
   });
 
   app.delete<{ Params: { id: string } }>('/api/conversations/:id', async (req, reply) => {
+    if (iris.isWorking(req.params.id)) throw new ControllerError('Iris is still drawing this episode. Try again in a moment.', 409);
     controller.remove(req.params.id);
     // Its rendered recording goes too.
     if (audioDir && safeId(req.params.id)) for (const ext of ['mp3', 'json']) rmSync(join(audioDir, `${req.params.id}.${ext}`), { force: true });
