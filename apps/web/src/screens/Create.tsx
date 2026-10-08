@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ARTIST, AUDIENCES, blockedHit, DEFAULT_RULES, episodeLabel, FORMATS, hostSubtitle, isSensitive, LENS_MAX, MAX_TURNS, MODES, NAME_MAX, PERSONAS, PRESETS, resolveSpeakers, ROLE_MAX,
+  ARTIST, AUDIENCES, blockedHit, DEFAULT_RULES, episodeLabel, FORMATS, hostSubtitle, isSensitive, LENGTHS, LENS_MAX, MODES, NAME_MAX, PERSONAS, PRESETS, resolveSpeakers, ROLE_MAX,
   TEMPERATURE_ORDER, TEMPERATURES, TOPIC_MAX,
-  type AppConfig, type Audience, type CreateConversation, type Format, type Mode, type PersonaKey, type ScoutTopic, type SpeakerDraft, type SpeakerId, type Temperature,
+  type AppConfig, type Audience, type CreateConversation, type Format, type Length, type Mode, type PersonaKey, type ScoutTopic, type SpeakerDraft, type SpeakerId, type Temperature,
 } from '@crosstalk/shared';
 import { api } from '../api/client';
 import { BudgetBanner, realBlocked, SetupBanner } from '../lib/Banners';
@@ -21,6 +21,11 @@ export function Create({ config, go, refreshConfig, toast }: Props) {
   const [topic, setTopic] = useState<string>(PRESETS[2]);
   const [mode, setMode] = useState<Mode>('explore');
   const [format, setFormat] = useState<Format>('recorded');
+  // Your last length choice, remembered on this device (Short saves free requests).
+  const [length, setLengthState] = useState<Length>(() => {
+    try { const l = localStorage.getItem('ct_length'); return l === 'short' || l === 'long' ? l : 'normal'; } catch { return 'normal'; }
+  });
+  const setLength = (l: Length) => { setLengthState(l); try { localStorage.setItem('ct_length', l); } catch { /* storage blocked */ } };
   const [audience, setAudience] = useState<Audience>('general');
   const [temperature, setTemperature] = useState<Temperature>('lively');
   const [drafts, setDrafts] = useState<{ A: SpeakerDraft; B: SpeakerDraft }>({ A: seatDraft('optimist'), B: seatDraft('skeptic') });
@@ -67,7 +72,7 @@ export function Create({ config, go, refreshConfig, toast }: Props) {
   const start = async () => {
     setStarting(true);
     try {
-      const body: CreateConversation = { topic: topic.trim(), mode, format, audience, temperature, speakers: drafts, scoutTopicId: briefOn ? scoutTopic!.id : null };
+      const body: CreateConversation = { topic: topic.trim(), mode, format, length, audience, temperature, speakers: drafts, scoutTopicId: briefOn ? scoutTopic!.id : null };
       const c = await api.create(body);
       await api.start(c.id);
       go(`#/studio/${c.id}`);
@@ -120,7 +125,7 @@ export function Create({ config, go, refreshConfig, toast }: Props) {
   return (
     <div className="create">
       <div className="hero">
-        <div className="tag">New episode · {MAX_TURNS} turns · {episodeLabel(config?.nextEpisode ?? 1)}</div>
+        <div className="tag">New episode · {LENGTHS[length].turns} turns · {episodeLabel(config?.nextEpisode ?? 1)}</div>
         <h1>Choose a topic. Record it with two AI hosts.</h1>
         <p>Challenge their ideas, turn up the heat, branch from any moment, and keep the episode and Iris's art.</p>
       </div>
@@ -170,7 +175,15 @@ export function Create({ config, go, refreshConfig, toast }: Props) {
         <div className="seg" role="group" aria-label="Format">
           {(Object.keys(FORMATS) as Format[]).map(k => <button key={k} aria-pressed={format === k} onClick={() => setFormat(k)}>{k === 'live' ? '● ' : ''}{FORMATS[k].label}</button>)}
         </div>
-        <p className="mode-help">{FORMATS[format].help}{format === 'live' ? ' Speaking aloud arrives with voices in Milestone 3.' : ''}</p>
+        <p className="mode-help">{FORMATS[format].help}</p>
+      </div>
+
+      <div>
+        <div className="tag" style={{ marginBottom: 8 }}>Length · listening time</div>
+        <div className="seg" role="group" aria-label="Length">
+          {(Object.keys(LENGTHS) as Length[]).map(k => <button key={k} aria-pressed={length === k} onClick={() => setLength(k)}>{LENGTHS[k].label} · ~{LENGTHS[k].minutes} min</button>)}
+        </div>
+        <p className="mode-help">{LENGTHS[length].help}</p>
       </div>
 
       <div className="dials">
@@ -214,7 +227,7 @@ export function Create({ config, go, refreshConfig, toast }: Props) {
           {blocked ? 'Real mode is blocked; see above.' : overBudget ? 'Daily limit reached.' : busy
             ? <>Another discussion is still generating. <a href={`#/studio/${config!.activeConversationId}`} style={{ color: 'var(--cue)' }}>Open it</a> to pause or stop it first.</>
             : !topic.trim() ? 'Add a topic first.'
-            : config?.providerMode === 'openrouter' ? `Uses ${MAX_TURNS} requests to free models (a few more if a turn is retried).`
+            : config?.providerMode === 'openrouter' ? `Uses about ${LENGTHS[length].turns + 1} requests to free models: one per turn, plus one for Iris (a few more if a turn is retried).`
             : 'Mock mode: scripted text, no model is called.'}
         </span>
       </div>

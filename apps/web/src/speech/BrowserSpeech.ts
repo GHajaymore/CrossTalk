@@ -14,12 +14,37 @@ export function savePrefs(p: VoicePrefs) {
 
 const synth = (): SpeechSynthesis | null => (typeof window !== 'undefined' && 'speechSynthesis' in window ? window.speechSynthesis : null);
 
-/** English voices, the most natural-sounding first (names with Natural, Neural, Premium…). */
+// Apple's joke voices: never a host.
+const NOVELTY = /\b(albert|bad news|bahh|bells|boing|bubbles|cellos|deranged|good news|hysterical|jester|organ|superstar|trinoids|whisper|wobble|zarvox)\b/i;
+
+/** How natural a voice sounds: 'natural' (neural voices), 'good', or 'basic' (older robotic ones). */
+export function voiceQuality(v: SpeechSynthesisVoice): 'natural' | 'good' | 'basic' {
+  if (/natural|neural|premium|enhanced|siri/i.test(v.name)) return 'natural';
+  // Older or robotic voices: Windows Desktop, eSpeak, Apple's Eloquence voices and its oldest Mac ones.
+  if (/desktop|espeak|robot|compact|\b(eddy|flo|reed|rocko|sandy|shelley|grandma|grandpa|fred|junior|ralph|kathy)\b/i.test(v.name)) return 'basic';
+  if (/online|google|samantha|daniel|karen|moira|tessa|serena|aaron|nicky/i.test(v.name)) return 'good';
+  return 'basic';
+}
+const QUALITY_RANK = { natural: 0, good: 1, basic: 2 } as const;
+
+/** English voices, the most natural-sounding first, your own accent first within each tier; novelty voices left out. */
 export function englishVoices(): SpeechSynthesisVoice[] {
-  const all = synth()?.getVoices() ?? [];
+  const all = (synth()?.getVoices() ?? []).filter(v => !NOVELTY.test(v.name));
   const en = all.filter(v => /^en/i.test(v.lang));
-  const rank = (v: SpeechSynthesisVoice) => (/natural|neural|premium|enhanced/i.test(v.name) ? 0 : /online|google/i.test(v.name) ? 1 : 2);
+  const mine = (typeof navigator !== 'undefined' ? navigator.language : 'en-US').toLowerCase();
+  const rank = (v: SpeechSynthesisVoice) => QUALITY_RANK[voiceQuality(v)] * 2 + (v.lang.toLowerCase().replace('_', '-') === mine ? 0 : 1);
   return (en.length ? en : all).slice().sort((a, b) => rank(a) - rank(b));
+}
+
+/** What the listener can do on this device to get more natural voices, when only basic ones are here. */
+export function betterVoicesTip(): string {
+  const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+  if (/iPhone|iPad|iPod/.test(ua)) return 'On iPhone or iPad: Settings → Accessibility → Spoken Content → Voices → English, then download a voice marked Enhanced or Premium. Free, and it sounds far more natural.';
+  if (/Android/.test(ua)) return 'On Android: Settings → search "Text-to-speech" → choose Google, then install the English voice data. Free.';
+  if (/Edg\//.test(ua)) return 'Edge has free Natural voices; if none are listed, check that you are online, then reopen this page.';
+  if (/Mac OS X/.test(ua)) return 'On a Mac: System Settings → Accessibility → Spoken Content → System voice → Manage Voices, and download an Enhanced or Premium English voice. Free.';
+  if (/Windows/.test(ua)) return 'On Windows, open CrossTalk in Microsoft Edge: it has free Natural voices that sound much more like real people.';
+  return 'Microsoft Edge has free Natural voices that sound much more like real people.';
 }
 
 /** Two different voices for the two hosts, honouring saved choices. */

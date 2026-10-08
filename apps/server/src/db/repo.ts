@@ -29,7 +29,7 @@ export function openDb(file: string): DB {
 type ConvRow = {
   id: string; title: string; topic: string; mode: string; format: string; audience: string; temperature: string;
   episode: number; speakers_json: string; parent_id: string | null; branch_turn_id: string | null;
-  branch_seq: number | null; branch_direction: string | null; scout_topic_id: string | null; publish: string | null; verdict: string | null; you_start: number | null; you_end: number | null; round_of: string | null; round: number; created_at: string; updated_at: string;
+  branch_seq: number | null; branch_direction: string | null; scout_topic_id: string | null; publish: string | null; verdict: string | null; you_start: number | null; you_end: number | null; round_of: string | null; round: number; length: string; created_at: string; updated_at: string;
 };
 type TopicRow = {
   id: string; run_id: string; date: string; rank: number; question: string; category: string; region: string;
@@ -67,7 +67,7 @@ const toConversation = (r: ConvRow): Conversation => Conversation.parse({
   id: r.id, title: r.title, topic: r.topic, mode: r.mode, format: r.format, audience: r.audience,
   temperature: r.temperature, episode: r.episode, speakers: JSON.parse(r.speakers_json) as Speakers,
   parentId: r.parent_id, branchTurnId: r.branch_turn_id, branchSeq: r.branch_seq, branchDirection: r.branch_direction,
-  scoutTopicId: r.scout_topic_id, publish: r.publish, verdict: r.verdict, youStart: r.you_start, youEnd: r.you_end, roundOf: r.round_of, round: r.round, createdAt: r.created_at, updatedAt: r.updated_at,
+  scoutTopicId: r.scout_topic_id, publish: r.publish, verdict: r.verdict, youStart: r.you_start, youEnd: r.you_end, roundOf: r.round_of, round: r.round, length: r.length, createdAt: r.created_at, updatedAt: r.updated_at,
 });
 const toCue = (r: CueRow): Intervention => Intervention.parse({
   id: r.id, kind: r.kind, text: r.text, targetSeq: r.target_seq, fromTemp: r.from_temp, toTemp: r.to_temp,
@@ -88,9 +88,9 @@ export class Repo {
 
   insertConversation(c: Conversation) {
     this.db.prepare(`INSERT INTO conversations
-      (id, title, topic, mode, format, audience, temperature, episode, speakers_json, parent_id, branch_turn_id, branch_seq, branch_direction, scout_topic_id, you_start, you_end, round_of, round, created_at, updated_at)
-      VALUES (@id, @title, @topic, @mode, @format, @audience, @temperature, @episode, @speakers, @parentId, @branchTurnId, @branchSeq, @branchDirection, @scoutTopicId, @youStart, @youEnd, @roundOf, @round, @createdAt, @updatedAt)`)
-      .run({ ...c, scoutTopicId: c.scoutTopicId ?? null, youStart: c.youStart ?? null, youEnd: c.youEnd ?? null, roundOf: c.roundOf ?? null, round: c.round ?? 1, speakers: JSON.stringify(c.speakers) });
+      (id, title, topic, mode, format, audience, temperature, episode, speakers_json, parent_id, branch_turn_id, branch_seq, branch_direction, scout_topic_id, you_start, you_end, round_of, round, length, created_at, updated_at)
+      VALUES (@id, @title, @topic, @mode, @format, @audience, @temperature, @episode, @speakers, @parentId, @branchTurnId, @branchSeq, @branchDirection, @scoutTopicId, @youStart, @youEnd, @roundOf, @round, @length, @createdAt, @updatedAt)`)
+      .run({ ...c, scoutTopicId: c.scoutTopicId ?? null, youStart: c.youStart ?? null, youEnd: c.youEnd ?? null, roundOf: c.roundOf ?? null, round: c.round ?? 1, length: c.length ?? 'normal', speakers: JSON.stringify(c.speakers) });
   }
 
   getConversation(id: string): Conversation | null {

@@ -262,4 +262,8 @@ export const MIGRATIONS: string[] = [
     SELECT conversation_id, version, art_style, art_title, caption, moment_seq, sketch_svg, created_at
     FROM artist_notes WHERE state = 'done' AND sketch_svg IS NOT NULL;
   `,
+  `
+  -- Episode length: short (8 turns), normal (16) or long (24).
+  ALTER TABLE conversations ADD COLUMN length TEXT NOT NULL DEFAULT 'normal';
+  `,
 ];

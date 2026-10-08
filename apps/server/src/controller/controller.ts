@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import {
-  assertTransition, blockedHit, BRANCH_TURNS, DEFAULT_RULES, extractStance, mindChange, STANCE_END_JOBS, STANCE_START_JOBS, jobIn, resolveSpeakers, speakerFor, stepTemperature, TransitionError,
+  assertTransition, blockedHit, BRANCH_TURNS, DEFAULT_RULES, extractStance, mindChange, STANCE_END_JOBS, STANCE_START_JOBS, jobIn, resolveSpeakers, turnTotal, speakerFor, stepTemperature, TransitionError,
   type BranchInput, type Conversation, type ConversationView, type CreateConversation, type CueInput, type Intervention,
   type LiveTurn, type Rules, type Run, type RunState, type StreamEvent,
 } from '@crosstalk/shared';
@@ -144,6 +144,7 @@ export class ConversationController {
       youEnd: null,
       roundOf: null,
       round: 1,
+      length: input.length ?? 'normal',
       createdAt: at,
       updatedAt: at,
     };
@@ -212,7 +213,7 @@ export class ConversationController {
 
   /** The last turn a conversation generates: the episode length, or a branch point plus 4. */
   private limitFor(c: Conversation) {
-    return c.branchSeq ? c.branchSeq + BRANCH_TURNS : this.opts.maxTurns;
+    return c.branchSeq ? c.branchSeq + BRANCH_TURNS : Math.min(turnTotal(c), this.opts.maxTurns);
   }
 
   /**

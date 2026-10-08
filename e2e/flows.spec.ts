@@ -3,6 +3,20 @@ import { fastMock, finishedEpisode } from './helpers';
 
 test.beforeEach(async ({ request }) => { await fastMock(request); });
 
+test('length: a Short episode is 8 turns, chosen by listening time', async ({ page }) => {
+  await page.goto('/#/create');
+  const len = page.getByRole('group', { name: 'Length' });
+  await len.getByRole('button', { name: /Short · ~3 min/ }).click();
+  await expect(page.getByText(/8 turns: the opening/)).toBeVisible();
+  await page.getByRole('button', { name: /Start recording/ }).click();
+  await expect(page.locator('.status-line')).toContainText('Complete', { timeout: 60_000 });
+  await expect(page.locator('.pip')).toHaveCount(8);
+  // Remembered for next time on this device; put it back for the other tests.
+  await page.goto('/#/create');
+  await expect(page.getByRole('group', { name: 'Length' }).getByRole('button', { name: /Short/ })).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('group', { name: 'Length' }).getByRole('button', { name: /Normal/ }).click();
+});
+
 test('create → run → stop → refresh keeps every finished turn', async ({ page }) => {
   await page.goto('/#/create');
   await page.getByRole('button', { name: /Start recording/ }).click();

@@ -2,6 +2,7 @@ import { useEffect, useRef, type ReactNode } from 'react';
 import { initials as toInitials, type RunState, type Temperature } from '@crosstalk/shared';
 import { HeatMeter } from '../lib/HeatMeter';
 import { clock } from '../lib/text';
+import { Portrait } from './Portrait';
 import './StudioSet.css';
 
 export type SeatKey = 'A' | 'B' | 'G';
@@ -117,10 +118,11 @@ export function StudioSet(p: StudioSetProps) {
         <div className="set-lamp" />
         {who.media
           ? <div className="set-media">{who.media}</div>
-          : <div className="set-avatar"><span className="set-halo" /><span className="set-ini">{k === 'G' ? '🎙' : toInitials(who.name)}</span></div>}
+          : k !== 'G'
+            ? <Portrait name={who.name} role={who.role} seat={k} mood={p.temperature} />
+            : <div className="set-avatar"><span className="set-halo" /><span className="set-ini">{k === 'G' ? '🎙' : toInitials(who.name)}</span></div>}
         <Mic />
         <span className="set-camtag">{k === 'G' ? 'Guest · real person' : 'Host · AI presenter'}</span>
-        {k !== 'G' && !who.media && <span className="set-vidnote">live video here · Phase 2</span>}
         <span className="set-livedot" aria-hidden="true" />
       </div>
       <div className="set-l3"><b>{who.name}</b><span>{who.role}</span></div>
@@ -129,7 +131,7 @@ export function StudioSet(p: StudioSetProps) {
   );
 
   return (
-    <section className={`set${p.guest ? ' has-guest' : ''}`} data-temp={p.temperature} aria-label="Studio">
+    <section className={`set${p.guest ? ' has-guest' : ''}`} data-temp={p.temperature} data-speaking={p.speaking ?? ''} aria-label="Studio">
       <div className="set-wall" />
       <header className="set-top">
         <span className={`set-rec ${recClass}`}>{recText}</span>

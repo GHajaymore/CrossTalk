@@ -15,7 +15,7 @@ export function exportJson(c: ConversationView, usage: UsageRow[]) {
       audience: c.audience, temperature: c.temperature, createdAt: c.createdAt, updatedAt: c.updatedAt,
       state: c.run?.state ?? 'idle', turnsPlanned: turnTotal(c), listenerVerdict: c.verdict ?? null,
       listenerStance: { start: c.youStart ?? null, end: c.youEnd ?? null },
-      round: c.round, roundOf: c.roundOf,
+      round: c.round, roundOf: c.roundOf, length: c.length,
     },
     speakers: [c.speakers.A, c.speakers.B].map(s => ({ id: s.id, name: s.name, role: s.role ?? '', persona: s.persona, lens: s.lens, modelId: s.modelId })),
     branch: c.parentId ? { parentId: c.parentId, parentTitle: c.parent?.title ?? null, branchTurnId: c.branchTurnId, branchSeq: c.branchSeq, direction: c.branchDirection } : null,

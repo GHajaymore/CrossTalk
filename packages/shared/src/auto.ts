@@ -1,7 +1,7 @@
 // Auto personalities and auto host names (docs/PLAN.md, "Speakers" and "Real people").
 // Pure keyword rules, no model call, so the server and the Create screen always agree.
-import { BRANCH_JOBS, BRANCH_TURNS, JOBS, MAX_TURNS, PERSONAS, STANCE_END_JOBS, STANCE_START_JOBS } from './constants';
-import type { Audience, PersonaKey, SpeakerDraft, SpeakerId, Speakers, Temperature } from './schemas';
+import { BRANCH_JOBS, BRANCH_TURNS, JOBS, LENGTHS, LONG_JOBS, PERSONAS, SHORT_PLAN, STANCE_END_JOBS, STANCE_START_JOBS } from './constants';
+import type { Audience, Length, PersonaKey, SpeakerDraft, SpeakerId, Speakers, Temperature } from './schemas';
 
 type Pair = [PersonaKey, PersonaKey];
 
@@ -81,12 +81,22 @@ export function resolveSpeakers(
 }
 
 export const speakerFor = (seq: number): SpeakerId => (seq % 2 === 1 ? 'A' : 'B');
-export const jobFor = (seq: number) => JOBS[seq - 1] ?? 'Continue';
-/** How many turns this conversation has when finished: 16, or a branch point plus its 4 new turns. */
-export const turnTotal = (c: { branchSeq: number | null }) => (c.branchSeq ? c.branchSeq + BRANCH_TURNS : MAX_TURNS);
-/** A turn's job: the episode's 16 jobs, or the branch jobs after a branch point. */
-export const jobIn = (c: { branchSeq: number | null }, seq: number) =>
-  c.branchSeq && seq > c.branchSeq ? BRANCH_JOBS[seq - c.branchSeq - 1] ?? 'Continue' : jobFor(seq);
+/**
+ * Which of Normal's 16 turns a turn plays (for mock mode's scripted lines): itself in Normal, its place in
+ * the short plan, or in Long the same turn for the first 12 and last 4, and null for Long's eight extra ones.
+ */
+export function normalSeqFor(seq: number, length: Length = 'normal'): number | null {
+  if (length === 'short') return SHORT_PLAN[seq - 1] ?? seq;
+  if (length === 'long') return seq <= 12 ? seq : seq > 20 ? seq - 8 : null;
+  return seq;
+}
+export const jobFor = (seq: number, length: Length = 'normal') =>
+  (length === 'long' ? LONG_JOBS[seq - 1] : JOBS[(normalSeqFor(seq, length) ?? seq) - 1]) ?? 'Continue';
+/** How many turns this conversation has when finished: 8, 16 or 24 by length, or a branch point plus its 4 new turns. */
+export const turnTotal = (c: { branchSeq: number | null; length?: Length }) => (c.branchSeq ? c.branchSeq + BRANCH_TURNS : LENGTHS[c.length ?? 'normal'].turns);
+/** A turn's job: the episode's jobs, or the branch jobs after a branch point. */
+export const jobIn = (c: { branchSeq: number | null; length?: Length }, seq: number) =>
+  c.branchSeq && seq > c.branchSeq ? BRANCH_JOBS[seq - c.branchSeq - 1] ?? 'Continue' : jobFor(seq, c.length);
 const TEMP_ORDER: Temperature[] = ['calm', 'lively', 'heated'];
 /** One step up or down the Temperature dial. Kids stop at Lively. Null at either end. */
 export function stepTemperature(t: Temperature, direction: 'up' | 'down', audience: Audience): Temperature | null {

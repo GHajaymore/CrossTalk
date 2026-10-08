@@ -142,6 +142,19 @@ export function mockTurnText(topic: string, seq: number, _speakerId: SpeakerId, 
   return (PUSH_BACK_TURNS.has(seq) ? HEAT_LEADS[temperature] : '') + base;
 }
 
+/** Long episodes: the eight deeper beats between Normal's middle and its ending. Topic-neutral, for mock mode. */
+const LONG_LINES: Record<string, string> = {
+  'Dig in': "Let me stay on that curveball for a second, because I think it changes the picture more than it sounds.",
+  Counterpoint: "I'm not sure it does. The people living with this every day would say the basics haven't changed one bit.",
+  'Second story': "Here's another scene, then. Picture someone trying this for the first time on a busy Monday, with nobody around to help.",
+  'Hard case': "And that's the hard case, the one where good intentions fall apart. Who catches them when it goes wrong?",
+  'Middle path': "Maybe the answer is a middle path: start small, keep a way back, and let the people affected set the pace.",
+  'Stress test': "I'd stress-test that, though. Small pilots always look good, because the keenest people volunteer first.",
+  'What changed': "Fair. Honestly, this has shifted me a bit. I came in surer than I am now, mostly because of that hard case.",
+  'Open question': "Same here. The question I can't shake is who keeps paying for it once the novelty wears off.",
+};
+export const mockLongText = (job: string) => LONG_LINES[job] ?? 'Let me pick up where we left off.';
+
 /** Branch turns: the listener steered the show somewhere new. */
 export function mockBranchText(job: string, direction: string) {
   const d = direction.trim().replace(/[.?!]*$/, '');

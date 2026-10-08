@@ -569,3 +569,6 @@ img.living{object-fit:cover}
 .style-pick.off{cursor:default}
 
 .fail-reason{margin:-4px 0 12px;padding:10px 12px;border:1px dashed rgba(240,128,110,.5);border-radius:8px;color:var(--bad);font-size:14px}
+
+.vq{white-space:nowrap}.vq.natural{color:var(--cue)}
+.voice-tip{border:1px dashed rgba(var(--cue-rgb),.45);border-radius:8px;padding:8px 10px;background:var(--cue-soft);color:var(--text)}
