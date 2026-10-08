@@ -42,6 +42,9 @@ CrossTalk is a prototype for one person. These are the honest gaps.
   Mastodon, Hacker News, Wikipedia). Sites change their feeds now and then; when one can't be read,
   the tray says so and the others still count. Reddit, Bluesky and Mastodon are opinions, reported as
   what people are saying. X/Twitter, TikTok and Instagram have no free access, so they aren't included.
+- **Raise your hand** pauses the recording at the end of the current line; the host's invitation is a
+  short written line (no request) in their device voice. If you don't speak within 15 seconds, the
+  show carries on. Speaking on air uses one of your cues, like Take the mic.
 - **The hosts are living portraits, not photos or video.** They're invented people drawn in the app,
   with a mouth that follows the voice and small random movements. Photo-real presenters need a paid
   service, and CrossTalk never uses a real person's likeness.

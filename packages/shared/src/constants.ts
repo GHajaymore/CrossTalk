@@ -38,6 +38,10 @@ export const LONG_JOBS = [
 export const DAILY_LIMIT_DEFAULT = 40;
 /** The default listener cue limit; the Control room can set 0–6. */
 export const CUE_LIMIT = 3;
+/** The pause reason when a listener raised their hand: the next host invites them in. */
+export const HAND_RAISED = 'hand raised';
+/** How long the hosts wait for someone they invited in before carrying on. */
+export const HAND_WAIT_S = 15;
 /** Mind-change meter: the jobs where each host says how sure they are (first lines) and whether it moved (last lines). */
 export const STANCE_START_JOBS = ['Hello', 'First take'] as const;
 export const STANCE_END_JOBS = ['Takeaway', 'Sign-off'] as const;

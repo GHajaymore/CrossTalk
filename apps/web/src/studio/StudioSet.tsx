@@ -13,6 +13,8 @@ export type Presenter = {
   role: string;
   /** Replaces the initials, e.g. a live <video> from a PresenterProvider (Phase 2). */
   media?: ReactNode;
+  /** The guest seat's sign, e.g. ✋ while a listener waits to be invited in. */
+  icon?: string;
 };
 
 export type StudioSetProps = {
@@ -120,7 +122,7 @@ export function StudioSet(p: StudioSetProps) {
           ? <div className="set-media">{who.media}</div>
           : k !== 'G'
             ? <Portrait name={who.name} role={who.role} seat={k} mood={p.temperature} />
-            : <div className="set-avatar"><span className="set-halo" /><span className="set-ini">{k === 'G' ? '🎙' : toInitials(who.name)}</span></div>}
+            : <div className="set-avatar"><span className="set-halo" /><span className="set-ini">{k === 'G' ? who.icon ?? '🎙' : toInitials(who.name)}</span></div>}
         <Mic />
         <span className="set-camtag">{k === 'G' ? 'Guest · real person' : 'Host · AI presenter'}</span>
         <span className="set-livedot" aria-hidden="true" />

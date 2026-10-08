@@ -29,6 +29,7 @@ export const api = {
   get: (id: string) => call<ConversationView>(`/conversations/${id}`),
   create: (c: CreateConversation) => call<ConversationView>('/conversations', { method: 'POST', body: JSON.stringify(c) }),
   start: (id: string) => call<ConversationView>(`/conversations/${id}/start`, { method: 'POST' }),
+  raiseHand: (id: string) => call<ConversationView>(`/conversations/${id}/hand`, { method: 'POST' }),
   pause: (id: string) => call<ConversationView>(`/conversations/${id}/pause`, { method: 'POST' }),
   stop: (id: string) => call<ConversationView>(`/conversations/${id}/stop`, { method: 'POST' }),
   rename: (id: string, title: string) => call<ConversationView>(`/conversations/${id}`, { method: 'PATCH', body: JSON.stringify({ title }) }),

@@ -298,6 +298,11 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
   app.get('/api/iris/feedback', async () => repo.listFeedback(20));
   app.delete<{ Params: { id: string } }>('/api/iris/feedback/:id', async req => { repo.deleteFeedback(req.params.id); return repo.listFeedback(20); });
 
+  // Raise your hand: the next host invites you in at the end of this line.
+  app.post<{ Params: { id: string } }>('/api/conversations/:id/hand', async req => {
+    controller.raiseHand(req.params.id);
+    return view(req.params.id);
+  });
   app.post<{ Params: { id: string } }>('/api/conversations/:id/pause', async req => {
     controller.pause(req.params.id);
     return view(req.params.id);
