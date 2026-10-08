@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { makePoster, posterName } from '../lib/poster';
 import { ARTIST, AUDIENCES, episodeLabel, MODES, NOTICE, TEMPERATURES, type ConversationView } from '@crosstalk/shared';
 
@@ -24,13 +24,16 @@ function PosterTile({ c, toast }: { c: ConversationView; toast: (m: string) => v
   const [blob, setBlob] = useState<Blob | null>(null);
   const [busy, setBusy] = useState(false);
   useEffect(() => () => { if (url) URL.revokeObjectURL(url); }, [url]);
+  // A vote, a new drawing or a rename makes the poster out of date: offer a fresh one.
+  const stamp = `${c.verdict}|${c.artist?.version}|${c.title}|${c.turns.length}`;
+  useEffect(() => { setUrl(null); setBlob(null); }, [stamp]);
   const make = async () => {
     setBusy(true);
     try { const b = await makePoster(c); setBlob(b); setUrl(URL.createObjectURL(b)); }
     catch (e) { toast((e as Error).message); } finally { setBusy(false); }
   };
-  const file = blob ? new File([blob], posterName(c), { type: 'image/png' }) : null;
-  const canShare = !!file && typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] });
+  const file = useMemo(() => (blob ? new File([blob], posterName(c), { type: 'image/png' }) : null), [blob]); // eslint-disable-line react-hooks/exhaustive-deps
+  const canShare = useMemo(() => !!file && typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] }), [file]);
   return (
     <div className="kit-tile poster-tile"><b>Episode poster</b>
       {url ? <img className="poster-preview" src={url} alt={`Poster for ${c.topic}`} /> : <p>The question, the hosts, Iris's sketch and quote, and where each host landed, in one image to share.</p>}

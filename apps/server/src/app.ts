@@ -382,7 +382,9 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
     if (v !== 'held' && v !== 'won' && v !== 'torn') throw new ControllerError('Pick held, won or torn.', 400);
     if (c.mode !== 'hotseat') throw new ControllerError('Only Hot seat episodes ask who moved you.', 409);
     if (repo.latestRun(c.id)?.state !== 'completed') throw new ControllerError('Say who moved you once the episode has finished.', 409);
+    if (c.publish === 'approved') throw new ControllerError("This episode is approved for publishing, so its vote can't change.", 409);
     repo.setVerdict(c.id, v);
+    repo.touchConversation(c.id, new Date().toISOString());
     controller.notify(c.id);
     return view(c.id);
   });
