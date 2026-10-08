@@ -467,7 +467,7 @@ Eight milestones, each ending in a demo before approving the next. Nothing needs
    - Tests: no-go topics never reach the tray; a brief bullet without a source is rejected; Autopilot runs at most once a day; a failing source doesn't stop the others.
    - *Demo gate:* the tray fills at 7 a.m. and, with Autopilot on, an episode with Iris's perspective and sketch is ready.
 
-8. **Control room (admin)**
+8. **Control room (admin)** *(built Oct 8, 2026. Online the Control room has its own ADMIN_CODE lock in every mode, because the site itself is open in mock mode; on your own computer it stays open. Producer notes are stored as Interventions with kind 'note'.)*
    - Admin screen with Overview, Live control, Publishing, Topics and Rules tabs, matching docs/prototype.html.
    - Rules enforced on the server (blocked terms, audience and temperature switches, Politics in the Scout, cue limit); producer notes; approve or hold; pin or hide topics.
    - Tests: a blocked topic can't start; producer notes don't count as listener cues; a held episode never enters a publish queue.

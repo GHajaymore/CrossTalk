@@ -1,15 +1,15 @@
 import { useEffect, useState } from 'react';
-import { AUTOPILOT_REQUESTS, SCOUT_CATS, SCOUT_REGIONS, scoutPicks, splitLabel, type Audience, type ScoutPrefs, type ScoutTopic } from '@crosstalk/shared';
+import { AUTOPILOT_REQUESTS, SCOUT_CATS, SCOUT_REGIONS, scoutPicks, splitLabel, type Audience, type Rules, type ScoutPrefs, type ScoutTopic } from '@crosstalk/shared';
 import { api, type ScoutView } from '../api/client';
 import { BriefBox } from './BriefBox';
 import { ScoutPrefsEditor } from './ScoutPrefsEditor';
 
-type Props = { audience: Audience; selected: string | null; onPick: (t: ScoutTopic) => void; toast: (m: string) => void; real: boolean };
+type Props = { rules: Rules; audience: Audience; selected: string | null; onPick: (t: ScoutTopic) => void; toast: (m: string) => void; real: boolean };
 
 const when = (iso: string) => new Date(iso).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' });
 
 /** Today · from the Scout: what people are arguing about, each with a sourced brief. */
-export function TodayTray({ audience, selected, onPick, toast, real }: Props) {
+export function TodayTray({ rules, audience, selected, onPick, toast, real }: Props) {
   const [data, setData] = useState<ScoutView | null>(null);
   const [running, setRunning] = useState(false);
   useEffect(() => { api.scout().then(setData).catch(() => {}); }, []);
@@ -27,7 +27,7 @@ export function TodayTray({ audience, selected, onPick, toast, real }: Props) {
   };
 
   const { prefs, status, topics } = data;
-  const picks = scoutPicks(topics, prefs, audience).slice(0, 6);
+  const picks = scoutPicks(topics, prefs, audience, rules).slice(0, 6);
   const last = status.lastRun;
   const [h, m] = status.time.split(':').map(Number);
   const at = new Date(2000, 0, 1, h, m).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
@@ -38,7 +38,7 @@ export function TodayTray({ audience, selected, onPick, toast, real }: Props) {
         <div><span className="tag">Today · from the Scout{real ? '' : ' · sample topics'}</span><h2>What people are arguing about</h2></div>
         <label className="switch"><input type="checkbox" checked={prefs.autopilot} onChange={e => save({ ...prefs, autopilot: e.target.checked })} /> Autopilot</label>
       </div>
-      <ScoutPrefsEditor prefs={prefs} onChange={save} audience={audience} />
+      <ScoutPrefsEditor prefs={prefs} onChange={save} audience={audience} allowPolitics={rules.allowPolitics} />
       <p className="hint">
         {prefs.rank === 'buzz' ? 'Ranked by how much people are talking about it.' : 'Ranked by how divided people are.'}{' '}
         The Scout looks every day at {at}{last ? `; last looked ${when(last.startedAt)}` : ''}.{' '}
@@ -54,7 +54,7 @@ export function TodayTray({ audience, selected, onPick, toast, real }: Props) {
           <div className="tray">
             {picks.map(t => (
               <article key={t.id} className={`topic-card${selected === t.id ? ' sel' : ''}`}>
-                <span className="tag cat">{SCOUT_CATS[t.category]} · {t.region === 'local' && prefs.place ? prefs.place : SCOUT_REGIONS[t.region]}</span>
+                <span className="tag cat">{t.pinned ? '📌 ' : ''}{SCOUT_CATS[t.category]} · {t.region === 'local' && prefs.place ? prefs.place : SCOUT_REGIONS[t.region]}</span>
                 <div className="split">
                   <span className="sbar" aria-hidden="true"><i style={{ width: `${prefs.rank === 'buzz' ? t.buzz : t.split}%` }} /></span>
                   <span className="tag">{prefs.rank === 'buzz' ? `Talked about · ${t.buzz}` : `${splitLabel(t.split)} · ${t.split}–${100 - t.split}`}</span>

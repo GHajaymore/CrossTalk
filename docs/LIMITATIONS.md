@@ -39,6 +39,15 @@ CrossTalk is a prototype for one person. These are the honest gaps.
   use per day on its side, so a run can pause before the app's limit.
 - **Lowering `MAX_TURNS_PER_RUN`** shortens normal episodes, but the screen and prompts still say 16 turns.
 
+## Control room
+
+- **One admin, one code.** The Control room's lock is a single shared `ADMIN_CODE`, not accounts.
+- **The audit log lives in the app's database**, so on the free Render plan it is wiped with everything
+  else on restart.
+- **Publishing queues aren't connected yet.** Approving an episode puts it in the publish queue; nothing
+  is sent anywhere until podcast, social and shop publishers exist (Phase 2), and never without approval.
+- **Blocked words are matched as whole words**, so variants ("cryptocurrency" for "crypto") need their own line.
+
 ## Hosting (the free Render plan)
 
 - It sleeps after 15 idle minutes; the next visit takes about a minute.

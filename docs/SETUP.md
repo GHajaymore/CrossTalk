@@ -42,6 +42,13 @@ most-read and any RSS feeds in `SCOUT_RSS_FEEDS`, then uses **1 request** to ran
 - Tragedies, crime, health scares and private lives are always filtered out. Politics and Scandals are
   off until you turn them on, and never shown for Kids.
 
+## Control room
+
+**Control room** in the top bar is for you, the admin: an overview, live control with producer notes,
+publishing approvals (nothing is ever published without your OK), Scout topics to pin or hide, and the
+rules (blocked words, Mature, Heated, Politics in the Scout, listener cues per episode). The rules are
+enforced by the server, not just the screen. Online it needs `ADMIN_CODE` (see `docs/DEPLOY.md`).
+
 ## Natural recorded voices (optional)
 
 `tools/voice` renders an episode to an MP3 with free, open-source voices (Kokoro) that run on your

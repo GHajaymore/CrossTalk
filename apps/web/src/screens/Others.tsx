@@ -111,13 +111,3 @@ function ScoutSettings({ real }: { real: boolean }) {
     </section>
   );
 }
-
-export function ControlRoom({ config }: { config: AppConfig | null }) {
-  return (
-    <div className="page">
-      <div><span className="tag">Admin · only you</span><h1>Control room</h1></div>
-      <p className="hint">Overview, Live control with producer notes, Publishing approvals, Topics and Rules arrive in Milestone 8.</p>
-      <Footer config={config} />
-    </div>
-  );
-}

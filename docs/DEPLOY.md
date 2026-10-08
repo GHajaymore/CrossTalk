@@ -20,6 +20,15 @@ it asks for your `ACCESS_CODE` and refuses to start without one: you type it onc
 that device stays signed in for 30 days. After 5 wrong tries from one address it waits 10 minutes.
 Pick a code of at least 8 characters that you don't use anywhere else, for example three random words.
 
+## The Control room's own lock
+
+Online, the **Control room** (rules, producer notes, publishing, topics) is always locked, even in
+mock mode, so visitors can look around but can't change anything. To use it online, add an
+`ADMIN_CODE` in Render: your crosstalk service → **Environment** → **Add Environment Variable** →
+`ADMIN_CODE` = any 8+ characters you'll remember → **Save Changes**. Type it once in the Control room
+on each device. If you set `ACCESS_CODE` too, that also opens the Control room. On your own computer it
+is always open.
+
 ## Steps
 
 1. **Merge this branch into `main`** on GitHub. Render deploys `main`.

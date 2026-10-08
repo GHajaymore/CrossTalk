@@ -141,7 +141,8 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
     />
   );
 
-  const cues = cueState(view, live);
+  const cueLimit = config?.rules.cueLimit ?? CUE_LIMIT;
+  const cues = cueState(view, live, cueLimit);
   const branchBlocked = st === 'generating' ? 'Pause or stop the episode first' : null;
   const deeper = async (seq: number) => {
     try { setView(await api.addCue(id, { kind: 'deeper', targetSeq: seq })); toast(`Go deeper on turn ${seq} · lands before turn ${cues.landsBefore}`); }
@@ -243,7 +244,7 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
         </>}
         <div className="status-line" aria-live="polite">
           <span><b>{statusWord}</b>{view.run?.pauseRequested ? ' · pausing after this turn' : ''}</span>
-          <span>{view.interventions.filter(c => !c.fromOriginal).length} of {CUE_LIMIT} cues used</span>
+          <span>{view.interventions.filter(c => !c.fromOriginal && c.kind !== 'note').length} of {cueLimit} cues used</span>
         </div>
 
         <SetupBanner config={config} />
@@ -295,7 +296,7 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
       </section>
       {branchFrom && <BranchDialog seq={branchFrom} who={sp[speakerFor(branchFrom)].name} onClose={() => setBranchFrom(null)} onCreate={createBranch} />}
       <SidePanel open={panelOpen} onClose={() => setPanelOpen(false)}
-        cue={<CuePanel view={view} live={live} setView={setView} toast={toast} />}
+        cue={<CuePanel view={view} live={live} setView={setView} toast={toast} limit={cueLimit} allowHeated={config?.rules.allowHeated ?? true} />}
         branches={<BranchList view={view} />}
         voices={<VoicePicker names={{ A: sp.A.name, B: sp.B.name }} voices={voices} prefs={prefs} update={update}
           preview={k => new BrowserSpeech(() => prefs).speak([{ key: 'p', speakerId: k, text: `Hi, I'm ${sp[k].name}. This is how I'll sound on the show.` }], {})} />} />

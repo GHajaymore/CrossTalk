@@ -3,33 +3,35 @@ import { CUE_LIMIT, CUE_TEXT_MAX, stepTemperature, TEMPERATURES, turnTotal, type
 import { api } from '../api/client';
 import { CUE_LABEL } from './CueCard';
 
-type Props = { view: ConversationView; live: LiveTurn | null; setView: (v: ConversationView) => void; toast: (m: string) => void };
+type Props = { view: ConversationView; live: LiveTurn | null; setView: (v: ConversationView) => void; toast: (m: string) => void; limit: number; allowHeated: boolean };
 
 /** Whether a cue can be sent now (the same rules the server checks), and where it would land. */
-export function cueState(view: ConversationView, live: LiveTurn | null) {
+export function cueState(view: ConversationView, live: LiveTurn | null, limit = CUE_LIMIT) {
   const last = view.turns.reduce((m, t) => Math.max(m, t.seq), 0);
   const st = view.run?.state ?? 'idle';
-  const own = view.interventions.filter(c => !c.fromOriginal);
+  // Producer notes never use the listener's cues.
+  const own = view.interventions.filter(c => !c.fromOriginal && c.kind !== 'note');
   const used = own.length;
   const waiting = own.find(c => c.status === 'queued');
   const landsBefore = last + (live ? 2 : 1);
   const blocked = st === 'completed' || st === 'cancelled' ? 'This episode has finished. Branch from any turn to take it somewhere new.'
     : !last ? 'Cues land between turns. Start the episode first.'
     : landsBefore > turnTotal(view) ? 'The episode is about to end, so there are no turns left for a cue.'
-    : used >= CUE_LIMIT ? `You've used all ${CUE_LIMIT} cues for this episode.`
+    : !limit ? 'Listener cues are switched off in the Control room.'
+    : used >= limit ? `You've used all ${limit} cues for this episode.`
     : waiting ? `Your ${CUE_LABEL[waiting.kind].toLowerCase()} cue lands before turn ${waiting.appliesBeforeSeq}. Take it back from the transcript to send a different one.`
     : null;
-  return { blocked, landsBefore, used, last };
+  return { blocked, landsBefore, used, last, limit };
 }
 
 /** Challenge · Go deeper · Take the mic · Temperature. Each lands at the next turn boundary and uses one of 3 cues. */
-export function CuePanel({ view, live, setView, toast }: Props) {
+export function CuePanel({ view, live, setView, toast, limit: cueLimit, allowHeated }: Props) {
   const [challenge, setChallenge] = useState('');
   const [guest, setGuest] = useState('');
   const turns = view.turns;
   const [target, setTarget] = useState<number | ''>('');
   const [busy, setBusy] = useState(false);
-  const { blocked, landsBefore, used, last } = cueState(view, live);
+  const { blocked, landsBefore, used, last, limit } = cueState(view, live, cueLimit);
 
   const send = async (cue: CueInput, done?: () => void) => {
     setBusy(true);
@@ -39,12 +41,13 @@ export function CuePanel({ view, live, setView, toast }: Props) {
   };
   const off = !!blocked || busy;
   const down = stepTemperature(view.temperature, 'down', view.audience);
-  const up = stepTemperature(view.temperature, 'up', view.audience);
+  const stepUp = stepTemperature(view.temperature, 'up', view.audience);
+  const up = stepUp === 'heated' && !allowHeated ? null : stepUp;
   const deeperOn = target || last;
 
   return <>
     <div className={`cue-status${blocked ? ' blocked' : ''}`} role="status">
-      <span className="counter">{CUE_LIMIT - used} of {CUE_LIMIT} cues left</span>
+      <span className="counter">{Math.max(0, limit - used)} of {limit} cues left</span>
       <span>{blocked ?? `Your next cue lands before turn ${landsBefore}.`}</span>
     </div>
     <div className="voice-row"><h3>Challenge a claim</h3>
