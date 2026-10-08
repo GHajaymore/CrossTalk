@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import type { IrisFeedback } from '@crosstalk/shared';
 import { sketchSrc } from '../studio/ArtistCard';
 import { MAX_TURNS, MODES, type AppConfig, type MockSettings } from '@crosstalk/shared';
 import { api, type ConversationSummary } from '../api/client';
@@ -12,7 +11,7 @@ export function Library({ config }: { config: AppConfig | null }) {
   useEffect(() => { api.list().then(setItems).catch(() => setItems([])); }, []);
   return (
     <div className="page">
-      <div><h1>Library</h1><p className="hint">Each episode shows Iris's sketch. Rename, export, delete and branches arrive in Milestone 6.</p></div>
+      <div><h1>Episodes</h1><p className="hint">Each episode shows Iris's sketch. Her full gallery is on the <a href="#/iris">Iris</a> page. Rename, export, delete and branches arrive in Milestone 6.</p></div>
       {!items ? <p className="hint">Loading…</p> : !items.length ? <p className="hint">No discussions yet. Start one from Create.</p> : (
         <ul className="lib-list">
           {items.map(c => {
@@ -44,26 +43,6 @@ export function Library({ config }: { config: AppConfig | null }) {
   );
 }
 
-function IrisLearning() {
-  const [notes, setNotes] = useState<IrisFeedback[] | null>(null);
-  useEffect(() => { api.irisFeedback().then(setNotes).catch(() => setNotes([])); }, []);
-  return (
-    <section className="sec"><h2>What Iris has learned</h2>
-      <p className="hint">Iris reads your latest 10 notes before every drawing. Tell her what you think on her card after an episode.</p>
-      {!notes ? <p className="hint">Loading…</p> : !notes.length ? <p className="hint">Nothing yet. After an episode, use "Help Iris learn" on her card.</p> : (
-        <ul className="learned">
-          {notes.map(n => (
-            <li key={n.id}>
-              <span>{n.rating === 'up' ? '👍' : '👎'} {n.note || (n.rating === 'up' ? 'Liked it' : 'Wanted something different')}{n.artTitle && <span className="hint"> · on “{n.artTitle}”</span>}</span>
-              <button onClick={async () => setNotes(await api.forgetIrisFeedback(n.id))}>Forget</button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
-  );
-}
-
 export function Settings({ config, refreshConfig }: { config: AppConfig | null; refreshConfig: () => void }) {
   const [checking, setChecking] = useState(false);
   const real = config?.providerMode === 'openrouter';
@@ -88,7 +67,7 @@ export function Settings({ config, refreshConfig }: { config: AppConfig | null; 
 
   return (
     <div className="page">
-      <div><h1>Settings</h1><p className="hint">Voices and Scout settings arrive in later milestones.</p></div>
+      <div><h1>Settings</h1><p className="hint">Voices and Scout settings arrive in later milestones. What Iris has learned from you is on the <a href="#/iris">Iris</a> page.</p></div>
       <SetupBanner config={config} onSettings />
       <section className="sec"><h2>Models</h2>
         <p className="hint">Read-only here. Models are set in the server's settings (the <code>.env</code> file, or the cloud environment's variables) and must be different IDs.</p>
@@ -105,7 +84,6 @@ export function Settings({ config, refreshConfig }: { config: AppConfig | null; 
           <span className="hint">{config?.guard.checkedAt ? `Last checked ${new Date(config.guard.checkedAt).toLocaleTimeString()}. ` : ''}Each model must show $0 on OpenRouter's own price list, or runs are blocked. A ":free" name alone doesn't count.</span>
         </div>}
       </section>
-      <IrisLearning />
       <section className="sec"><h2>Usage today</h2>
         <dl className="kv">
           <dt>Requests</dt><dd>{config ? `${config.requestsToday} of ${config.dailyLimit} (every attempt counts, including retries)` : '…'}</dd>

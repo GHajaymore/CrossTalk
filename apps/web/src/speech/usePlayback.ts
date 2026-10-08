@@ -27,6 +27,8 @@ export type Playback = {
   pause: () => void;
   resume: () => void;
   stop: () => void;
+  /** Only a rendered recording has a real timeline you can scrub and speed up. */
+  clock?: { position: number; duration: number; rate: number; seek: (sec: number) => void; setRate: (r: number) => void };
 };
 
 /** The device's voices, refreshed when the browser finishes loading them. */

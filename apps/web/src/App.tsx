@@ -2,16 +2,18 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { AppConfig } from '@crosstalk/shared';
 import { api } from './api/client';
 import { Create } from './screens/Create';
+import { IrisPage } from './screens/Iris';
 import { ControlRoom, Library, Settings } from './screens/Others';
-import { Studio } from './screens/Studio';
+import { Studio, STUDIO_TABS, type StudioTab } from './screens/Studio';
 
-// Routes live in the URL hash (#/studio/<id>), so a refresh reopens the same discussion.
+// Routes live in the URL hash (#/studio/<id>/<tab>), so a refresh reopens the same discussion and view.
 const parse = (h: string) => {
-  const [route = 'create', id = null] = h.replace(/^#\/?/, '').split('/') as [string?, string?];
-  return { route: route || 'create', id };
+  const [route = 'create', id = null, view = null] = h.replace(/^#\/?/, '').split('/') as [string?, string?, string?];
+  const tab: StudioTab = STUDIO_TABS.some(([k]) => k === view) ? view as StudioTab : 'watch';
+  return { route: route === 'library' ? 'episodes' : route || 'create', id, tab };
 };
 
-const NAV: [string, string][] = [['create', 'Create'], ['studio', 'Studio'], ['library', 'Library'], ['settings', 'Settings'], ['control', 'Control room']];
+const NAV: [string, string][] = [['create', 'Create'], ['studio', 'Studio'], ['episodes', 'Episodes'], ['iris', 'Iris'], ['settings', 'Settings'], ['control', 'Control room']];
 
 export function App() {
   const [loc, setLoc] = useState(() => parse(location.hash));
@@ -46,8 +48,9 @@ export function App() {
   if (loc.route === 'studio' && loc.id) lastStudio.current = loc.id;
 
   let screen;
-  if (loc.route === 'studio') screen = loc.id ? <Studio key={loc.id} id={loc.id} config={config} refreshConfig={refreshConfig} toast={toast} /> : <div className="empty-stage">Opening the studio…</div>;
-  else if (loc.route === 'library') screen = <Library config={config} />;
+  if (loc.route === 'studio') screen = loc.id ? <Studio key={loc.id} id={loc.id} tab={loc.tab} config={config} refreshConfig={refreshConfig} toast={toast} /> : <div className="empty-stage">Opening the studio…</div>;
+  else if (loc.route === 'episodes') screen = <Library config={config} />;
+  else if (loc.route === 'iris') screen = <IrisPage config={config} />;
   else if (loc.route === 'settings') screen = <Settings config={config} refreshConfig={refreshConfig} />;
   else if (loc.route === 'control') screen = <ControlRoom config={config} />;
   else screen = <Create config={config} go={go} refreshConfig={refreshConfig} toast={toast} />;

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   AUDIENCES, CUE_LIMIT, episodeLabel, hostSubtitle, jobFor, MAX_TURNS, MODES, speakerFor, TEMPERATURES,
   type AppConfig, type ConversationView,
@@ -8,6 +8,7 @@ import { useConversation } from '../api/useConversation';
 import { ArtistCard } from '../studio/ArtistCard';
 import { CueCard } from '../studio/CueCard';
 import { EpisodeKit } from '../studio/EpisodeKit';
+import { ListenView } from '../studio/ListenView';
 import { SidePanel } from '../studio/SidePanel';
 import { StudioSet } from '../studio/StudioSet';
 import { TurnCard } from '../studio/TurnCard';
@@ -20,13 +21,23 @@ import { VoicePicker } from '../speech/VoicePicker';
 import { lastSentence, spokenSeconds, tail } from '../lib/text';
 import { Footer } from './Footer';
 
-type Props = { id: string; config: AppConfig | null; refreshConfig: () => void; toast: (m: string) => void };
+export type StudioTab = 'watch' | 'listen' | 'read';
+export const STUDIO_TABS: [StudioTab, string, string][] = [
+  ['watch', 'Watch', 'The set, live'],
+  ['listen', 'Listen', 'Podcast player'],
+  ['read', 'Read', 'Transcript & Iris'],
+];
 
-export function Studio({ id, config, refreshConfig, toast }: Props) {
+type Props = { id: string; tab: StudioTab; config: AppConfig | null; refreshConfig: () => void; toast: (m: string) => void };
+
+/** One episode, three ways in. Playback lives here, so switching tabs never stops the audio. */
+export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
   const { view, live, pulse, error, setView } = useConversation(id, refreshConfig);
   const [panelOpen, setPanelOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
+  const [onAir, setOnAir] = useState(false);
+  const setRef = useRef<HTMLDivElement>(null);
   const { voices, prefs, update } = useVoices();
   const browserPlay = usePlayback(view?.turns ?? [], prefs);
   const recording = useRecording(view?.turns ?? [], view?.audio);
@@ -38,6 +49,24 @@ export function Studio({ id, config, refreshConfig, toast }: Props) {
     if (view?.format === 'live' && view.run?.state === 'generating' && lastSaved && play.state === 'idle') play.playFrom(lastSaved);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastSaved]);
+
+  useEffect(() => {
+    if (!onAir) return;
+    const key = (e: KeyboardEvent) => { if (e.key === 'Escape') setOnAir(false); };
+    const fs = () => { if (!document.fullscreenElement) setOnAir(false); };
+    addEventListener('keydown', key); document.addEventListener('fullscreenchange', fs);
+    return () => {
+      removeEventListener('keydown', key); document.removeEventListener('fullscreenchange', fs);
+      // However On air ends (Escape, the button, another tab), the browser leaves fullscreen too.
+      if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
+    };
+  }, [onAir]);
+  const goOnAir = () => {
+    setOnAir(true);
+    // Real fullscreen where the browser allows it; the CSS fallback covers phones that don't.
+    setRef.current?.requestFullscreen?.().catch(() => {});
+  };
+  const leaveAir = () => setOnAir(false);
 
   if (error && !view) return <div className="empty-stage"><p>{error}</p><a className="btn" href="#/create">Start a new one</a></div>;
   if (!view) return <div className="empty-stage"><p>Opening the studio…</p></div>;
@@ -82,27 +111,73 @@ export function Studio({ id, config, refreshConfig, toast }: Props) {
     try { await navigator.clipboard.writeText(text); toast('Copied'); } catch { toast('Copy is blocked in this browser'); }
   };
 
+  const set = (
+    <StudioSet
+      show={`CrossTalk · ${view.format === 'live' ? '● Live' : episodeLabel(view.episode)}`}
+      topic={view.topic}
+      tags={`${MODES[view.mode].label} · ${AUDIENCES[view.audience].label} · ${TEMPERATURES[view.temperature].label}`}
+      temperature={view.temperature}
+      hosts={{ A: { name: sp.A.name, role: hostSubtitle(sp.A) }, B: { name: sp.B.name, role: hostSubtitle(sp.B) } }}
+      guest={null}
+      speaking={listening ? play.speakerId : live?.speakerId ?? null}
+      voiceLevel={listening ? play.pulse : pulse}
+      caption={caption}
+      runState={st}
+      clock={{ seconds: spokenSeconds(view.turns.map(t => t.text)), running: st === 'generating' }}
+      iris={view.artist?.state === 'listening' ? { text: 'Iris · sketching…', active: true }
+        : view.artist?.state === 'done' ? { text: 'Iris · notes ready', active: false }
+        : st === 'generating' ? { text: 'Iris · listening', active: true } : { text: 'Iris · in the booth', active: false }}
+    />
+  );
+
+  const transcript = (
+    <>
+      <div className="table">
+        {!view.turns.length && !live && st === 'idle' && (
+          <div className="empty-stage"><p>Both seats are ready. Press Start to hear {sp.A.name} open.</p></div>
+        )}
+        {view.turns.map(t => (
+          <TurnCard key={t.seq} seq={t.seq} speakerId={t.speakerId} name={sp[t.speakerId].name} objective={t.objective}
+            modelId={t.modelId} text={t.text} state="completed" onCopy={() => copy(t.text)}
+            speaking={play.state !== 'idle' && play.seq === t.seq} onPlayFrom={play.available ? () => play.playFrom(t.seq) : undefined} />
+        ))}
+        {live && !view.turns.some(t => t.seq === live.seq) && (
+          <TurnCard seq={live.seq} speakerId={live.speakerId} name={sp[live.speakerId].name} objective={live.objective}
+            modelId={live.modelId} text={live.text} state="streaming" />
+        )}
+        {failedSeq && (
+          <TurnCard seq={failedSeq} speakerId={speakerFor(failedSeq)} name={sp[speakerFor(failedSeq)].name} objective={jobFor(failedSeq)}
+            modelId={sp[speakerFor(failedSeq)].modelId} text={reason ?? 'This turn failed.'} state="failed" />
+        )}
+        {view.interventions.map(c => <CueCard key={c.id} cue={c} />)}
+      </div>
+      {view.artist && (
+        <ArtistCard notes={view.artist} speakers={sp} conversationId={id} toast={toast}
+          onAgain={() => { api.askIris(id).catch(e => toast((e as Error).message)); /* her progress arrives over the live stream */ }}
+          onJump={seq => document.getElementById(`turn-${seq}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })} />
+      )}
+      {st === 'completed' && view.artist?.state === 'done' && <EpisodeKit c={view} toast={toast} />}
+    </>
+  );
+
   return (
     <div className="studio">
       <section className="stage" aria-label="Discussion">
-        <StudioSet
-          show={`CrossTalk · ${view.format === 'live' ? '● Live' : episodeLabel(view.episode)}`}
-          topic={view.topic}
-          tags={`${MODES[view.mode].label} · ${AUDIENCES[view.audience].label} · ${TEMPERATURES[view.temperature].label}`}
-          temperature={view.temperature}
-          hosts={{ A: { name: sp.A.name, role: hostSubtitle(sp.A) }, B: { name: sp.B.name, role: hostSubtitle(sp.B) } }}
-          guest={null}
-          speaking={listening ? play.speakerId : live?.speakerId ?? null}
-          voiceLevel={listening ? play.pulse : pulse}
-          caption={caption}
-          runState={st}
-          clock={{ seconds: spokenSeconds(view.turns.map(t => t.text)), running: st === 'generating' }}
-          iris={view.artist?.state === 'listening' ? { text: 'Iris · sketching…', active: true }
-            : view.artist?.state === 'done' ? { text: 'Iris · notes ready', active: false }
-            : st === 'generating' ? { text: 'Iris · listening', active: true } : { text: 'Iris · in the booth', active: false }}
-        />
+        <nav className="studio-tabs" aria-label="Ways to follow this episode">
+          {STUDIO_TABS.map(([k, label, sub]) => (
+            <a key={k} href={`#/studio/${id}/${k}`} aria-current={tab === k ? 'page' : undefined}>
+              <b>{label}</b><span>{sub}</span>
+            </a>
+          ))}
+        </nav>
 
-        <TurnRail turns={view.turns} liveSeq={live?.seq ?? null} failedSeq={failedSeq} speakers={sp} />
+        {tab === 'watch' && <>
+          <div ref={setRef} className={onAir ? 'on-air' : undefined}>
+            {set}
+            {onAir && <button className="btn sm leave-air" onClick={leaveAir}>Leave On air</button>}
+          </div>
+          <TurnRail turns={view.turns} liveSeq={live?.seq ?? null} failedSeq={failedSeq} speakers={sp} />
+        </>}
         <div className="status-line" aria-live="polite">
           <span><b>{statusWord}</b>{view.run?.pauseRequested ? ' · pausing after this turn' : ''}</span>
           <span>{view.interventions.length} of {CUE_LIMIT} cues used</span>
@@ -111,33 +186,14 @@ export function Studio({ id, config, refreshConfig, toast }: Props) {
         <SetupBanner config={config} />
         <BudgetBanner config={config} />
         {startError && <div className="banner" role="alert"><span><b>Couldn't start.</b> {startError}</span><button className="btn sm ghost" onClick={() => setStartError(null)}>Dismiss</button></div>}
-        <div className="table">
-          {!view.turns.length && !live && st === 'idle' && (
-            <div className="empty-stage"><p>Both seats are ready. Press Start to hear {sp.A.name} open.</p></div>
-          )}
-          {view.turns.map(t => (
-            <TurnCard key={t.seq} seq={t.seq} speakerId={t.speakerId} name={sp[t.speakerId].name} objective={t.objective}
-              modelId={t.modelId} text={t.text} state="completed" onCopy={() => copy(t.text)}
-              speaking={play.state !== 'idle' && play.seq === t.seq} onPlayFrom={play.available ? () => play.playFrom(t.seq) : undefined} />
-          ))}
-          {live && !view.turns.some(t => t.seq === live.seq) && (
-            <TurnCard seq={live.seq} speakerId={live.speakerId} name={sp[live.speakerId].name} objective={live.objective}
-              modelId={live.modelId} text={live.text} state="streaming" />
-          )}
-          {failedSeq && (
-            <TurnCard seq={failedSeq} speakerId={speakerFor(failedSeq)} name={sp[speakerFor(failedSeq)].name} objective={jobFor(failedSeq)}
-              modelId={sp[speakerFor(failedSeq)].modelId} text={reason ?? 'This turn failed.'} state="failed" />
-          )}
-          {view.interventions.map(c => <CueCard key={c.id} cue={c} />)}
-        </div>
 
-        {view.artist && (
-          <ArtistCard notes={view.artist} speakers={sp} conversationId={id} toast={toast}
-            onAgain={() => { api.askIris(id).catch(e => toast((e as Error).message)); /* her progress arrives over the live stream */ }}
-            onJump={seq => document.getElementById(`turn-${seq}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })} />
+        {tab === 'listen' && <ListenView view={view} play={play} rate={prefs.rate} setRate={r => update({ rate: r })} />}
+        {tab === 'read' && transcript}
+        {tab === 'watch' && view.turns.length > 0 && (
+          <p className="hint tab-hint">The full transcript, Iris's sketch and the episode kit are on <a href={`#/studio/${id}/read`}>Read</a>. On your phone, <a href={`#/studio/${id}/listen`}>Listen</a> plays it like a podcast.</p>
         )}
-        {st === 'completed' && view.artist?.state === 'done' && <EpisodeKit c={view} toast={toast} />}
-        <div className="dock">
+
+        <div className={`dock${tab === 'listen' ? ' solo' : ''}`}>
           <div className="dock-group">
             <span className="tag">Generation</span>
             <div className="dock-row">
@@ -146,12 +202,13 @@ export function Studio({ id, config, refreshConfig, toast }: Props) {
               {st === 'failed' && <button className="btn primary" disabled={cantRun} onClick={act(api.start)}>Retry turn {lastSeq + 1}</button>}
               {st === 'generating' && <button className="btn" disabled={busy || !!view.run?.pauseRequested} onClick={act(api.pause)}>Pause after this turn</button>}
               {(st === 'generating' || st === 'paused' || st === 'failed') && <button className="btn danger" disabled={busy} onClick={act(api.stop)}>Stop</button>}
-              <button className="btn ghost" disabled title="Export arrives in Milestone 6">Export</button>
+              {tab === 'read' && <button className="btn ghost" disabled title="Export arrives in Milestone 6">Export</button>}
+              {tab === 'watch' && <button className="btn ghost" onClick={goOnAir} title="Full screen, just the set">On air ⛶</button>}
               <button className="btn ghost panel-toggle" onClick={() => setPanelOpen(o => !o)}>Cues &amp; voices</button>
             </div>
             {otherBusy && st !== 'generating' && <span className="state">Another discussion is generating. Pause or stop it first.</span>}
           </div>
-          <div className="dock-group listen">
+          {tab !== 'listen' && <div className="dock-group listen">
             <span className="tag">Listen</span>
             <div className="dock-row">
               {!play.available && <span className="state">Speech isn't available in this browser. Every turn stays readable.</span>}
@@ -161,7 +218,7 @@ export function Studio({ id, config, refreshConfig, toast }: Props) {
               {play.state !== 'idle' && <button className="btn ghost" onClick={play.stop}>Stop audio</button>}
               {play.available && <span className="state">{play.state === 'idle' ? (recording ? `Recorded audio · ${Math.round((view.audio?.durationSec ?? 0) / 60)} min · natural voices` : 'Not playing') : <>{play.state === 'paused' ? 'Paused' : 'Speaking'}: <b>{play.speakerId && sp[play.speakerId].name}</b>, turn {play.seq}</>}</span>}
             </div>
-          </div>
+          </div>}
         </div>
         <Footer config={config} />
       </section>

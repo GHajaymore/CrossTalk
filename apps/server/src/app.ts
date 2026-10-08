@@ -152,7 +152,16 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
     const id = req.params.id;
     const file = audioDir && safeId(id) ? join(audioDir, `${id}.mp3`) : null;
     if (!file || !existsSync(file)) return reply.status(404).send({ error: 'No recording for this episode.' });
-    return reply.header('Content-Type', 'audio/mpeg').header('Content-Length', statSync(file).size).send(createReadStream(file));
+    // Byte ranges let the player seek: skip a turn, jump 15 seconds, scrub.
+    const size = statSync(file).size;
+    reply.header('Content-Type', 'audio/mpeg').header('Accept-Ranges', 'bytes');
+    const m = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range ?? '');
+    if (!m || (!m[1] && !m[2])) return reply.header('Content-Length', size).send(createReadStream(file));
+    const start = m[1] ? Number(m[1]) : Math.max(0, size - Number(m[2]));
+    const end = m[1] && m[2] ? Math.min(Number(m[2]), size - 1) : size - 1;
+    if (start > end || start >= size) return reply.status(416).header('Content-Range', `bytes */${size}`).send();
+    return reply.status(206).header('Content-Range', `bytes ${start}-${end}/${size}`).header('Content-Length', end - start + 1)
+      .send(createReadStream(file, { start, end }));
   });
   app.get<{ Params: { id: string } }>('/api/conversations/:id/usage', async req => { view(req.params.id); return repo.listUsage(req.params.id); });
 

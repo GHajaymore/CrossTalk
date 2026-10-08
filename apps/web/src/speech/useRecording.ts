@@ -23,6 +23,8 @@ export function useRecording(turns: Turn[], audio: EpisodeAudio | null | undefin
   const [speakerId, setSpeakerId] = useState<SpeakerId | null>(null);
   const [caption, setCaption] = useState('');
   const [pulse, setPulse] = useState(0);
+  const [position, setPosition] = useState(0);
+  const [rate, setRateState] = useState(1);
   const analyser = useRef<AnalyserNode | null>(null);
 
   useEffect(() => {
@@ -32,6 +34,7 @@ export function useRecording(turns: Turn[], audio: EpisodeAudio | null | undefin
     const data = new Uint8Array(256);
     const tick = () => {
       const t = el.currentTime;
+      setPosition(t);
       const at = audio.timings.find(x => t >= x.start && t < x.end + 0.2);
       if (at) {
         setSeq(at.seq); setSpeakerId(at.speakerId);
@@ -60,9 +63,11 @@ export function useRecording(turns: Turn[], audio: EpisodeAudio | null | undefin
       setState('speaking'); raf = requestAnimationFrame(tick);
     };
     const onPause = () => { cancelAnimationFrame(raf); if (!el.ended) setState('paused'); };
-    const onEnd = () => { cancelAnimationFrame(raf); setState('idle'); setSeq(null); setSpeakerId(null); setCaption(''); };
-    el.addEventListener('play', onPlay); el.addEventListener('pause', onPause); el.addEventListener('ended', onEnd);
-    return () => { el.pause(); cancelAnimationFrame(raf); el.removeEventListener('play', onPlay); el.removeEventListener('pause', onPause); el.removeEventListener('ended', onEnd); };
+    const onEnd = () => { cancelAnimationFrame(raf); setState('idle'); setSeq(null); setSpeakerId(null); setCaption(''); setPosition(0); };
+    // Scrubbing while paused still moves the progress bar.
+    const onSeek = () => setPosition(el.currentTime);
+    el.addEventListener('play', onPlay); el.addEventListener('pause', onPause); el.addEventListener('ended', onEnd); el.addEventListener('seeked', onSeek);
+    return () => { el.pause(); cancelAnimationFrame(raf); el.removeEventListener('play', onPlay); el.removeEventListener('pause', onPause); el.removeEventListener('ended', onEnd); el.removeEventListener('seeked', onSeek); };
   }, [el, audio, turns]);
 
   if (!el || !audio) return null;
@@ -72,5 +77,11 @@ export function useRecording(turns: Turn[], audio: EpisodeAudio | null | undefin
     pause: () => el.pause(),
     resume: () => { void el.play(); },
     stop: () => { el.pause(); el.currentTime = 0; setState('idle'); setSeq(null); setSpeakerId(null); setCaption(''); },
+    clock: {
+      position, rate,
+      duration: audio.durationSec,
+      seek: (sec: number) => { el.currentTime = Math.max(0, Math.min(audio.durationSec, sec)); },
+      setRate: (r: number) => { el.playbackRate = r; setRateState(r); },
+    },
   };
 }

@@ -256,3 +256,78 @@ label.fld{display:grid;gap:6px}
 .learned li{display:flex;gap:10px;align-items:baseline;justify-content:space-between;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:14px}
 .learned li button{background:none;border:0;color:var(--muted);cursor:pointer;text-decoration:underline;font-size:12px}
 @media (max-width:680px){.artist-grid{grid-template-columns:1fr}.art{border-right:0;border-bottom:1px solid var(--line)}.kit-grid{grid-template-columns:1fr}}
+
+/* STUDIO TABS: one episode, three ways in */
+.studio-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;border:1px solid var(--line);border-radius:10px;padding:4px;background:var(--surface);margin-bottom:14px}
+.studio-tabs a{display:grid;gap:1px;padding:8px 10px;border-radius:7px;text-decoration:none;color:var(--muted);text-align:center}
+.studio-tabs a b{font-weight:600;font-size:15px}
+.studio-tabs a span{font-size:12px}
+.studio-tabs a:hover{color:var(--text)}
+.studio-tabs a[aria-current="page"]{background:var(--raised);color:var(--text);box-shadow:inset 0 -2px 0 var(--cue)}
+.tab-hint{margin:6px 0 14px}.tab-hint a{color:var(--cue)}
+.dock.solo{grid-template-columns:1fr}
+.on-air{position:fixed;inset:0;z-index:60;background:#000;display:grid;place-items:center;padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}
+.on-air > *:first-child{width:min(100vw,calc(100vh * 16 / 9));max-height:100vh}
+.leave-air{position:absolute;top:calc(12px + env(safe-area-inset-top,0px));right:12px;opacity:.75}
+.leave-air:hover,.leave-air:focus-visible{opacity:1}
+
+/* LISTEN: the phone podcast player */
+.listen-view{max-width:460px;margin:0 auto 18px;display:grid;gap:16px}
+.cover{aspect-ratio:1;width:min(100%,260px);justify-self:center;border-radius:14px;overflow:hidden;border:1px solid var(--line);background:var(--set-bg)}
+.cover img{width:100%;height:100%;object-fit:cover;display:block}
+.cover-blank{width:100%;height:100%;display:grid;place-items:center;background:radial-gradient(circle at 30% 30%,var(--a-soft),transparent 60%),radial-gradient(circle at 70% 70%,var(--b-soft),transparent 60%)}
+.cover-blank .brand-mark i{width:28px;height:64px;border-radius:5px}
+.cover-blank .brand-mark{gap:8px}
+.listen-meta h2{font-family:var(--f-say);font-weight:600;font-size:22px;line-height:1.2;margin:4px 0}
+.now{display:flex;gap:12px;align-items:flex-start;min-height:72px;border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--surface)}
+.now-line{font-family:var(--f-say);font-size:16.5px;margin:4px 0 0;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.scrub{display:grid;gap:4px}
+.scrub input[type=range]{width:100%;accent-color:var(--cue);margin:0}
+.scrub input[type=range] ~ .scrub-bar{display:none}
+.scrub-bar{height:3px;background:var(--line);border-radius:2px;overflow:hidden}.scrub-bar i{display:block;height:100%;background:var(--cue)}
+.turn-steps{display:grid;grid-template-columns:repeat(16,1fr);gap:3px}
+.turn-steps i{height:8px;border-radius:2px;background:var(--line)}
+.turn-steps i.done.A,.turn-steps i.here.A{background:var(--a)} .turn-steps i.done.B,.turn-steps i.here.B{background:var(--b)}
+.turn-steps i.done{opacity:.55}
+.turn-steps i.here{outline:2px solid var(--text);outline-offset:1px}
+.scrub-times{display:flex;justify-content:space-between;font-family:var(--f-tag);font-size:11.5px;color:var(--muted)}
+.transport{display:flex;justify-content:center;align-items:center;gap:12px}
+.round{width:48px;height:48px;border-radius:50%;border:1px solid var(--line);background:var(--raised);cursor:pointer;font-family:var(--f-tag);font-size:14px;display:grid;place-items:center}
+.round.big{width:76px;height:76px;font-size:24px;background:var(--text);color:#141517;border-color:var(--text)}
+.round:disabled{opacity:.35;cursor:not-allowed}
+.speeds{justify-content:center}
+.chapters{list-style:none;margin:0;padding:0;border-top:1px solid var(--line)}
+.chapters button{width:100%;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;background:none;border:0;border-bottom:1px solid var(--line-soft);padding:9px 4px;text-align:left;cursor:pointer}
+.chapters button:hover{background:var(--surface)}
+.chapters button[aria-current="true"]{background:var(--raised)}
+.chapters button[aria-current="true"] b::after{content:" · playing";font-weight:400;color:var(--cue);font-size:12.5px}
+.chapters .flag{width:24px;height:24px;font-size:11px}
+.ch-text{display:grid;min-width:0}.ch-text .hint{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* IRIS PAGE */
+.iris-hero{display:flex;gap:16px;align-items:flex-start}
+.flag.big{width:56px;height:56px;font-size:24px;border-radius:12px}
+.iris-hero h1{margin:2px 0 6px}
+.iris-stats{display:flex;gap:18px;flex-wrap:wrap;margin-top:10px;font-size:14px;color:var(--muted)}
+.iris-stats b{color:var(--iris);font-size:18px;margin-right:4px}
+.gallery{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
+.g-card{display:grid;gap:6px;text-decoration:none;color:inherit;border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--bg);height:100%;align-content:start}
+.g-card:hover{border-color:var(--iris)}
+.g-card img,.g-missing{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:6px;background:var(--set-bg);display:grid;place-items:center}
+.g-title{font-family:var(--f-say);font-weight:600;font-size:16px}
+.g-quote{font-family:var(--f-say);font-size:14px;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.g-topic{font-size:13px}
+.iris-styles{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
+.iris-styles li{border:1px dashed var(--line);border-radius:8px;padding:10px}
+.iris-styles li.on{border-style:solid;border-color:var(--iris)}
+@media (max-width: 680px){
+  .studio-tabs a span{display:none}
+  .iris-hero{flex-direction:column}
+  .gallery{grid-template-columns:1fr 1fr;gap:10px}
+}
+@media (max-width: 680px){
+  .listen-view{gap:12px}
+  .cover{width:min(100%,190px)}
+  .listen-meta{text-align:center}
+  .listen-meta h2{font-size:19px}
+}

@@ -65,6 +65,13 @@ describe('rendered recordings', () => {
     const mp3 = await app.inject({ url: v.audio.url });
     expect(mp3.statusCode).toBe(200);
     expect(mp3.headers['content-type']).toBe('audio/mpeg');
+    expect(mp3.headers['accept-ranges']).toBe('bytes');
+    // The player seeks with byte ranges (skip a turn, jump 15 seconds).
+    const part = await app.inject({ url: v.audio.url, headers: { range: 'bytes=3-5' } });
+    expect(part.statusCode).toBe(206);
+    expect(part.headers['content-range']).toBe('bytes 3-5/7');
+    expect(part.body).toBe('fak');
+    expect((await app.inject({ url: v.audio.url, headers: { range: 'bytes=99-' } })).statusCode).toBe(416);
     expect((await app.inject({ url: '/api/conversations/../../etc/audio.mp3' })).statusCode).toBe(404);
   });
 });
