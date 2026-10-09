@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { ARTIST } from '@crosstalk/shared';
 import { IrisPicture } from './IrisPicture';
 
@@ -26,7 +27,8 @@ export function ArtViewer({ art, onClose }: { art: ViewedArt; onClose: () => voi
   }, [onClose]);
   const alt = `${ARTIST.name}'s ${art.styleName.toLowerCase()}: ${art.title}`;
   const file = `iris-${art.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'art'}`;
-  return (
+  // Drawn at the top of the page, so nothing around the art it was opened from can shape it.
+  return createPortal(
     <div className="art-viewer" role="dialog" aria-modal="true" aria-label={`${art.title}, full size`} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <figure>
         {art.picture
@@ -44,6 +46,7 @@ export function ArtViewer({ art, onClose }: { art: ViewedArt; onClose: () => voi
           </div>
         </figcaption>
       </figure>
-    </div>
+    </div>,
+    document.body,
   );
 }

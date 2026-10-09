@@ -656,7 +656,7 @@ span.ss-art .iris-picture>img{object-fit:contain;max-height:calc(100vh - 220px)}
 @keyframes brush-in{from{-webkit-mask-position:100% 0;mask-position:100% 0}to{-webkit-mask-position:0 0;mask-position:0 0}}
 @media (prefers-reduced-motion:reduce){.iris-picture>img.pic-in{-webkit-mask-image:none;mask-image:none}.sketchbook{transform:none}}
 /* Iris's art, full size. */
-.art-viewer{position:fixed;inset:0;z-index:210;background:rgba(8,8,9,.94);display:grid;place-items:center;padding:20px;overflow:auto}
+.art-viewer{position:fixed;inset:0;z-index:210;background:#0b0b0c;display:grid;place-items:center;padding:20px;overflow:auto}
 .art-viewer figure{margin:0;max-width:min(1200px,100%);width:100%}
 .art-viewer .iris-picture>img,.art-viewer figure>img{width:100%;max-height:72vh;object-fit:contain;border-radius:10px;background:#0f1013}
 .art-viewer figcaption{text-align:center;margin-top:12px}
