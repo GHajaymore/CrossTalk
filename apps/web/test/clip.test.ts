@@ -50,3 +50,17 @@ describe('the clip\'s music bed', () => {
     expect(musicPlan('x', 'lively', 40, [20, 30]).chimes).toEqual([20, 30]);
   });
 });
+
+describe('the Iris print', () => {
+  it('has listing text that names the piece, quotes the moment and always says it is AI-made', async () => {
+    const { printListing, printName } = await import('../src/lib/print');
+    const v = { ...episode(), artist: { ...episode().artist!, artTitle: 'Room to Walk', caption: 'Yeah, good point.', artStyle: 'miniature' } } as unknown as ConversationView;
+    const text = printListing(v);
+    expect(text).toContain('“Room to Walk”, by Iris (AI artist)');
+    expect(text).toContain('“Yeah, good point.”');
+    expect(text).toContain('Style: Miniature.');
+    expect(text).toContain('This artwork is AI-generated.');
+    expect(printName(v)).toBe('crosstalk-ep03-iris-print.png');
+    expect(printListing({ ...v, artist: null } as unknown as ConversationView)).toBe('');
+  });
+});

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { comicName, makeComic } from '../lib/comic';
 import { makePoster, posterName } from '../lib/poster';
+import { makePrint, printListing, printName } from '../lib/print';
 import { ARTIST, AUDIENCES, episodeLabel, MODES, NOTICE, TEMPERATURES, type ConversationView } from '@crosstalk/shared';
 
 export function showNotes(c: ConversationView) {
@@ -19,10 +20,10 @@ export function showNotes(c: ConversationView) {
   ].join('\n');
 }
 
-type ImageTileProps = { c: ConversationView; toast: (m: string) => void; title: string; blurb: string; button: string; alt: string; make: (c: ConversationView) => Promise<Blob>; name: (c: ConversationView) => string };
+type ImageTileProps = { c: ConversationView; toast: (m: string) => void; title: string; blurb: string; button: string; alt: string; make: (c: ConversationView) => Promise<Blob>; name: (c: ConversationView) => string; extra?: React.ReactNode };
 
 /** A share-ready image (poster or comic): made on this device, then downloaded or shared from the phone. */
-function ImageTile({ c, toast, title, blurb, button, alt, make: draw, name }: ImageTileProps) {
+function ImageTile({ c, toast, title, blurb, button, alt, make: draw, name, extra }: ImageTileProps) {
   const [url, setUrl] = useState<string | null>(null);
   const [blob, setBlob] = useState<Blob | null>(null);
   const [busy, setBusy] = useState(false);
@@ -44,6 +45,7 @@ function ImageTile({ c, toast, title, blurb, button, alt, make: draw, name }: Im
         {!url && <button className="btn sm" disabled={busy} onClick={make}>{busy ? 'Drawing…' : button}</button>}
         {url && <a className="btn sm" href={url} download={name(c)}>Download</a>}
         {canShare && <button className="btn sm ghost" onClick={() => navigator.share({ files: [file!], title: c.topic }).catch(() => {})}>Share</button>}
+        {extra}
       </div>
       <span className="badge ok">Free · made on this device</span>
     </div>
@@ -115,7 +117,9 @@ export function EpisodeKit({ c, toast, photos = false }: { c: ConversationView; 
         <ImageTile c={c} toast={toast} title="Comic strip" button="Make comic" alt="Comic strip of" make={makeComic} name={comicName}
           blurb="The episode in 4 panels: the opening, the clash, the moment Iris drew, and where the hosts landed." />
         <ClipTile c={c} toast={toast} photos={photos} />
-        <div className="kit-tile"><b>Iris print</b><p>{c.artist?.state === 'done' ? `“${c.artist.artTitle}”, her sketch of turn ${c.artist.momentSeq}, prepared as a listing for your shop.` : 'Her drawing of the moment that stayed with her, prepared as a listing.'}</p><span className="badge later">Later</span></div>
+        <ImageTile c={c} toast={toast} title="Iris print" button="Make print" alt="Iris print for" make={makePrint} name={printName}
+          blurb={`“${c.artist?.artTitle ?? 'Her drawing'}” as a print-ready A4 page (300 dpi), matted like a gallery print, with her title and the quote.`}
+          extra={<button className="btn sm ghost" onClick={async () => { try { await navigator.clipboard.writeText(printListing(c)); toast('Listing text copied'); } catch { toast('Copying is blocked in this browser'); } }}>Copy listing text</button>} />
       </div>
       <p className="hint publish-line">
         <span className={`status ${c.publish === 'approved' ? 'completed' : c.publish === 'held' ? 'failed' : 'paused'}`}>{c.publish === 'approved' ? 'approved' : c.publish === 'held' ? 'held' : 'waiting for your OK'}</span>{' '}

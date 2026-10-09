@@ -418,6 +418,13 @@ test('Hot seat: vote who moved you, then make the episode poster', async ({ page
   const comic = page.locator('.poster-tile', { hasText: 'Comic strip' });
   const [dl2] = await Promise.all([page.waitForEvent('download'), comic.getByRole('link', { name: 'Download' }).click()]);
   expect(dl2.suggestedFilename()).toMatch(/^crosstalk-ep\d+-comic\.png$/);
+
+  // Iris's print: a print-ready A4 page, and listing text that says it's AI-made.
+  const print = page.locator('.poster-tile', { hasText: 'Iris print' });
+  await print.getByRole('button', { name: 'Make print' }).click();
+  await expect(page.getByRole('img', { name: /Iris print for/ })).toBeVisible();
+  const [dl3] = await Promise.all([page.waitForEvent('download'), print.getByRole('link', { name: 'Download' }).click()]);
+  expect(dl3.suggestedFilename()).toMatch(/^crosstalk-ep\d+-iris-print\.png$/);
 });
 
 test('social clip: recorded on this device while you watch, then a real video to download', async ({ page }) => {
