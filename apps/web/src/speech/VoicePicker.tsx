@@ -1,15 +1,16 @@
 import type { Accents, VoicePrefs } from './BrowserSpeech';
-import { betterVoicesTip, voiceQuality, voicesFor } from './BrowserSpeech';
+import { LANGUAGES, type Language } from '@crosstalk/shared';
+import { betterVoicesTip, missingVoiceTip, voiceQuality, voicesFor } from './BrowserSpeech';
 
 const QUALITY_LABEL = { natural: '✦ Natural', good: 'Good', basic: 'Basic' } as const;
 
-type Props = { names: { A: string; B: string }; voices: SpeechSynthesisVoice[]; prefs: VoicePrefs; update: (p: Partial<VoicePrefs>) => void; preview: (id: 'A' | 'B') => void; accents?: Accents };
+type Props = { names: { A: string; B: string }; voices: SpeechSynthesisVoice[]; prefs: VoicePrefs; update: (p: Partial<VoicePrefs>) => void; preview: (id: 'A' | 'B') => void; accents?: Accents; lang?: Language };
 
 /** Voice per host, with preview, plus speed. Choices are remembered on this device only. */
-export function VoicePicker({ names, voices, prefs, update, preview, accents }: Props) {
+export function VoicePicker({ names, voices, prefs, update, preview, accents, lang = 'en' }: Props) {
   if (!('speechSynthesis' in window)) return <p className="hint">This browser can't speak aloud. You can still read every turn.</p>;
-  if (!voices.length) return <p className="hint">Loading voices… Some browsers list them a moment after the page opens.</p>;
-  const chosen = voicesFor(prefs, accents);
+  if (!voices.length) return <p className="hint">{lang === 'en' ? 'Loading voices… Some browsers list them a moment after the page opens.' : `${missingVoiceTip(lang)} You can still read every turn.`}</p>;
+  const chosen = voicesFor(prefs, accents, lang);
   const row = (id: 'A' | 'B') => (
     <div className="voice-row" key={id}>
       <h3><span><span className={`dot ${id}`} /> {names[id]}</span></h3>
@@ -27,7 +28,8 @@ export function VoicePicker({ names, voices, prefs, update, preview, accents }: 
       <label className="fld"><span className="tag">Speed {prefs.rate.toFixed(1)}×</span>
         <input type="range" min="0.8" max="1.3" step="0.1" value={prefs.rate} onChange={e => update({ rate: Number(e.target.value) })} />
       </label>
-      {voices.every(v => voiceQuality(v) !== 'natural') && <p className="hint voice-tip">✦ Want hosts that sound more like real people? {betterVoicesTip()}</p>}
+      {lang === 'en' && voices.every(v => voiceQuality(v) !== 'natural') && <p className="hint voice-tip">✦ Want hosts that sound more like real people? {betterVoicesTip()}</p>}
+      {lang !== 'en' && <p className="hint">{LANGUAGES[lang].label} voices on this device.</p>}
       <p className="hint">Voices come from your device, so they sound different on each one. CrossTalk picks the most natural ones first.</p>
     </>
   );

@@ -10,8 +10,8 @@ export const OUTFITS = ['blazer', 'sweater', 'chef', 'scrubs', 'hivis', 'shirt']
 export type HairStyle = (typeof HAIR_STYLES)[number];
 export type OutfitKind = (typeof OUTFITS)[number];
 /** Skin tones 0–5, light to deep. Hair colours 0–5, plus 6 for grey. */
-/** A face's age, by decade: 2 for their 20s up to 6 for 60s and over. Always an adult. */
-export type AgeDecade = 2 | 3 | 4 | 5 | 6;
+/** A face's age: 1 for about nineteen (the youngest a photo ever shows), 2 for their 20s, up to 6 for 60s and over. */
+export type AgeDecade = 1 | 2 | 3 | 4 | 5 | 6;
 export type HostTraits = {
   seat: Seat; skin: number; style: HairStyle; hair: number; glasses: boolean; outfit: OutfitKind; h: number;
   /** Fits the job: a student looks 20-something, a researcher or owner 30s to 50s, a retired chef 60s. */
@@ -35,7 +35,7 @@ export const BACKDROPS = [
   'in a sunlit café-style corner with soft out-of-focus shelves of coffee jars behind them',
 ] as const;
 const AGE_WORDS: Record<AgeDecade, string> = {
-  2: 'in their mid twenties', 3: 'in their thirties', 4: 'in their forties', 5: 'in their fifties', 6: 'in their sixties',
+  1: 'of about nineteen', 2: 'in their mid twenties', 3: 'in their thirties', 4: 'in their forties', 5: 'in their fifties', 6: 'in their sixties',
 };
 const SKIN_WORDS = ['very fair', 'fair', 'light olive', 'medium brown', 'brown', 'deep brown'];
 const HAIR_WORDS = ['black', 'dark brown', 'brown', 'light brown', 'blonde', 'auburn', 'grey'];
@@ -58,7 +58,9 @@ function hash(text: string) {
 export function ageFor(role: string, h: number): AgeDecade {
   const r = role.toLowerCase();
   if (/retired|veteran|grand|elder|pensioner/.test(r)) return 6;
-  if (/student|intern|apprentice|trainee|graduate|junior|rookie/.test(r)) return 2;
+  // Gen Z and teen voices: shown as young adults of about nineteen, never younger.
+  if (/\bteen|gen[- ]?z|high[- ]school|school student|sixth[- ]form|final[- ]year|first[- ]year|freshman|undergrad|youth/.test(r)) return 1;
+  if (/student|intern|apprentice|trainee|graduate|junior|rookie|creator|influencer|streamer|gamer/.test(r)) return 2;
   if (/senior|professor|director|chief|head\b|head of|partner|judge|principal|dean|founder|owner|executive|surgeon|veteran/.test(r)) return h % 3 ? 5 : 4;
   if (/research|scien|doctor|lawyer|economist|engineer|planner|manager|accountant|analyst|historian|consultant|teacher|journalist|writer|critic|chef|nurse|coach|official|policy/.test(r)) return h % 3 === 0 ? 3 : h % 3 === 1 ? 4 : 5;
   return h % 2 ? 3 : 4;
@@ -86,7 +88,7 @@ export function hostTraits({ name, role, seat, home }: { name: string; role: str
     seat, h,
     skin: from ? from.skins[h % from.skins.length] : h % 6,
     // A man named on the show doesn't get a bun or a bob in his photo.
-    style: look === 'm' && (style === 'bun' || style === 'bob' || style === 'long') ? 'short' : style,
+    style: look === 'm' && (style === 'bun' || style === 'bob' || style === 'long' || style === 'wavy') ? (h % 2 ? 'short' : 'curly') : style,
     // Grey at 60 and over; often going grey in the 50s.
     hair: older || (age === 5 && (h >>> 9) % 2 === 0) ? 6 : from ? from.hair[(h >>> 7) % from.hair.length] : (h >>> 7) % 6,
     glasses: /research|scien|professor|analyst|librar|account|economist|data|engineer|historian|writer/i.test(role) || (h >>> 11) % 5 === 0,
@@ -105,7 +107,7 @@ export const lookCode = (t: HostTraits) =>
 
 /** Reads a look code back, or null if it isn't one. The server accepts nothing else. */
 export function parseLookCode(code: string): Omit<HostTraits, 'h'> | null {
-  const m = /^([AB])-([0-5])-([a-z]+)-([0-6])-([01])-([a-z]+)(?:-a([2-6]))?(?:-b([0-7]))?(?:-([wm]))?(?:-([A-Z]{2}))?$/.exec(code);
+  const m = /^([AB])-([0-5])-([a-z]+)-([0-6])-([01])-([a-z]+)(?:-a([1-6]))?(?:-b([0-7]))?(?:-([wm]))?(?:-([A-Z]{2}))?$/.exec(code);
   if (!m || !(HAIR_STYLES as readonly string[]).includes(m[3]) || !(OUTFITS as readonly string[]).includes(m[6])) return null;
   if (m[10] && !(m[10] in HOMES)) return null;
   return {
@@ -121,7 +123,7 @@ export function portraitPrompt(t: Omit<HostTraits, 'h'>) {
   return [
     `Photorealistic head-and-shoulders portrait of a fictional podcast host, an invented ${t.look === 'w' ? 'woman' : t.look === 'm' ? 'man' : 'person'}${t.home ? ` from ${homeOf(t.home)!.country}` : ''}, not a celebrity`,
     // Always a grown-up, looking their age: a researcher is never drawn as a teenager.
-    `a mature adult ${AGE_WORDS[t.age ?? 4]}, with a face that looks their age and natural skin texture`,
+    `${t.age && t.age <= 2 ? 'a young adult' : 'a mature adult'} ${AGE_WORDS[t.age ?? 4]}, with a face that looks their age and natural skin texture`,
     `${SKIN_WORDS[t.skin]} skin, ${HAIR_WORDS[t.hair]} hair, ${STYLE_WORDS[t.style]}${t.glasses ? ', wearing glasses' : ''}`,
     `wearing ${OUTFIT_WORDS[t.outfit](tone)}`,
     `friendly natural expression, looking slightly off camera, sitting ${BACKDROPS[t.room ?? 0]}, soft light, 85mm lens, shallow depth of field`,

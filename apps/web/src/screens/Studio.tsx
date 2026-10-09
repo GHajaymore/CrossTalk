@@ -53,10 +53,13 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
   const [handCaption, setHandCaption] = useState<{ who: 'A' | 'B'; text: string; speaking: boolean } | null>(null);
   useEffect(() => { if (view?.run?.state !== 'generating') setHandUp(false); }, [view?.run?.state]);
   const setRef = useRef<HTMLDivElement>(null);
-  const { voices, prefs, update } = useVoices();
-  // Each host speaks in an English voice from their home, when this device has one.
-  const accents = { A: homeOf(view?.speakers.A.home)?.voice ?? null, B: homeOf(view?.speakers.B.home)?.voice ?? null };
-  const browserPlay = usePlayback(view?.turns ?? [], prefs, accents);
+  const language = view?.language ?? 'en';
+  const { voices, prefs, update } = useVoices(language);
+  // Each host speaks with a voice from their home when this device has one: an Indian English voice,
+  // or in a Spanish episode a Mexican Spanish one for a host from Mexico.
+  const accentOf = (home?: string) => { const h = homeOf(home); return !h ? null : language === 'en' ? h.voice : `${language}-${h.code}`; };
+  const accents = { A: accentOf(view?.speakers.A.home), B: accentOf(view?.speakers.B.home) };
+  const browserPlay = usePlayback(view?.turns ?? [], prefs, accents, language);
   const recording = useRecording(view?.turns ?? [], view?.audio);
   // A rendered recording (natural voices) wins over the device's built-in voices.
   const play = recording ?? browserPlay;
@@ -165,6 +168,7 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
       speaking={handCaption ? (handCaption.speaking ? handCaption.who : null) : listening ? play.speakerId : live?.speakerId ?? null}
       voiceLevel={handCaption ? browserPlay.pulse : listening ? play.pulse : pulse}
       caption={caption}
+      lang={language}
       runState={st}
       clock={{ seconds: spokenSeconds(view.turns.map(t => t.text)), running: st === 'generating' }}
       iris={view.artist?.state === 'listening' ? { text: 'Iris · sketching…', active: true }
@@ -202,7 +206,7 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
     <>
       {view.brief && <BriefBox brief={view.brief} note={view.brief.sources.join(', ')} />}
       <MindMeter turns={view.turns} speakers={sp} you={you} done={st === 'completed'} onYou={setYou} />
-      <div className="table">
+      <div className="table" lang={language}>
         {!view.turns.length && !live && st === 'idle' && (
           <div className="empty-stage"><p>Both seats are ready. Press Start to hear {sp.A.name} open.</p></div>
         )}
@@ -349,8 +353,8 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
       <SidePanel open={panelOpen} onClose={() => setPanelOpen(false)}
         cue={<CuePanel view={view} live={live} setView={setView} toast={toast} limit={cueLimit} allowHeated={config?.rules.allowHeated ?? true} />}
         branches={<BranchList view={view} />}
-        voices={<VoicePicker names={{ A: sp.A.name, B: sp.B.name }} voices={voices} prefs={prefs} update={update} accents={accents}
-          preview={k => new BrowserSpeech(() => prefs, () => accents).speak([{ key: 'p', speakerId: k, text: `Hi, I'm ${sp[k].name}. This is how I'll sound on the show.` }], {})} />} />
+        voices={<VoicePicker names={{ A: sp.A.name, B: sp.B.name }} voices={voices} prefs={prefs} update={update} accents={accents} lang={language}
+          preview={k => new BrowserSpeech(() => prefs, () => accents, () => language).speak([{ key: 'p', speakerId: k, text: `Hi, I'm ${sp[k].name}. This is how I'll sound on the show.` }], {})} />} />
     </div>
   );
 }

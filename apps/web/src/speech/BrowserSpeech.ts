@@ -1,5 +1,5 @@
 // Browser speech synthesis (free, on-device). Voices differ between devices.
-import type { SpeakerId } from '@crosstalk/shared';
+import { LANGUAGES, sentencesOf, type Language, type SpeakerId } from '@crosstalk/shared';
 import type { SpeechHandlers, SpeechItem, SpeechProvider } from './types';
 
 export type VoicePrefs = { A: string; B: string; rate: number };
@@ -27,13 +27,26 @@ export function voiceQuality(v: SpeechSynthesisVoice): 'natural' | 'good' | 'bas
 }
 const QUALITY_RANK = { natural: 0, good: 1, basic: 2 } as const;
 
-/** English voices, the most natural-sounding first, your own accent first within each tier; novelty voices left out. */
-export function englishVoices(): SpeechSynthesisVoice[] {
+/** Voices for a language, the most natural-sounding first, your own accent first within each tier; novelty voices left out. */
+export function voicesIn(lang: Language = 'en'): SpeechSynthesisVoice[] {
   const all = (synth()?.getVoices() ?? []).filter(v => !NOVELTY.test(v.name));
-  const en = all.filter(v => /^en/i.test(v.lang));
-  const mine = (typeof navigator !== 'undefined' ? navigator.language : 'en-US').toLowerCase();
-  const rank = (v: SpeechSynthesisVoice) => QUALITY_RANK[voiceQuality(v)] * 2 + (v.lang.toLowerCase().replace('_', '-') === mine ? 0 : 1);
-  return (en.length ? en : all).slice().sort((a, b) => rank(a) - rank(b));
+  const mine = all.filter(v => new RegExp(`^${lang}([-_]|$)`, 'i').test(v.lang));
+  const here = (typeof navigator !== 'undefined' ? navigator.language : 'en-US').toLowerCase();
+  const rank = (v: SpeechSynthesisVoice) => QUALITY_RANK[voiceQuality(v)] * 2 + (v.lang.toLowerCase().replace('_', '-') === here ? 0 : 1);
+  // English falls back to any voice; another language with no voice here has none.
+  return (mine.length || lang !== 'en' ? mine : all).slice().sort((a, b) => rank(a) - rank(b));
+}
+export const englishVoices = () => voicesIn('en');
+
+/** Where to get a voice for a language this device doesn't have yet. Free on every system. */
+export function missingVoiceTip(lang: Language): string {
+  const name = LANGUAGES[lang].label;
+  const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+  if (/iPhone|iPad|iPod/.test(ua)) return `This device has no ${name} voice yet. Settings → Accessibility → Spoken Content → Voices → ${name}, and download one. Free.`;
+  if (/Android/.test(ua)) return `This device has no ${name} voice yet. Settings → search "Text-to-speech" → Google → install ${name} voice data. Free.`;
+  if (/Mac OS X/.test(ua)) return `This Mac has no ${name} voice yet. System Settings → Accessibility → Spoken Content → System voice → Manage Voices → ${name}. Free.`;
+  if (/Windows/.test(ua)) return `This PC has no ${name} voice yet. Open CrossTalk in Microsoft Edge (it has free natural voices in many languages), or Settings → Time & language → Speech → Add voices.`;
+  return `This browser has no ${name} voice. Microsoft Edge and Chrome have free ones for most languages.`;
 }
 
 /** What the listener can do on this device to get more natural voices, when only basic ones are here. */
@@ -52,8 +65,8 @@ export type Accents = Partial<Record<SpeakerId, string | null>>;
 const langOf = (v: SpeechSynthesisVoice) => v.lang.toLowerCase().replace('_', '-');
 
 /** Two different voices for the two hosts, honouring saved choices, then each host's home accent when the device has a decent one. */
-export function voicesFor(prefs: VoicePrefs, accents: Accents = {}): Record<SpeakerId, SpeechSynthesisVoice | null> {
-  const list = englishVoices();
+export function voicesFor(prefs: VoicePrefs, accents: Accents = {}, lang: Language = 'en'): Record<SpeakerId, SpeechSynthesisVoice | null> {
+  const list = voicesIn(lang);
   const byName = (n: string) => list.find(v => v.name === n) ?? null;
   const local = (id: SpeakerId, not?: SpeechSynthesisVoice | null) => {
     const want = accents[id]?.toLowerCase();
@@ -69,7 +82,7 @@ export function voicesFor(prefs: VoicePrefs, accents: Accents = {}): Record<Spea
  * gaps; staying under ~220 characters avoids browsers that cut long utterances short.
  */
 export function chunks(text: string, max = 220): string[] {
-  const sentences = text.replace(/\*/g, '').match(/[^.?!]+[.?!]+["'”’)]*\s*|[^.?!]+$/g)?.map(s => s.trim()).filter(Boolean) ?? [];
+  const sentences = sentencesOf(text.replace(/\*/g, ''));
   const out: string[] = [];
   for (const s of sentences) {
     const last = out[out.length - 1];
@@ -81,7 +94,7 @@ export function chunks(text: string, max = 220): string[] {
 
 export class BrowserSpeech implements SpeechProvider {
   private token = 0;
-  constructor(private prefs: () => VoicePrefs, private accents: () => Accents = () => ({})) {}
+  constructor(private prefs: () => VoicePrefs, private accents: () => Accents = () => ({}), private lang: () => Language = () => 'en') {}
 
   get available() { return !!synth(); }
 
@@ -90,7 +103,8 @@ export class BrowserSpeech implements SpeechProvider {
     if (!s) return;
     this.stop();
     const my = ++this.token;
-    const voices = voicesFor(this.prefs(), this.accents());
+    const lang = this.lang();
+    const voices = voicesFor(this.prefs(), this.accents(), lang);
     const queue = items.flatMap(item => chunks(item.text).map((text, i, all) => ({ item, text, last: i === all.length - 1 })));
     const next = () => {
       if (my !== this.token) return;
@@ -99,6 +113,8 @@ export class BrowserSpeech implements SpeechProvider {
       const u = new SpeechSynthesisUtterance(q.text);
       const v = voices[q.item.speakerId];
       if (v) u.voice = v;
+      // With no voice picked, the language still lets the browser choose a fitting one.
+      u.lang = v?.lang ?? lang;
       u.rate = this.prefs().rate;
       // A small pitch difference keeps two hosts apart when a device has only one good voice.
       u.pitch = voices.A === voices.B ? (q.item.speakerId === 'A' ? 0.9 : 1.12) : 1;

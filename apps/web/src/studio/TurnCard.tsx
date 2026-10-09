@@ -50,7 +50,7 @@ export function TurnCard(p: TurnCardProps) {
             <button className="menu-btn" aria-label={`Actions for turn ${p.seq}`} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(o => !o)}>⋯</button>
           )}
         </div>
-        <p className="say">
+        <p className="say" dir="auto">
           {p.text}
           {p.state === 'streaming' && <span className="caret" aria-hidden="true" />}
         </p>

@@ -104,7 +104,7 @@
 @media (prefers-reduced-motion:reduce){.set-portrait .p-body,.set-portrait .p-lid{animation:none}.set-portrait .p-head,.set-portrait .p-brow{transition:none}}
 
 /* Photo portraits: over the drawn one, fading in once loaded. Life comes from the same random loop. */
-.set-room{position:absolute;inset:0;opacity:.9}
+.set-room{position:absolute;inset:-6px;opacity:.9;filter:blur(3px)}
 /* Eight rooms, dark enough for the name bar: bookshelf, brick, plants, foam, wood booth, study, city dusk, café. */
 .set-room.r0{background:repeating-linear-gradient(90deg,#3a2a1c 0 14px,#2c2016 14px 18px,#4a3220 18px 30px,#2c2016 30px 34px) 0 30%/100% 40% no-repeat,linear-gradient(180deg,#2a2018,#15110d)}
 .set-room.r1{background:repeating-linear-gradient(0deg,#3b2219 0 10px,#24150f 10px 12px),linear-gradient(180deg,#3b2219,#1a0f0b);background-blend-mode:multiply}

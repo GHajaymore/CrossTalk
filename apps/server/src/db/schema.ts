@@ -275,4 +275,8 @@ export const MIGRATIONS: string[] = [
     created_at  TEXT NOT NULL
   );
   `,
+  `
+  -- The language an episode is spoken in.
+  ALTER TABLE conversations ADD COLUMN language TEXT NOT NULL DEFAULT 'en';
+  `,
 ];

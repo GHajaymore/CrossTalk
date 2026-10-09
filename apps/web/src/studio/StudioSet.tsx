@@ -35,6 +35,8 @@ export type StudioSetProps = {
   /** 0–1. Set a new value whenever the speaker makes sound (a word streams, a syllable plays); the meter eases back on its own. */
   voiceLevel: number;
   caption: { who: SeatKey | null; text: string } | null;
+  /** The episode's language, for captions (and right-to-left ones). */
+  lang?: string;
   /** Run state, or "lobby" on the Create screen. Sets the REC light. */
   runState: RunState | 'lobby';
   /** Episode length so far. While `running`, the clock ticks on from here. */
@@ -157,7 +159,7 @@ export function StudioSet(p: StudioSetProps) {
       <div className="set-desk" aria-hidden="true" />
       {p.caption?.text ? (
         <div className="set-cap" aria-live="off">
-          <span>{capName && <b className={p.caption.who ?? ''}>{capName}</b>}{p.caption.text}</span>
+          <span>{capName && <b className={p.caption.who ?? ''}>{capName}</b>}<span lang={p.lang} dir="auto">{p.caption.text}</span></span>
         </div>
       ) : null}
     </section>

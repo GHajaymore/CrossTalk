@@ -82,7 +82,8 @@ export function resolveSpeakers(
     chosen[id] = name.replace(/^(Dr\.|Prof\.)\s+/, '');
     const lens = persona === 'custom' ? d.lens.trim() || 'A voice of their own' : PERSONAS[persona].lens;
     const autoRole = d.autoRole ?? true;
-    const role = autoRole || !d.role?.trim() ? fitted[i] : d.role.trim();
+    // Teens shows: the right seat is a young host, unless you wrote their role yourself.
+    const role = autoRole || !d.role?.trim() ? (audience === 'teens' && id === 'B' ? youthRole(topic) : fitted[i]) : d.role.trim();
     return { id, name, autoName: d.autoName, persona, autoPersona: d.autoPersona, lens, role, autoRole, home: from ? from.code : '' as const, modelId: models[id] };
   };
   return { A: one('A', 0), B: one('B', 1) };
@@ -140,6 +141,17 @@ const ROLE_RULES: [RegExp, [string, string]][] = [
   [/music|film|movie|art|book|game/, ['Working musician and teacher', 'Culture critic']],
   [/travel|tourism|holiday|flight|airline/, ['Owner of a small travel agency', 'Travel writer']],
 ];
+
+/** On a Teens show one host is a young voice too: a Gen Z student with a stake in the topic. */
+const YOUTH_RULES: [RegExp, string][] = [
+  [/school|homework|teacher|education|exam/, 'Final-year school student who has just sat their exams'],
+  [/software|coding|\bai\b|tech|\bapps?\b|robot|game|gaming/, 'First-year computer science student who builds apps for fun'],
+  [/sport|football|soccer|tennis|basketball|olympic|golf/, 'Sports science student who plays for the university team'],
+  [/music|film|movie|art|book|social media|tiktok|instagram/, 'Student and part-time video creator'],
+  [/money|price|rent|housing|job|work|econom/, 'University student working a part-time job to cover rent'],
+  [/climate|energy|environment/, 'Environmental science student and youth climate organiser'],
+];
+export const youthRole = (topic: string) => YOUTH_RULES.find(([re]) => re.test(topic.toLowerCase()))?.[1] ?? 'First-year university student with a part-time job';
 
 export function autoRoles(topic: string): [string, string] {
   const t = topic.toLowerCase();

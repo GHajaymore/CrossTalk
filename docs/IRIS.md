@@ -20,6 +20,7 @@ Iris listens to every finished episode and responds like a thoughtful listener: 
 - **Your styles:** on the Iris page you tick the styles she may use (one or more, saved as the
   `iris_styles` setting). She picks only from those: her own choice, then your learned taste, then the
   closest one to the episode's feel. A real model is told the ticked styles only.
+- **She speaks the episode's language**: her perspective, caption and title are in it; her picture prompt stays in English for the painter.
 - **Her gallery keeps every version** (`artworks` table): each drawing, each "Ask Iris again", and
   each style you chose, once each. The Iris page shows the current one per episode with the others as
   thumbnails. Deleting an episode removes its pieces. Online, they survive restarts only with the backup.

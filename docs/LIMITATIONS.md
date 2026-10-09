@@ -63,6 +63,16 @@ CrossTalk is a prototype for one person. These are the honest gaps.
   for now. Local English voices (India, UK, Ireland, Nigeria, Kenya, South Africa, Singapore,
   Philippines, Australia, New Zealand, Canada, US) are used when your device has a decent one.
   Mock mode only shows it in the names, faces and a "coming to you from…" on each host's first line.
+- **Twelve episode languages** (English, Spanish, Hindi, Portuguese, French, German, Arabic, Japanese,
+  Korean, Chinese, Italian, Indonesian), English by default; the hosts' home languages are listed first.
+  Real hosts and Iris speak it throughout; free models are strongest in Spanish, Portuguese, French,
+  German and Chinese and a little less natural in the others. Mock mode greets in the language, then
+  plays its English sample script. Host roles stay in English (each face's age and clothes are read
+  from the job title). The voice is your device's voice for that language; if it has none, the turns
+  still show as text and the Voices panel says where to get one free.
+- **Young hosts are shown as adults.** On a Teens show the right seat is a Gen Z student; roles like
+  student, intern or creator look about nineteen to their twenties. CrossTalk never makes a
+  photo-real face of anyone under eighteen.
 - **Voices come from the listener's device.** CrossTalk picks the most natural ones and suggests free
   better voices when a device only has basic ones; quality still varies by device.
 - **Listening times are estimates** (about 18 seconds a turn at a normal pace). Real hosts vary their
