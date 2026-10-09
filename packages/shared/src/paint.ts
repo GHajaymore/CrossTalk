@@ -133,7 +133,13 @@ export type GalleryEpisode = {
 export const paintStyleOf = (s: string | null | undefined): PaintStyle => (PAINT_STYLES as readonly string[]).includes(s ?? '') ? s as PaintStyle : 'sketch';
 
 /** Iris's finished art for an episode, in the style chosen for it, or null if there's no drawing. */
-export function artworkSvg(a: { sketchSvg: string | null; artStyle: string; conversationId: string } | null | undefined): string | null {
+export function artworkSvg(a: { sketchSvg: string | null; artStyle: string; conversationId: string; version?: number } | null | undefined): string | null {
   if (!a?.sketchSvg) return null;
-  return paintSvg(a.sketchSvg, paintStyleOf(a.artStyle), a.conversationId);
+  return paintSvg(a.sketchSvg, paintStyleOf(a.artStyle), artSeed(a.conversationId, a.version));
 }
+
+/**
+ * The brushwork seed for one version of a drawing: stable for that version (a gallery never shifts
+ * under you), fresh for every new one. Version 1 keeps the episode's own seed, as before.
+ */
+export const artSeed = (conversationId: string, version = 1) => (version > 1 ? `${conversationId}:v${version}` : conversationId);

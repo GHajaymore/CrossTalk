@@ -286,6 +286,16 @@ export class Repo {
     this.keepArtwork(a, a.createdAt);
   }
 
+  getPortrait(code: string): { mime: string; data: Buffer } | null {
+    return (this.db.prepare('SELECT mime, data FROM portraits WHERE code = ?').get(code) as { mime: string; data: Buffer } | undefined) ?? null;
+  }
+  savePortrait(code: string, mime: string, data: Buffer, at: string) {
+    this.db.prepare('INSERT OR REPLACE INTO portraits (code, mime, data, created_at) VALUES (?, ?, ?, ?)').run(code, mime, data, at);
+  }
+  portraitsMadeOn(day: string): number {
+    return (this.db.prepare("SELECT COUNT(*) AS n FROM portraits WHERE substr(created_at, 1, 10) = ?").get(day) as { n: number }).n;
+  }
+
   /** The listener picked a style for Iris's art. Returns false if she has nothing drawn to restyle. */
   setArtStyle(conversationId: string, style: PaintStyle, at = new Date().toISOString()) {
     const ok = this.db.prepare(`UPDATE artist_notes SET art_style = ?, style_by_listener = 1

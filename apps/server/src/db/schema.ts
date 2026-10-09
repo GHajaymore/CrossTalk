@@ -266,4 +266,13 @@ export const MIGRATIONS: string[] = [
   -- Episode length: short (8 turns), normal (16) or long (24).
   ALTER TABLE conversations ADD COLUMN length TEXT NOT NULL DEFAULT 'normal';
   `,
+  `
+  -- Photo portraits of the invented hosts, fetched once per look and kept (backed up with the rest).
+  CREATE TABLE portraits (
+    code        TEXT PRIMARY KEY,
+    mime        TEXT NOT NULL,
+    data        BLOB NOT NULL,
+    created_at  TEXT NOT NULL
+  );
+  `,
 ];

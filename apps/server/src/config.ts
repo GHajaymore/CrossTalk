@@ -72,6 +72,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
     // Topic Scout: when it runs each day (server time; set TZ for your time zone), and which RSS feeds it reads.
     scoutTime: /^([01]\d|2[0-3]):[0-5]\d$/.test(str(env.SCOUT_TIME)) ? str(env.SCOUT_TIME) : '07:00',
     scoutFeeds: str(env.SCOUT_RSS_FEEDS).split(',').map(x => x.trim()).filter(x => /^https?:\/\//.test(x)),
+    // Photo portraits of the hosts (a free image service). PORTRAITS=off keeps the drawn ones only.
+    portraits: str(env.PORTRAITS).toLowerCase() !== 'off',
     problems,
   };
 }

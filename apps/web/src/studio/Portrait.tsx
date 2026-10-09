@@ -2,7 +2,8 @@
 // model, never a real person). Each look comes from the host's name, job and seat, so the same host
 // always looks the same. The mouth follows the voice level the set already writes as --lvl.
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { hostTraits, lookCode, type HairStyle, type OutfitKind } from '@crosstalk/shared';
 
 type Seat = 'A' | 'B';
 type Mood = 'calm' | 'lively' | 'heated';
@@ -10,39 +11,25 @@ export type PortraitProps = { name: string; role: string; seat: Seat; mood?: Moo
 
 const SKIN = ['#f3d2b8', '#e8b892', '#d29a6e', '#b57a4f', '#8d5a36', '#5e3a22'];
 const SKIN_SHADE = ['#e3b99b', '#d6a07a', '#bb8358', '#9c653e', '#764828', '#4a2c18'];
-const HAIR = ['#1c1714', '#3b2619', '#5a3a22', '#8a5a2b', '#c9a36a', '#9a9a9a', '#6b2f1f'];
-const STYLES = ['short', 'long', 'curly', 'bun', 'buzz', 'wavy', 'bob'] as const;
-type Hair = (typeof STYLES)[number];
+// Hair colours match the shared traits: 0–5, then grey.
+const HAIR = ['#1c1714', '#3b2619', '#5a3a22', '#8a5a2b', '#c9a36a', '#6b2f1f', '#a8a8a8'];
+type Hair = HairStyle;
 
-/** A small, stable number from text, so a host keeps their look. */
-function hash(text: string) {
-  let h = 2166136261;
-  for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 16777619);
-  return h >>> 0;
-}
-
-type Outfit = { kind: 'blazer' | 'sweater' | 'chef' | 'scrubs' | 'hivis' | 'shirt'; main: string; trim: string };
+type Outfit = { kind: OutfitKind; main: string; trim: string };
 /** Clothes that fit the job, in the seat's colour unless the job has its own uniform. */
-function outfitFor(role: string, seat: Seat, h: number): Outfit {
-  const r = role.toLowerCase();
+function outfitColours(kind: OutfitKind, seat: Seat, h: number): Outfit {
   const seatMain = seat === 'A' ? ['#7a4a1f', '#5b3a1e', '#8a5a2b'][h % 3] : ['#1f5a55', '#244a47', '#2f6b64'][h % 3];
   const seatTrim = seat === 'A' ? '#e8a55a' : '#5fb8b0';
-  if (/\bchef|\bcook\b|baker|kitchen/.test(r)) return { kind: 'chef', main: '#ece8e1', trim: seatTrim };
-  if (/nurse|doctor|clinic|dentist|hospital|medic|paramedic|surgeon/.test(r)) return { kind: 'scrubs', main: seat === 'A' ? '#3d6f8f' : '#3f7d6e', trim: '#d8e6ee' };
-  if (/construct|builder|site|engineer on|plumb|electric|road|crew|warehouse|driver/.test(r)) return { kind: 'hivis', main: '#d9e04a', trim: '#e0e0e0' };
-  if (/lawyer|banker|director|manager|executive|owner|founder|policy|planner|official|economist|accountant/.test(r)) return { kind: 'blazer', main: seatMain, trim: '#ece8e1' };
-  if (/teacher|professor|research|scien|writer|librar|historian|analyst|student/.test(r)) return { kind: 'sweater', main: seatMain, trim: seatTrim };
-  return { kind: h % 2 ? 'shirt' : 'sweater', main: seatMain, trim: seatTrim };
+  if (kind === 'chef') return { kind, main: '#ece8e1', trim: seatTrim };
+  if (kind === 'scrubs') return { kind, main: seat === 'A' ? '#3d6f8f' : '#3f7d6e', trim: '#d8e6ee' };
+  if (kind === 'hivis') return { kind, main: '#d9e04a', trim: '#e0e0e0' };
+  if (kind === 'blazer') return { kind, main: seatMain, trim: '#ece8e1' };
+  return { kind, main: seatMain, trim: seatTrim };
 }
 
 export function lookFor({ name, role, seat }: PortraitProps) {
-  const h = hash(`${seat}:${name}:${role}`);
-  const skin = h % SKIN.length;
-  const style: Hair = STYLES[(h >>> 3) % STYLES.length];
-  const older = /retired|veteran|senior|grand/i.test(role);
-  const hair = older ? '#a8a8a8' : HAIR[(h >>> 7) % (HAIR.length - 1)];
-  const glasses = /research|scien|professor|analyst|librar|account|economist|data|engineer|historian|writer/i.test(role) || (h >>> 11) % 5 === 0;
-  return { h, skin: SKIN[skin], shade: SKIN_SHADE[skin], style, hair, glasses, outfit: outfitFor(role, seat, h), blink: 3.2 + ((h >>> 13) % 30) / 10 };
+  const t = hostTraits({ name, role, seat });
+  return { h: t.h, skin: SKIN[t.skin], shade: SKIN_SHADE[t.skin], style: t.style, hair: HAIR[t.hair], glasses: t.glasses, outfit: outfitColours(t.outfit, seat, t.h), blink: 3.2 + ((t.h >>> 13) % 30) / 10, code: lookCode(t) };
 }
 
 function HairBack({ style, color }: { style: Hair; color: string }) {
@@ -100,14 +87,14 @@ const between = (a: number, b: number) => a + Math.random() * (b - a);
  * toward the speaker and nod along. Heated talk frowns more, calm talk smiles more. Off for
  * reduced motion.
  */
-function useLife(ref: React.RefObject<SVGSVGElement | null>, seat: Seat, mood: Mood) {
+function useLife(ref: React.RefObject<Element | null>, seat: Seat, mood: Mood) {
   const moodRef = useRef(mood);
   moodRef.current = mood;
   useEffect(() => {
     const el = ref.current;
     if (!el || (typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches)) return;
     let timer = 0;
-    const set = (k: string, v: number, unit = '') => el.style.setProperty(k, `${v.toFixed(2)}${unit}`);
+    const set = (k: string, v: number, unit = '') => (el as HTMLElement).style.setProperty(k, `${v.toFixed(2)}${unit}`);
     const step = () => {
       const tile = el.closest('.set-tile');
       const speaker = el.closest('.set')?.getAttribute('data-speaking') ?? '';
@@ -187,5 +174,29 @@ export function Portrait(props: PortraitProps) {
         </g>
       </g>
     </svg>
+  );
+}
+
+/**
+ * A host on the set: a photo-real portrait of the same invented person when photos are on (made once
+ * from their look and kept), with the drawn portrait underneath until it loads, and instead of it if
+ * it can't. The photo gets the same random life: tilts, nods, leaning toward whoever is speaking, and a
+ * small lift with the voice. Its lips don't move; the drawn one's do.
+ */
+export function HostPortrait(props: PortraitProps & { photo?: boolean }) {
+  const code = lookFor(props).code;
+  const [state, setState] = useState<'loading' | 'ok' | 'failed'>('loading');
+  const wrap = useRef<HTMLDivElement>(null);
+  useLife(wrap, props.seat, props.mood ?? 'lively');
+  useEffect(() => setState('loading'), [code]);
+  return (
+    <>
+      <Portrait {...props} />
+      {props.photo && state !== 'failed' && (
+        <div ref={wrap} className={`set-photo${state === 'ok' ? ' ok' : ''}`} aria-hidden="true">
+          <img src={`/api/portraits/${code}.jpg`} alt="" onLoad={() => setState('ok')} onError={() => setState('failed')} />
+        </div>
+      )}
+    </>
   );
 }

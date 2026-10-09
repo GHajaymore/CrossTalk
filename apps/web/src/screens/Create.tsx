@@ -130,7 +130,7 @@ export function Create({ config, go, refreshConfig, toast }: Props) {
         <p>Challenge their ideas, turn up the heat, branch from any moment, and keep the episode and Iris's art.</p>
       </div>
 
-      <StudioSet
+      <StudioSet photos={config?.portraits}
         show={`CrossTalk · ${FORMATS[format].label}`}
         topic={topic.trim() || 'Pick a topic to start recording'}
         tags={`${MODES[mode].label} · ${AUDIENCES[audience].label} · ${TEMPERATURES[temperature].label}`}

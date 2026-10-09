@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
-import { ARTIST, episodeLabel, PAINT_STYLE_INFO, PAINT_STYLES, paintSvg, type AppConfig, type Artwork, type GalleryEpisode, type IrisFeedback, type PaintStyle } from '@crosstalk/shared';
+import { ARTIST, artSeed, episodeLabel, PAINT_STYLE_INFO, PAINT_STYLES, paintSvg, type AppConfig, type Artwork, type GalleryEpisode, type IrisFeedback, type PaintStyle } from '@crosstalk/shared';
 import { api } from '../api/client';
 import { sketchSrc } from '../studio/ArtistCard';
 import { Footer } from './Footer';
 
-const art = (g: GalleryEpisode, a: Artwork) => sketchSrc(paintSvg(a.svg, a.style, g.conversationId));
+const art = (g: GalleryEpisode, a: Artwork) => sketchSrc(paintSvg(a.svg, a.style, artSeed(g.conversationId, a.version)));
 
 /** Iris, the Artist: everything she has drawn, and everything she has learned from you. */
 export function IrisPage({ config }: { config: AppConfig | null }) {

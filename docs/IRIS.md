@@ -4,7 +4,7 @@ Iris listens to every finished episode and responds like a thoughtful listener: 
 
 ## How she works
 
-- **When:** once, automatically, after an episode completes (one request, counted toward the daily limit). "Ask Iris again" makes a new version.
+- **When:** once, automatically, after an episode completes (one request, counted toward the daily limit). "Ask Iris again" makes a new version, and each version is a fresh take: a new seed for her paint and brushwork, and in mock mode a different framing of the moment. The first version of an episode always looks the same, so saved pages and posters don't change.
 - **Model:** real mode uses `ARTIST_MODEL`, a free model checked by the same free-model guard and different from both speakers. Mock mode uses scripted perspectives and hand-drawn scenes.
 - **Output:** JSON with `perspective`, `momentSeq`, `caption` (a real quote of 20 words or fewer from that turn; replaced with one if she invents it), `artTitle`, `sketchSvg`, `imagePrompt` (saved for painted versions later).
 - **Safety:** her SVG passes a strict allowlist (shapes and paths only, her palette only, no text, scripts, links, styles or entities) and is shown as an image. If it fails, her perspective shows alone with "Sketch again".

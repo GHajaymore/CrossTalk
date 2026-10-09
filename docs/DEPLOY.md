@@ -38,7 +38,9 @@ is always open.
 4. It asks for **ACCESS_CODE**. Type your code there, in Render's page only. Never put it in chat,
    in a file or in the repo.
 5. Wait for the first deploy to say **Live**. Open the `crosstalk-….onrender.com` link it shows,
-   type your code, and check the app opens in **Mock## Point crosstalk.ajailabs.app at it
+   type your code, and check the app opens in **Mock mode**.
+
+## Point crosstalk.ajailabs.app at it
 
 ajailabs.app is the Ajai Labs parent site, so CrossTalk lives on a subdomain. Only one record is
 added; the existing `@` and `www` records stay as they are.
@@ -56,8 +58,6 @@ added; the existing `@` and `www` records stay as they are.
    the green certificate tick before opening it.
 9. Open **https://crosstalk.ajailabs.app** on your phone, type the code, then use **Share → Add
    to Home Screen** (iPhone) or **⋮ → Install app** (Android). It opens full screen like an app.
-
- an app.
 
 ## Keep episodes for good (free, about 10 minutes)
 
@@ -114,3 +114,10 @@ In Render, open **Environment** and add these, one by one. The key goes only int
 
 Save, and Render redeploys. The free-model guard still blocks anything that isn't $0, and the
 app's limit of 40 requests a day still applies.
+
+## Host photos
+
+The hosts' photo-real faces are made by Pollinations, a free image service with no key or account.
+Each face is made once, saved with your episodes and reused, so only a few are ever requested. To
+keep everything on your server and use the drawn portraits instead, add `PORTRAITS` = `off` in
+Render's **Environment** tab.

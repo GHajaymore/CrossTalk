@@ -45,9 +45,12 @@ CrossTalk is a prototype for one person. These are the honest gaps.
 - **Raise your hand** pauses the recording at the end of the current line; the host's invitation is a
   short written line (no request) in their device voice. If you don't speak within 15 seconds, the
   show carries on. Speaking on air uses one of your cues, like Take the mic.
-- **The hosts are living portraits, not photos or video.** They're invented people drawn in the app,
-  with a mouth that follows the voice and small random movements. Photo-real presenters need a paid
-  service, and CrossTalk never uses a real person's likeness.
+- **The hosts are photo-real portraits of invented people, not video.** Each look is made once by a free
+  image service (Pollinations), saved in the database and reused; it breathes, glances and leans, but
+  the lips don't move. Only a short description is sent (skin tone, hair, glasses, outfit), never the
+  host's name, job or the topic, and the prompt asks for a fictional person, never a celebrity. At most
+  24 new photos a day. If the service is down, the drawn living portrait (with a talking mouth) takes
+  its place. Set `PORTRAITS=off` to always use the drawn ones and send nothing out.
 - **Voices come from the listener's device.** CrossTalk picks the most natural ones and suggests free
   better voices when a device only has basic ones; quality still varies by device.
 - **Listening times are estimates** (about 18 seconds a turn at a normal pace). Real hosts vary their

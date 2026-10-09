@@ -131,3 +131,23 @@ describe('restyling through the app', () => {
     } finally { await app.close(); }
   });
 });
+
+describe('every new version of a drawing looks new; a saved one never changes', () => {
+  it('fresh brushwork per version, and version 1 keeps its old look', async () => {
+    const { artSeed } = await import('@crosstalk/shared');
+    expect(artSeed('ep')).toBe('ep');
+    expect(artSeed('ep', 1)).toBe('ep');
+    expect(artSeed('ep', 2)).toBe('ep:v2');
+    const v1 = artworkSvg({ sketchSvg: sketch, conversationId: 'ep', artStyle: 'dreamscape', version: 1 });
+    expect(artworkSvg({ sketchSvg: sketch, conversationId: 'ep', artStyle: 'dreamscape' })).toBe(v1);
+    expect(artworkSvg({ sketchSvg: sketch, conversationId: 'ep', artStyle: 'dreamscape', version: 2 })).not.toBe(v1);
+  });
+
+  it('mock Iris reframes and recolours her scene for each new version, and it still passes the safety check', async () => {
+    const { safeSvg } = await import('../src/artist/svgSafety');
+    const versions = [1, 2, 3, 4, 5].map(v => mockSketch('four-day workweek', v).svg);
+    expect(new Set(versions).size).toBe(5);
+    expect(versions[0]).toBe(sketch);
+    for (const v of versions) expect(safeSvg(v).ok).toBe(true);
+  });
+});

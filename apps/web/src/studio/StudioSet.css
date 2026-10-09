@@ -102,3 +102,15 @@
 @keyframes p-breathe{0%,100%{transform:translateY(0)}50%{transform:translateY(1.4px)}}
 @keyframes p-blink{0%,93%,100%{transform:scaleY(0)}95.5%{transform:scaleY(1)}}
 @media (prefers-reduced-motion:reduce){.set-portrait .p-body,.set-portrait .p-lid{animation:none}.set-portrait .p-head,.set-portrait .p-brow{transition:none}}
+
+/* Photo portraits: over the drawn one, fading in once loaded. Life comes from the same random loop. */
+.set-photo{position:absolute;inset:0;opacity:0;transition:opacity .6s ease;overflow:hidden}
+.set-photo.ok{opacity:1}
+.set-photo img{position:absolute;left:0;bottom:0;width:78%;height:100%;object-fit:cover;object-position:50% 30%;
+  -webkit-mask-image:linear-gradient(90deg,#000 80%,transparent),linear-gradient(0deg,transparent,#000 12%);mask-image:linear-gradient(90deg,#000 80%,transparent);
+  transform-origin:50% 85%;
+  transform:translate(var(--turn,0px),calc(var(--nod,0px) - var(--lvl,0) * 3px)) rotate(calc(var(--tilt,0deg) * .5)) scale(calc(1.02 + var(--lvl,0) * .015));
+  transition:transform var(--dur,.6s) ease-in-out;animation:photo-breathe 5s ease-in-out infinite}
+.set-tile.on .set-photo img{filter:brightness(1.06) saturate(1.05)}
+@keyframes photo-breathe{0%,100%{scale:1}50%{scale:1.008}}
+@media (prefers-reduced-motion:reduce){.set-photo img{animation:none;transition:none;transform:none}}
