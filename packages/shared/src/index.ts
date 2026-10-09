@@ -5,3 +5,4 @@ export * from './auto';
 export * from './scout';
 export * from './paint';
 export * from './host';
+export * from './homes';

@@ -31,6 +31,8 @@ export const SpeakerDraft = z.object({
   role: z.string().trim().max(ROLE_MAX).default(''),
   /** Let the app write a role that fits the topic. */
   autoRole: z.boolean().default(true),
+  /** Where the host is from (a country code), or '' for anywhere. Shapes how they talk, their name and face. */
+  home: z.union([z.literal(''), z.enum(keys(SCOUT_COUNTRIES))]).optional(),
 });
 export type SpeakerDraft = z.infer<typeof SpeakerDraft>;
 

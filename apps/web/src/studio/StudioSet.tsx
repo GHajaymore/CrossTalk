@@ -1,5 +1,5 @@
 import { useEffect, useRef, type ReactNode } from 'react';
-import { initials as toInitials, type RunState, type Temperature } from '@crosstalk/shared';
+import { homeOf, initials as toInitials, type RunState, type Temperature } from '@crosstalk/shared';
 import { HeatMeter } from '../lib/HeatMeter';
 import { clock } from '../lib/text';
 import { HostPortrait } from './Portrait';
@@ -15,6 +15,8 @@ export type Presenter = {
   media?: ReactNode;
   /** The guest seat's sign, e.g. ✋ while a listener waits to be invited in. */
   icon?: string;
+  /** Where the host is from (a country code): their face fits it, and the name bar says it. */
+  home?: string;
 };
 
 export type StudioSetProps = {
@@ -123,13 +125,13 @@ export function StudioSet(p: StudioSetProps) {
         {who.media
           ? <div className="set-media">{who.media}</div>
           : k !== 'G'
-            ? <HostPortrait name={who.name} role={who.role} seat={k} mood={p.temperature} photo={p.photos} />
+            ? <HostPortrait name={who.name} role={who.role} seat={k} mood={p.temperature} photo={p.photos} home={who.home} />
             : <div className="set-avatar"><span className="set-halo" /><span className="set-ini">{k === 'G' ? who.icon ?? '🎙' : toInitials(who.name)}</span></div>}
         <Mic />
         <span className="set-camtag">{k === 'G' ? 'Guest · real person' : 'Host · AI presenter'}</span>
         <span className="set-livedot" aria-hidden="true" />
       </div>
-      <div className="set-l3"><b>{who.name}</b><span>{who.role}</span></div>
+      <div className="set-l3"><b>{who.name}</b><span>{who.role}{homeOf(who.home) ? ` · ${homeOf(who.home)!.country}` : ''}</span></div>
       <div className="set-lvl" aria-hidden="true"><i /><i /><i /><i /><i /></div>
     </div>
   );

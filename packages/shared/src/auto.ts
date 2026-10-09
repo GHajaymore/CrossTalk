@@ -1,6 +1,7 @@
 // Auto personalities and auto host names (docs/PLAN.md, "Speakers" and "Real people").
 // Pure keyword rules, no model call, so the server and the Create screen always agree.
 import { BRANCH_JOBS, BRANCH_TURNS, JOBS, LENGTHS, LONG_JOBS, PERSONAS, SHORT_PLAN, STANCE_END_JOBS, STANCE_START_JOBS } from './constants';
+import { homeName, homeOf } from './homes';
 import type { Audience, Length, PersonaKey, SpeakerDraft, SpeakerId, Speakers, Temperature } from './schemas';
 
 type Pair = [PersonaKey, PersonaKey];
@@ -68,14 +69,21 @@ export function resolveSpeakers(
   const names = autoNames(topic, audience);
   const personas = autoPersonas(topic, audience);
   const fitted = roles ?? autoRoles(topic);
+  const chosen: Partial<Record<SpeakerId, string>> = {};
+  // The right seat's name when it has no home, so a home name on the left can steer clear of its letter.
+  const otherPlain = homeOf(drafts.B.home) ? '' : (drafts.B.autoName || !drafts.B.name.trim() ? names[1] : drafts.B.name.trim()).replace(/^(Dr\.|Prof\.)\s+/, '');
   const one = (id: SpeakerId, i: number) => {
     const d = drafts[id];
     const persona = d.autoPersona ? personas[i] : d.persona;
-    const name = d.autoName || !d.name.trim() ? names[i] : d.name.trim();
+    // A host with a home gets an auto name from there, never starting with the same letter as their co-host's.
+    const from = homeOf(d.home);
+    const name = !(d.autoName || !d.name.trim()) ? d.name.trim()
+      : from ? homeName(from.code, topic, id, audience === 'expert', id === 'B' ? chosen.A ?? '' : otherPlain) : names[i];
+    chosen[id] = name.replace(/^(Dr\.|Prof\.)\s+/, '');
     const lens = persona === 'custom' ? d.lens.trim() || 'A voice of their own' : PERSONAS[persona].lens;
     const autoRole = d.autoRole ?? true;
     const role = autoRole || !d.role?.trim() ? fitted[i] : d.role.trim();
-    return { id, name, autoName: d.autoName, persona, autoPersona: d.autoPersona, lens, role, autoRole, modelId: models[id] };
+    return { id, name, autoName: d.autoName, persona, autoPersona: d.autoPersona, lens, role, autoRole, home: from ? from.code : '' as const, modelId: models[id] };
   };
   return { A: one('A', 0), B: one('B', 1) };
 }

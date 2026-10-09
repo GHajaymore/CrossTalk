@@ -1,15 +1,15 @@
-import type { VoicePrefs } from './BrowserSpeech';
+import type { Accents, VoicePrefs } from './BrowserSpeech';
 import { betterVoicesTip, voiceQuality, voicesFor } from './BrowserSpeech';
 
 const QUALITY_LABEL = { natural: '✦ Natural', good: 'Good', basic: 'Basic' } as const;
 
-type Props = { names: { A: string; B: string }; voices: SpeechSynthesisVoice[]; prefs: VoicePrefs; update: (p: Partial<VoicePrefs>) => void; preview: (id: 'A' | 'B') => void };
+type Props = { names: { A: string; B: string }; voices: SpeechSynthesisVoice[]; prefs: VoicePrefs; update: (p: Partial<VoicePrefs>) => void; preview: (id: 'A' | 'B') => void; accents?: Accents };
 
 /** Voice per host, with preview, plus speed. Choices are remembered on this device only. */
-export function VoicePicker({ names, voices, prefs, update, preview }: Props) {
+export function VoicePicker({ names, voices, prefs, update, preview, accents }: Props) {
   if (!('speechSynthesis' in window)) return <p className="hint">This browser can't speak aloud. You can still read every turn.</p>;
   if (!voices.length) return <p className="hint">Loading voices… Some browsers list them a moment after the page opens.</p>;
-  const chosen = voicesFor(prefs);
+  const chosen = voicesFor(prefs, accents);
   const row = (id: 'A' | 'B') => (
     <div className="voice-row" key={id}>
       <h3><span><span className={`dot ${id}`} /> {names[id]}</span></h3>
