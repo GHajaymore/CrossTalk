@@ -33,6 +33,10 @@ export function fitToLength(text: string, max: number): string {
 }
 /** At most one automatic retry per turn: two attempts. */
 export const MAX_ATTEMPTS = 2;
+/** Extra waits allowed for a per-minute rate limit (429 with a short or no Retry-After). */
+export const RATE_WAITS = 3;
+/** How long to wait on a 429 that doesn't say. */
+export const RATE_WAIT_MS = 10_000;
 
 const abortableSleep = (ms: number, signal: AbortSignal) =>
   new Promise<void>((resolve, reject) => {
@@ -476,6 +480,9 @@ export class ConversationController {
     speaker: Conversation['speakers']['A'], objective: string, cues: Intervention[], signal: AbortSignal,
   ): Promise<{ text: string; stance: number | null; funny: boolean } | null> {
     const sleep = this.opts.sleep ?? abortableSleep;
+    // A per-minute rate limit ("try again in 6 s") is a short wait, not a failure: up to RATE_WAITS
+    // extra waits on top of the normal retry, each still counted as a request.
+    let rateWaits = 0;
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
       const run = this.repo.latestRun(conversationId)!;
       if (this.requestsToday() >= this.opts.dailyLimit) { this.transition(run, 'paused', 'Daily request limit reached'); return null; }
@@ -514,6 +521,13 @@ export class ConversationController {
         if (err.retryAfterMs !== null && err.retryAfterMs > MAX_RETRY_WAIT_MS) {
           this.transition(latest, 'paused', `Rate limited, try again in ${Math.ceil(err.retryAfterMs / 1000)} s`);
           return null;
+        }
+        if (err.status === 429 && err.retryable && rateWaits < RATE_WAITS) {
+          rateWaits++;
+          try { await sleep(err.retryAfterMs ?? RATE_WAIT_MS, signal); } catch { return null; }
+          if (this.repo.latestRun(conversationId)?.state !== 'generating') return null;
+          attempt--;
+          continue;
         }
         if (err.retryable && attempt < MAX_ATTEMPTS) {
           try { await sleep(err.retryAfterMs ?? (isBusy(err) ? BUSY_WAIT_MS : OTHER_WAIT_MS), signal); } catch { return null; }

@@ -48,7 +48,7 @@ export type StudioSetProps = {
 
 const REC: Record<StudioSetProps['runState'], [string, string]> = {
   lobby: ['READY', ''], idle: ['READY', ''], generating: ['REC', 'on'], paused: ['PAUSED', 'hold'],
-  completed: ['SAVED', 'done'], cancelled: ['STOPPED', ''], failed: ['CONNECTION LOST', 'warn'],
+  completed: ['SAVED', 'done'], cancelled: ['STOPPED', ''], failed: ['TURN FAILED', 'warn'],
 };
 
 const reducedMotion = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
