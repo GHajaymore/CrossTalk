@@ -77,8 +77,13 @@ export class OpenRouterProvider implements Provider {
     this.name = this.svc.id;
   }
 
-  /** OpenRouter-only request fields: short hidden thinking, and the cost in the usage report. */
-  private extras(stream: boolean) {
+  /**
+   * Service-specific request fields. OpenRouter: short hidden thinking, and the cost in the usage
+   * report. Groq: its thinking models (gpt-oss, qwen) are asked to think briefly so the thinking
+   * doesn't use up the turn's tokens; other Groq models refuse the field, so they never get it.
+   */
+  private extras(stream: boolean, modelId: string) {
+    if (this.svc.id === 'groq') return /(^|\/)(gpt-oss|qwen)/i.test(modelId) ? { reasoning_effort: 'low' } : {};
     if (this.svc.id !== 'openrouter') return {};
     return stream ? { reasoning: { effort: 'low', exclude: true }, usage: { include: true } } : { reasoning: { effort: 'low', exclude: true } };
   }
@@ -99,7 +104,7 @@ export class OpenRouterProvider implements Provider {
           model: modelId,
           messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
           max_tokens: maxTokens,
-          ...this.extras(false),
+          ...this.extras(false, modelId),
         }),
       });
     } catch (e) {
@@ -157,7 +162,7 @@ export class OpenRouterProvider implements Provider {
           max_tokens: this.opts.maxOutputTokens,
           // Many free models "think" before they speak, and that counts against max_tokens.
           // On OpenRouter keep it short and out of the reply; on Groq any <think> block is dropped below.
-          ...this.extras(true),
+          ...this.extras(true, req.speaker.modelId),
         }),
       });
     } catch (e) { return fail(e); }
