@@ -111,7 +111,7 @@
 .set-room.r2{background:radial-gradient(circle at 80% 25%,#e9e3c0 0,#a8b48a 18%,transparent 45%),radial-gradient(ellipse at 10% 70%,#2f5a35 0,transparent 40%),linear-gradient(180deg,#46503f,#1d231b)}
 .set-room.r3{background:radial-gradient(circle at 85% 20%,#3b5fa8 0,transparent 40%),repeating-linear-gradient(45deg,#24272c 0 8px,#1b1d21 8px 16px)}
 .set-room.r4{background:repeating-linear-gradient(90deg,#5a3a1f 0 22px,#4b2f18 22px 24px),linear-gradient(180deg,#5a3a1f,#22160c);background-blend-mode:multiply}
-.set-room.r5{background:linear-gradient(90deg,transparent 60%,#7a5a8a 60% 78%,transparent 78%) 0 18%/100% 34% no-repeat,radial-gradient(circle at 15% 30%,#d8b67a 0,transparent 30%),linear-gradient(180deg,#2c2a30,#141317)}
+.set-room.r5{background:radial-gradient(ellipse 9% 12% at 69% 30%,#9a7aa8 0,#5d4668 60%,transparent 62%),linear-gradient(#b8975a,#b8975a) 62% 16%/16% 30% no-repeat,radial-gradient(circle at 15% 30%,#d8b67a 0,transparent 30%),linear-gradient(180deg,#2c2a30,#141317)}
 .set-room.r6{background:radial-gradient(circle at 70% 30%,#f2b25a 0 2px,transparent 3px) 0 0/28px 22px,radial-gradient(circle at 30% 60%,#8ab4f8 0 1.5px,transparent 3px) 0 0/36px 30px,linear-gradient(180deg,#243055,#120f22)}
 .set-room.r7{background:repeating-linear-gradient(90deg,#6b4a2e 0 12px,transparent 12px 26px) 0 22%/100% 28% no-repeat,radial-gradient(circle at 75% 25%,#c7965a 0,transparent 40%),linear-gradient(180deg,#3d2c20,#1a130e)}
 .set-photo{position:absolute;inset:0;opacity:0;transition:opacity .6s ease;overflow:hidden}
