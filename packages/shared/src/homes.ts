@@ -3,6 +3,7 @@
 // Styles describe broadcast habits as tendencies, never as rules about people: no accents written
 // out, no slang for show, no clichés. Everyone in a country looks different, so faces draw from a range.
 import { SCOUT_COUNTRIES, SCOUT_REGIONS } from './constants';
+import type { HomeStyle, PaintStyle } from './paint';
 import type { Language } from './schemas';
 
 export type HomeCode = keyof typeof SCOUT_COUNTRIES;
@@ -96,6 +97,22 @@ export function languagesFor(homes: (string | undefined)[]): Language[] {
   for (const h of homes) for (const l of HOME_LANGUAGES[h as HomeCode] ?? []) if (!out.includes(l)) out.push(l);
   return out;
 }
+
+/** The art tradition Iris may paint in when a host is from here (Iris page → Styles from the hosts' homes). */
+export const HOME_ART: Partial<Record<HomeCode, HomeStyle>> = {
+  JP: 'inkwash', KR: 'inkwash', SG: 'inkwash',
+  MX: 'folk', BR: 'folk', AR: 'folk', CO: 'folk',
+  SA: 'tiles', AE: 'tiles', EG: 'tiles', TR: 'tiles',
+  IN: 'miniature', PK: 'miniature', BD: 'miniature',
+  NG: 'woven', KE: 'woven', ZA: 'woven',
+};
+/** The home styles that fit an episode's hosts, first host first, no repeats. */
+export const homeStylesFor = (speakers: { A: { home?: string }; B: { home?: string } }): HomeStyle[] =>
+  [...new Set([speakers.A.home, speakers.B.home].map(h => HOME_ART[h as HomeCode]).filter((x): x is HomeStyle => !!x))];
+
+/** What Iris may use for one episode: your ticked styles, plus its hosts' home styles while those are on. */
+export const episodeStyles = (ticked: readonly PaintStyle[], speakers: { A: { home?: string }; B: { home?: string } }, homeStylesOn = true): PaintStyle[] =>
+  [...ticked, ...(homeStylesOn ? homeStylesFor(speakers) : [])];
 
 export const HOME_CODES = Object.keys(HOMES) as HomeCode[];
 /** A stored home code, or null for "Anywhere" (and for anything that isn't one). */

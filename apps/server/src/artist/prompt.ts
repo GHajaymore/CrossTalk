@@ -1,10 +1,15 @@
 // What Iris is asked to do after an episode (docs/PLAN.md, The Artist).
-import type { ConversationView, IrisFeedback, PaintStyle } from '@crosstalk/shared';
+import { isHomeStyle, type ConversationView, type IrisFeedback, type PaintStyle } from '@crosstalk/shared';
 import { languageRule } from '../prompts/buildPrompt';
 import { IRIS_PALETTE } from './svgSafety';
 
 const clean = (s: string) => s.replace(/[<>]/g, '');
-const STYLE_FEEL: Record<PaintStyle, string> = { sketch: 'crisp lines, for practical talk', painting: 'watercolour washes, for warm or heated talk', dreamscape: 'a drifting night sky, for big open ideas' };
+const STYLE_FEEL: Record<PaintStyle, string> = {
+  sketch: 'crisp lines, for practical talk', painting: 'watercolour washes, for warm or heated talk', dreamscape: 'a drifting night sky, for big open ideas',
+  inkwash: 'brush and ink with a red seal, from the East Asian ink-painting tradition', folk: 'cut-paper bunting and bold colour, from Latin American folk art',
+  tiles: 'your lines over geometric tilework, from Middle Eastern and North African pattern traditions', miniature: 'a jewel-toned panel in an ornate gold border, from South Asian miniature painting',
+  woven: 'woven-strip borders, from African textile traditions',
+};
 
 export function buildIrisPrompt(c: ConversationView, feedback: IrisFeedback[], taste: PaintStyle | null = null, allowed: readonly PaintStyle[] = ['sketch', 'painting', 'dreamscape']) {
   const palette = Object.entries(IRIS_PALETTE).filter(([k]) => k !== 'ground').map(([k, v]) => `${v} (${k})`).join(', ');
@@ -23,6 +28,7 @@ export function buildIrisPrompt(c: ConversationView, feedback: IrisFeedback[], t
     allowed.length === 1
       ? `- artStyle: always "${allowed[0]}" (the listener's choice).`
       : `- artStyle: how your sketch is shown, one of ${allowed.map(s => `"${s}" (${STYLE_FEEL[s]})`).join(', ')}. Pick the one that matches how the episode felt.`,
+    allowed.some(isHomeStyle) ? `One or both hosts come from a place with its own art tradition, so ${allowed.filter(isHomeStyle).map(s => `"${s}"`).join(' and ')} is open to you as a way to honour where they're from. Use it when it suits the moment; it's a respectful nod to a living tradition, never a stereotype, and the scene you draw stays about the conversation.` : '',
     taste ? `The listener has been choosing "${taste}" for your recent drawings. Use it unless this episode clearly calls for something else.` : '',
     'Reply with only JSON: {"perspective": "...", "momentSeq": 0, "caption": "...", "artTitle": "...", "sketchSvg": "<svg ...>...</svg>", "imagePrompt": "...", "artStyle": "sketch"}',
     languageRule(c.language, 'perspective, caption and artTitle (keep imagePrompt in English for the painter)'),

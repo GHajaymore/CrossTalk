@@ -34,6 +34,11 @@ test('hosts from somewhere: the name bar, the style hint, and their first lines'
   await page.getByRole('link', { name: /Read/ }).first().click();
   await expect(page.locator('.turn').first()).toContainText('Coming to you from Kenya today.');
   await expect(page.locator('.turn').nth(1)).toContainText('Coming to you from India today.');
+  // Iris may paint in the tradition of a host's home: Kenya brings the woven border, India the miniature.
+  const styles = page.getByRole('group', { name: 'Art style' });
+  await expect(styles.getByRole('button', { name: 'Woven border' })).toBeVisible({ timeout: 30_000 });
+  await expect(styles.getByRole('button', { name: 'Miniature' })).toBeVisible();
+  await expect(styles.getByRole('button', { name: 'Ink wash' })).toHaveCount(0);
 });
 
 test('language: a host from Mexico puts Spanish first; the episode greets in Spanish', async ({ page }) => {

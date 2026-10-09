@@ -57,8 +57,9 @@ export const api = {
   setYou: (id: string, patch: { start?: number | null; end?: number | null }) => call<ConversationView>(`/conversations/${id}/you`, { method: 'PUT', body: JSON.stringify(patch) }),
   setArtStyle: (id: string, style: PaintStyle) => call<ConversationView>(`/conversations/${id}/artist/style`, { method: 'PUT', body: JSON.stringify({ style }) }),
   irisGallery: () => call<GalleryEpisode[]>('/iris/gallery'),
-  irisStyles: () => call<{ styles: PaintStyle[] }>('/iris/styles'),
-  setIrisStyles: (styles: PaintStyle[]) => call<{ styles: PaintStyle[] }>('/iris/styles', { method: 'PUT', body: JSON.stringify({ styles }) }),
+  irisStyles: () => call<{ styles: PaintStyle[]; homeStyles: boolean }>('/iris/styles'),
+  setIrisStyles: (styles: PaintStyle[]) => call<{ styles: PaintStyle[]; homeStyles: boolean }>('/iris/styles', { method: 'PUT', body: JSON.stringify({ styles }) }),
+  setIrisHomeStyles: (homeStyles: boolean) => call<{ styles: PaintStyle[]; homeStyles: boolean }>('/iris/home-styles', { method: 'PUT', body: JSON.stringify({ homeStyles }) }),
   forgetIrisFeedback: (id: string) => call<IrisFeedback[]>(`/iris/feedback/${id}`, { method: 'DELETE' }),
   eventsUrl: (id: string) => `/api/conversations/${id}/events`,
 };

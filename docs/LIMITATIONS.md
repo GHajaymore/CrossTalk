@@ -71,6 +71,9 @@ CrossTalk is a prototype for one person. These are the honest gaps.
   sample script. The topic stays as you typed it. Host roles stay in English (each face's age and clothes are read
   from the job title). The voice is your device's voice for that language; if it has none, the turns
   still show as text and the Voices panel says where to get one free.
+- **Iris's home styles are broad traditions drawn around her own lines** (ink wash, folk colour, tile
+  pattern, miniature, woven border), not reproductions of any artist or specific artwork, and only for
+  hosts from those regions. Europe, North America and Oceania use her usual styles.
 - **Young hosts are shown as adults.** On a Teens show the right seat is a Gen Z student; roles like
   student, intern or creator look about nineteen to their twenties. CrossTalk never makes a
   photo-real face of anyone under eighteen.

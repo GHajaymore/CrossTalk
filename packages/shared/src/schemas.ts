@@ -284,7 +284,7 @@ export const ArtistNotes = z.object({
   /** A quote of 20 words or fewer from the turn she drew. */
   caption: z.string(),
   artTitle: z.string(),
-  artStyle: z.enum(['sketch', 'picture', 'painting', 'dreamscape']),
+  artStyle: z.enum(['sketch', 'picture', 'painting', 'dreamscape', 'inkwash', 'folk', 'tiles', 'miniature', 'woven']),
   /** Checked SVG line art, or null if her drawing failed the safety check. */
   sketchSvg: z.string().nullable(),
   /** Saved for a painted version later. */

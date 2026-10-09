@@ -442,7 +442,7 @@ details.brief .brief-box{margin-top:8px}
 @media (prefers-reduced-motion:reduce){.paint-in{animation:none}}
 img.living{object-fit:cover}
 .living-wrap .living{aspect-ratio:5/3;height:auto;border-radius:6px}
-.draw-btn{position:absolute;left:8px;bottom:8px;background:rgba(0,0,0,.55)}
+.draw-btn{position:absolute;left:8px;bottom:8px;background:rgba(15,16,19,.85);color:#ECE8E1;border-color:rgba(236,232,225,.3)}
 .cover .living{height:100%}
 @media (max-width:680px){.iris-pip{width:96px;right:8px;bottom:8px}}
 .living-ghost{position:relative;display:block;width:100%;height:100%}
@@ -585,3 +585,11 @@ img.living{object-fit:cover}
 .hand-btn{border-color:rgba(var(--cue-rgb),.5)}
 @keyframes hand-in{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){.hand-call{animation:none}}
+/* Styles from the hosts' homes: one switch, with a small sample of each tradition. */
+.home-styles{margin-top:12px;border:1px dashed var(--line);border-radius:8px}
+.home-styles.on{border-style:solid;border-color:var(--iris)}
+.home-style-list{list-style:none;margin:0;padding:0 10px 10px;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
+.home-style-list li{display:grid;grid-template-columns:72px 1fr;gap:10px;align-items:center;font-size:13px}
+.home-style-list img{width:72px;height:43px;border-radius:4px;object-fit:cover}
+.home-styles:not(.on) .home-style-list{opacity:.75}
+.home-styles .style-pick{height:auto}
