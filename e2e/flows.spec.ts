@@ -97,7 +97,7 @@ test('Iris gallery as an exhibition: play, step with the keys, pause, close with
   await finishedEpisode(page.request);
   await finishedEpisode(page.request, 'Should cities ban cars from their centres?');
   await page.goto('/#/iris');
-  await page.getByRole('button', { name: '▶ Play the gallery' }).click();
+  await page.getByRole('button', { name: '▶ Play the gallery' }).first().click();
   const show = page.getByRole('dialog', { name: /gallery, piece 1 of \d+/ });
   await expect(show).toBeVisible();
   await expect(show.getByRole('button', { name: 'Close' })).toBeFocused();

@@ -58,6 +58,8 @@ export function IrisPage({ config }: { config: AppConfig | null }) {
         </div>
       </header>
 
+      {gallery && gallery[0] && <LatestWork g={gallery[0]} pictures={!!config?.irisPictures} onPlay={() => setShow(true)} />}
+
       <section className="sec"><div className="sec-head"><h2>Gallery</h2>
         {!!gallery?.length && <button className="btn sm" onClick={() => setShow(true)}>▶ Play the gallery</button>}</div>
         <p className="hint">Everything she has made: each drawing, each time you asked her again, and each style you chose. Play it as a slow exhibition, with music, on any screen.</p>
@@ -114,6 +116,38 @@ export function IrisPage({ config }: { config: AppConfig | null }) {
       </section>
       <Footer config={config} />
     </div>
+  );
+}
+
+/** Her newest piece, hung large at the top of her page: open it full size, or play the whole gallery. */
+function LatestWork({ g, pictures, onPlay }: { g: GalleryEpisode; pictures: boolean; onPlay: () => void }) {
+  const a = g.artworks.find(x => g.current && x.version === g.current.version && x.style === g.current.style) ?? g.artworks[0];
+  const [viewing, setViewing] = useState(false);
+  if (!a) return null;
+  const picture = a.style === 'picture' && pictures;
+  return (
+    <section className="latest-work" aria-label="Her latest piece">
+      <button className="art-open lw-art" onClick={() => setViewing(true)} aria-label={`Open “${a.title}” full size`}>
+        {picture
+          ? <IrisPicture conversationId={g.conversationId} version={a.version} fallback={art(g, a)} alt={`Iris's picture: ${a.title}`} />
+          : <img src={art(g, a)} alt={`Iris's ${PAINT_STYLE_INFO[a.style].name.toLowerCase()}: ${a.title}`} />}
+        <span className="expand-hint" aria-hidden="true">⤢</span>
+      </button>
+      <div className="lw-text">
+        <span className="tag">Latest · {episodeLabel(g.episode)} · {PAINT_STYLE_INFO[a.style].name}</span>
+        <h2>“{a.title}”</h2>
+        <p className="lw-quote">“{a.caption}”</p>
+        <p className="hint">{g.title}</p>
+        <div className="dock-row">
+          <button className="btn sm" onClick={onPlay}>▶ Play the gallery</button>
+          <a className="btn sm ghost" href={`#/studio/${g.conversationId}/read`}>Open the episode</a>
+        </div>
+      </div>
+      {viewing && <ArtViewer onClose={() => setViewing(false)} art={{
+        src: art(g, a), picture: picture ? { conversationId: g.conversationId, version: a.version } : null,
+        title: a.title, caption: a.caption, styleName: PAINT_STYLE_INFO[a.style].name, where: `${episodeLabel(g.episode)} · ${g.title}`,
+      }} />}
+    </section>
   );
 }
 
