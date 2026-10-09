@@ -2,7 +2,7 @@
 // One script per preset topic, plus a generic one for anything else.
 // Speaker A speaks odd turns, Speaker B even turns. Scripts never use the hosts' names,
 // because names are chosen per episode.
-import { PRESETS, type SpeakerId, type Temperature } from '@crosstalk/shared';
+import { PRESETS, sentencesOf, type SpeakerId, type Temperature } from '@crosstalk/shared';
 
 const AI_BUSINESS = [
   "So today: will AI actually help independent businesses, or is it just another thing they're told they need? I'm leaning hopeful, which I suspect you're about to fix.",
@@ -135,7 +135,7 @@ const HEAT_LEADS: Record<Temperature, string> = {
   heated: 'Oh, come on. ',
 };
 /** Turns where the second host pushes back: Push back, Test, Catch. */
-const PUSH_BACK_TURNS = new Set([4, 8, 10]);
+export const PUSH_BACK_TURNS = new Set([4, 8, 10]);
 
 export function mockTurnText(topic: string, seq: number, _speakerId: SpeakerId, temperature: Temperature) {
   const base = scriptFor(topic)[seq - 1] ?? 'Let me pick up where we left off.';
@@ -179,24 +179,32 @@ export function mockCueLead(kind: 'challenge' | 'deeper' | 'guest' | 'temp' | 'n
 }
 
 /** Round two: the opening pair, in place of the first round's. It quotes what was left open last time. */
+/** The sentence that says what was left open last round, not a stray "Agreed." */
+export function openQuote(open: string | null) {
+  const sentences = open ? sentencesOf(open) : [];
+  return sentences.find(x => /unsure|don't know|open|claro|पक्का/i.test(x)) ?? sentences.sort((x, y) => y.length - x.length)[0];
+}
 export function mockRoundOpening(round: number, seq: number, open: string | null) {
-  // The sentence that says what was open, not a stray "Agreed."
-  const sentences = open?.match(/[^.?!]+[.?!]+/g)?.map(x => x.trim()) ?? [];
-  const quote = sentences.find(x => /unsure|don't know|open/i.test(x)) ?? sentences.sort((x, y) => y.length - x.length)[0];
+  const quote = openQuote(open);
   if (seq === 1) return `Round ${round}! Last time we left this one properly open, so let's pick it back up.${quote ? ` You said, and I quote: "${quote}" Let's start there.` : ''}`;
   if (seq === 2) return "Good, because I've been chewing on it since. I still think the answer depends on who carries the cost.";
   return null;
 }
 
 /** Mock Mind-change meter: each host says how sure they are at the start, and where they landed. They move toward each other. */
-export function mockStance(topic: string, speakerId: SpeakerId, job: string, lastEnd: number | null = null) {
+const EN_STANCE = {
+  start: (n: number) => ` I'd put myself at about ${n}% on yes. [stance: ${n}]`,
+  again: (n: number) => ` I finished last round at about ${n}% on yes, and that's where I'm starting. [stance: ${n}]`,
+  end: (n: number) => ` For the record, I've moved: about ${n}% on yes now. [stance: ${n}]`,
+};
+export function mockStance(topic: string, speakerId: SpeakerId, job: string, lastEnd: number | null = null, say = EN_STANCE) {
   const seed = [...topic].reduce((n, ch) => (n * 31 + ch.charCodeAt(0)) % 997, 7);
   // Round two: they start where they ended, and move a little less this time.
   const start = lastEnd ?? (speakerId === 'A' ? 62 + (seed % 20) : 22 + (seed % 20));
   const shift = lastEnd != null ? 3 + (seed % 5) : null;
   const end = Math.max(0, Math.min(100, speakerId === 'A' ? start - (shift ?? 10 + (seed % 8)) : start + (shift ?? 8 + (seed % 9))));
-  if ((job === 'Hello' || job === 'First take') && lastEnd != null) return ` I finished last round at about ${start}% on yes, and that's where I'm starting. [stance: ${start}]`;
-  if (job === 'Hello' || job === 'First take') return ` I'd put myself at about ${start}% on yes. [stance: ${start}]`;
-  if (job === 'Takeaway' || job === 'Sign-off') return ` For the record, I've moved: about ${end}% on yes now. [stance: ${end}]`;
+  if ((job === 'Hello' || job === 'First take') && lastEnd != null) return say.again(start);
+  if (job === 'Hello' || job === 'First take') return say.start(start);
+  if (job === 'Takeaway' || job === 'Sign-off') return say.end(end);
   return '';
 }

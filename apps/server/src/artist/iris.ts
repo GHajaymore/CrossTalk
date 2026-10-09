@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { cleanStyles, sentencesOf, wordsIn, defaultPaintStyle, PAINT_STYLES, type ArtistNotes, type ConversationView, type IrisFeedback, type PaintStyle } from '@crosstalk/shared';
 import type { Repo } from '../db/repo';
 import { buildIrisPrompt } from './prompt';
+import { MOCK_LANGS } from '../providers/mockScriptsLocal';
 import { mockSketch } from './mockSketches';
 import { safeSvg } from './svgSafety';
 
@@ -148,21 +149,24 @@ export const mockArtist: ArtistBackend = {
     const pick = answered ?? steered ?? c.turns.find(t => t.objective === 'Rethink') ?? c.turns.find(t => t.objective === 'Catch') ?? c.turns[Math.floor(c.turns.length / 2)];
     const who = c.speakers[pick.speakerId].name;
     const other = c.speakers[pick.speakerId === 'A' ? 'B' : 'A'].name;
+    // Spanish and Hindi episodes get Iris in their language too.
+    const L = MOCK_LANGS[c.language ?? 'en']?.iris;
     const opener = answered
-      ? cue!.kind === 'guest' ? `What stayed with me was ${who} answering our guest straight away, without a script to hide behind.`
-        : cue!.kind === 'challenge' ? `What stayed with me was ${who} taking your challenge head on instead of talking around it.`
-        : `What stayed with me was ${who} going back to turn ${cue!.targetSeq} when you asked, and finding more in it.`
-      : steered ? `What stayed with me was the moment you steered the show and ${who} went with it, picking up a road the first version never took.`
-      : `What stayed with me was the moment ${who} gave ground to ${other}. The talk got honest right there, because someone changed their mind out loud.`;
+      ? cue!.kind === 'guest' ? L?.guest(who) ?? `What stayed with me was ${who} answering our guest straight away, without a script to hide behind.`
+        : cue!.kind === 'challenge' ? L?.challenge(who) ?? `What stayed with me was ${who} taking your challenge head on instead of talking around it.`
+        : L?.deeper(who, cue!.targetSeq) ?? `What stayed with me was ${who} going back to turn ${cue!.targetSeq} when you asked, and finding more in it.`
+      : steered ? L?.steered(who) ?? `What stayed with me was the moment you steered the show and ${who} went with it, picking up a road the first version never took.`
+      : L?.changed(who, other) ?? `What stayed with me was the moment ${who} gave ground to ${other}. The talk got honest right there, because someone changed their mind out loud.`;
     const lastNote = feedback.find(f => f.note);
     const sketch = mockSketch(c.topic, version);
     const perspective = [
       opener,
-      `I wish they had spent a turn on the people who never get asked about this.`,
-      lastNote ? `You told me "${lastNote.note.slice(0, 80)}", so I tried to keep that in mind.` : '',
-      taste ? `You keep choosing ${PAINT_STYLE_NAME[taste]} for my work, so that's how I made this one.` : '',
-      `My question for you: what would it take to change your mind?`,
+      L?.wish ?? `I wish they had spent a turn on the people who never get asked about this.`,
+      lastNote ? L?.note(lastNote.note.slice(0, 80)) ?? `You told me "${lastNote.note.slice(0, 80)}", so I tried to keep that in mind.` : '',
+      taste ? L?.taste(taste) ?? `You keep choosing ${PAINT_STYLE_NAME[taste]} for my work, so that's how I made this one.` : '',
+      L?.question ?? `My question for you: what would it take to change your mind?`,
     ].filter(Boolean).join(' ');
+    sketch.title = L?.titles[sketch.title] ?? sketch.title;
     return JSON.stringify({ perspective, momentSeq: pick.seq, caption: firstSentence(pick.text), artTitle: sketch.title, sketchSvg: sketch.svg, imagePrompt: `A painted scene of: ${firstSentence(pick.text)}` });
   },
 };

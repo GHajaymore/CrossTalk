@@ -84,3 +84,39 @@ describe('young hosts', () => {
     expect(resolveSpeakers(d.topic, 'general', d.speakers, { A: 'a', B: 'b' }).B.role).not.toBe(youthRole(d.topic));
   });
 });
+
+describe('mock mode in Spanish and Hindi', () => {
+  it('plays a whole sample episode in the language, stances, cues and Iris included', async () => {
+    const { MOCK_LANGS } = await import('../src/providers/mockScriptsLocal');
+    const { MOCK_FULL_LANGUAGES } = await import('@crosstalk/shared');
+    expect(Object.keys(MOCK_LANGS).sort()).toEqual([...MOCK_FULL_LANGUAGES].sort());
+    for (const lang of MOCK_FULL_LANGUAGES) {
+      const L = MOCK_LANGS[lang]!;
+      expect(L.script('x')).toHaveLength(16);
+      expect(Object.keys(L.long).sort()).toEqual(['Counterpoint', 'Dig in', 'Hard case', 'Middle path', 'Open question', 'Second story', 'Stress test', 'What changed']);
+    }
+    const t = app();
+    try {
+      for (const [lang, hello, mark] of [['es', '¡Hola', /[áéíóúñ¿¡]/], ['hi', 'नमस्ते', /[ऀ-ॿ]/]] as const) {
+        const d = draft();
+        const id = (await t.app.inject({ method: 'POST', url: '/api/conversations', payload: { ...d, language: lang, length: 'long', speakers: { ...d.speakers, B: { ...d.speakers.B, home: lang === 'es' ? 'MX' : 'IN' } } } })).json().id;
+        await t.controller.start(id); await t.controller.settled(id);
+        const v = t.repo.view(id)!;
+        expect(v.turns).toHaveLength(24);
+        expect(v.turns[0].text.startsWith(hello)).toBe(true);
+        expect(v.turns[1].text).toContain(lang === 'es' ? 'Un saludo desde Mexico.' : 'India से नमस्ते।');
+        // Every line is in the language, with no English sentences left over from the sample script.
+        for (const turn of v.turns) {
+          expect(turn.text, `${lang} turn ${turn.seq}`).toMatch(mark);
+          expect(turn.text, `${lang} turn ${turn.seq}`).not.toMatch(/\b(the|and|you|that)\b/i);
+        }
+        // The Mind-change meter still reads the hosts' stances.
+        expect(v.turns[0].stance).not.toBeNull();
+        expect(v.turns[23].stance).not.toBeNull();
+        await new Promise(r => setTimeout(r, 30));
+        const iris = t.repo.view(id)!.artist;
+        if (iris?.state === 'done') expect(iris.perspective).toMatch(mark);
+      }
+    } finally { await t.app.close(); }
+  });
+});
