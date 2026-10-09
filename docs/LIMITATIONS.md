@@ -51,6 +51,18 @@ CrossTalk is a prototype for one person. These are the honest gaps.
   host's name, job or the topic, and the prompt asks for a fictional person, never a celebrity. At most
   24 new photos a day. If the service is down, the drawn living portrait (with a talking mouth) takes
   its place. Set `PORTRAITS=off` to always use the drawn ones and send nothing out.
+- **Photos follow the description, roughly.** Each face is asked to look the age of the host's job
+  (a student in their twenties, a researcher 30s to 50s, a retired chef in their sixties), always an
+  adult, in one of eight rooms (the two hosts never share one). A free image model sometimes still
+  misjudges age or ignores a detail; the same host always keeps the same photo once it's made. The
+  free service makes one picture at a time, so a second host's photo can take a little longer.
+- **A host's home is a flavour, not a portrait of a country.** It shapes how they argue (lightly at
+  Calm, fully at Heated), their auto name, the range their face is drawn from, and their examples.
+  Everyone in a country is different; the styles describe common broadcast habits, and the hosts are
+  told to avoid accents in text, slang for show, clichés and stereotypes. Episodes stay in English
+  for now. Local English voices (India, UK, Ireland, Nigeria, Kenya, South Africa, Singapore,
+  Philippines, Australia, New Zealand, Canada, US) are used when your device has a decent one.
+  Mock mode only shows it in the names, faces and a "coming to you from…" on each host's first line.
 - **Voices come from the listener's device.** CrossTalk picks the most natural ones and suggests free
   better voices when a device only has basic ones; quality still varies by device.
 - **Listening times are estimates** (about 18 seconds a turn at a normal pace). Real hosts vary their

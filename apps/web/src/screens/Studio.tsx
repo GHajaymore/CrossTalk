@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  artworkSvg, AUDIENCES, CUE_LIMIT, HAND_RAISED, LENGTHS, episodeLabel, hideStanceTag, hostSubtitle, jobIn, MODES, paintStyleOf, speakerFor, TEMPERATURES, turnTotal,
+  artworkSvg, AUDIENCES, CUE_LIMIT, HAND_RAISED, LENGTHS, episodeLabel, hideStanceTag, homeOf, hostSubtitle, jobIn, MODES, paintStyleOf, speakerFor, TEMPERATURES, turnTotal,
   type AppConfig, type ConversationView, type Intervention,
 } from '@crosstalk/shared';
 import { api } from '../api/client';
@@ -54,7 +54,9 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
   useEffect(() => { if (view?.run?.state !== 'generating') setHandUp(false); }, [view?.run?.state]);
   const setRef = useRef<HTMLDivElement>(null);
   const { voices, prefs, update } = useVoices();
-  const browserPlay = usePlayback(view?.turns ?? [], prefs);
+  // Each host speaks in an English voice from their home, when this device has one.
+  const accents = { A: homeOf(view?.speakers.A.home)?.voice ?? null, B: homeOf(view?.speakers.B.home)?.voice ?? null };
+  const browserPlay = usePlayback(view?.turns ?? [], prefs, accents);
   const recording = useRecording(view?.turns ?? [], view?.audio);
   // A rendered recording (natural voices) wins over the device's built-in voices.
   const play = recording ?? browserPlay;
@@ -158,7 +160,7 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
       topic={view.topic}
       tags={`${view.round > 1 ? `Round ${view.round} · ` : ''}${view.length !== 'normal' ? `${LENGTHS[view.length].label} · ` : ''}${MODES[view.mode].label} · ${AUDIENCES[view.audience].label} · ${TEMPERATURES[view.temperature].label}`}
       temperature={view.temperature}
-      hosts={{ A: { name: sp.A.name, role: hostSubtitle(sp.A) }, B: { name: sp.B.name, role: hostSubtitle(sp.B) } }}
+      hosts={{ A: { name: sp.A.name, role: hostSubtitle(sp.A), home: sp.A.home }, B: { name: sp.B.name, role: hostSubtitle(sp.B), home: sp.B.home } }}
       guest={handUp || handCalled ? { name: 'You', role: handCalled ? 'Invited on air' : 'Hand up', icon: '✋' } : guests.length ? { name: 'Guest', role: 'You, on the mic' } : null}
       speaking={handCaption ? (handCaption.speaking ? handCaption.who : null) : listening ? play.speakerId : live?.speakerId ?? null}
       voiceLevel={handCaption ? browserPlay.pulse : listening ? play.pulse : pulse}
@@ -347,8 +349,8 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
       <SidePanel open={panelOpen} onClose={() => setPanelOpen(false)}
         cue={<CuePanel view={view} live={live} setView={setView} toast={toast} limit={cueLimit} allowHeated={config?.rules.allowHeated ?? true} />}
         branches={<BranchList view={view} />}
-        voices={<VoicePicker names={{ A: sp.A.name, B: sp.B.name }} voices={voices} prefs={prefs} update={update}
-          preview={k => new BrowserSpeech(() => prefs).speak([{ key: 'p', speakerId: k, text: `Hi, I'm ${sp[k].name}. This is how I'll sound on the show.` }], {})} />} />
+        voices={<VoicePicker names={{ A: sp.A.name, B: sp.B.name }} voices={voices} prefs={prefs} update={update} accents={accents}
+          preview={k => new BrowserSpeech(() => prefs, () => accents).speak([{ key: 'p', speakerId: k, text: `Hi, I'm ${sp[k].name}. This is how I'll sound on the show.` }], {})} />} />
     </div>
   );
 }

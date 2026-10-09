@@ -7,7 +7,7 @@ import { hostTraits, lookCode, type HairStyle, type OutfitKind } from '@crosstal
 
 type Seat = 'A' | 'B';
 type Mood = 'calm' | 'lively' | 'heated';
-export type PortraitProps = { name: string; role: string; seat: Seat; mood?: Mood };
+export type PortraitProps = { name: string; role: string; seat: Seat; mood?: Mood; home?: string };
 
 const SKIN = ['#f3d2b8', '#e8b892', '#d29a6e', '#b57a4f', '#8d5a36', '#5e3a22'];
 const SKIN_SHADE = ['#e3b99b', '#d6a07a', '#bb8358', '#9c653e', '#764828', '#4a2c18'];
@@ -27,9 +27,9 @@ function outfitColours(kind: OutfitKind, seat: Seat, h: number): Outfit {
   return { kind, main: seatMain, trim: seatTrim };
 }
 
-export function lookFor({ name, role, seat }: PortraitProps) {
-  const t = hostTraits({ name, role, seat });
-  return { h: t.h, skin: SKIN[t.skin], shade: SKIN_SHADE[t.skin], style: t.style, hair: HAIR[t.hair], glasses: t.glasses, outfit: outfitColours(t.outfit, seat, t.h), blink: 3.2 + ((t.h >>> 13) % 30) / 10, code: lookCode(t) };
+export function lookFor({ name, role, seat, home }: PortraitProps) {
+  const t = hostTraits({ name, role, seat, home });
+  return { h: t.h, skin: SKIN[t.skin], shade: SKIN_SHADE[t.skin], style: t.style, hair: HAIR[t.hair], glasses: t.glasses, outfit: outfitColours(t.outfit, seat, t.h), blink: 3.2 + ((t.h >>> 13) % 30) / 10, age: t.age ?? 4, room: t.room ?? 0, code: lookCode(t) };
 }
 
 function HairBack({ style, color }: { style: Hair; color: string }) {
@@ -121,7 +121,8 @@ function useLife(ref: React.RefObject<Element | null>, seat: Seat, mood: Mood) {
       set('--dur', between(0.35, 0.9), 's');
       timer = window.setTimeout(step, between(talking ? 900 : 1400, talking ? 2600 : 3500));
     };
-    step();
+    // Each host starts at their own moment, so the two never move in step.
+    timer = window.setTimeout(step, between(0, 1600));
     return () => window.clearTimeout(timer);
   }, [ref, seat]);
 }
@@ -145,6 +146,11 @@ export function Portrait(props: PortraitProps) {
           <ellipse cx="100" cy="90" rx="42" ry="50" fill={L.skin} />
           <ellipse cx="78" cy="108" rx="9" ry="5" fill="#d9776a" opacity="0.16" />
           <ellipse cx="122" cy="108" rx="9" ry="5" fill="#d9776a" opacity="0.16" />
+          {/* Lines that come with the years: faint at 50, a little more at 60. */}
+          {L.age >= 5 && <g fill="none" stroke={L.shade} strokeWidth="1.4" strokeLinecap="round" opacity={L.age >= 6 ? 0.9 : 0.6}>
+            <path d="M84 66 Q100 62 116 66" />{L.age >= 6 && <path d="M88 72 Q100 69 112 72" />}
+            <path d="M74 112 Q76 118 80 121" /><path d="M126 112 Q124 118 120 121" />
+          </g>}
           <HairFront style={L.style} color={L.hair} />
           {/* Eyes, with lids that blink at their own rhythm */}
           <g className="p-eyes">
@@ -184,17 +190,22 @@ export function Portrait(props: PortraitProps) {
  * small lift with the voice. Its lips don't move; the drawn one's do.
  */
 export function HostPortrait(props: PortraitProps & { photo?: boolean }) {
-  const code = lookFor(props).code;
+  const L = lookFor(props);
+  const code = L.code;
+  // Each face breathes at its own pace, so the two hosts never move together.
+  const breathe = { animationDuration: `${4.2 + (L.h % 19) / 10}s`, animationDelay: `-${(L.h >>> 5) % 40 / 10}s` };
   const [state, setState] = useState<'loading' | 'ok' | 'failed'>('loading');
   const wrap = useRef<HTMLDivElement>(null);
   useLife(wrap, props.seat, props.mood ?? 'lively');
   useEffect(() => setState('loading'), [code]);
   return (
     <>
+      {/* Their own room behind the drawn portrait, matching the room in their photo. */}
+      <div className={`set-room r${L.room}`} aria-hidden="true" />
       <Portrait {...props} />
       {props.photo && state !== 'failed' && (
         <div ref={wrap} className={`set-photo${state === 'ok' ? ' ok' : ''}`} aria-hidden="true">
-          <img src={`/api/portraits/${code}.jpg`} alt="" onLoad={() => setState('ok')} onError={() => setState('failed')} />
+          <img src={`/api/portraits/${code}.jpg`} alt="" style={breathe} onLoad={() => setState('ok')} onError={() => setState('failed')} />
         </div>
       )}
     </>

@@ -7,7 +7,9 @@ import type { Repo } from './db/repo';
 /** New looks fetched per day at most: a guard against anyone asking for every combination. */
 export const PORTRAITS_PER_DAY = 24;
 const MAX_BYTES = 3_000_000;
-const TIMEOUT_MS = 60_000;
+const TIMEOUT_MS = 90_000;
+/** The free tier serves one picture at a time per server, so a busy reply gets one more try after this wait. */
+const BUSY_WAIT_MS = 8_000;
 
 export const portraitUrl = (code: string, prompt: string) => {
   // The seed comes from the look, so the same host gets the same person every time.
@@ -18,7 +20,9 @@ export const portraitUrl = (code: string, prompt: string) => {
 
 export class Portraits {
   private inFlight = new Map<string, Promise<{ mime: string; data: Buffer } | null>>();
-  constructor(private repo: Repo, private f: typeof fetch, private now: () => Date = () => new Date()) {}
+  /** Photos are asked for one after another, never two at once. */
+  private queue: Promise<unknown> = Promise.resolve();
+  constructor(private repo: Repo, private f: typeof fetch, private now: () => Date = () => new Date(), private busyWaitMs = BUSY_WAIT_MS) {}
 
   /** The stored photo, or a new one fetched once; null when the code isn't a look or no photo can be had. */
   async get(code: string): Promise<{ mime: string; data: Buffer } | null> {
@@ -29,14 +33,19 @@ export class Portraits {
     const pending = this.inFlight.get(code);
     if (pending) return pending;
     if (this.repo.portraitsMadeOn(this.now().toISOString().slice(0, 10)) >= PORTRAITS_PER_DAY) return null;
-    const p = this.fetchOne(code, portraitPrompt(traits)).finally(() => this.inFlight.delete(code));
+    const p = this.queue.then(() => this.fetchOne(code, portraitPrompt(traits))).finally(() => this.inFlight.delete(code));
+    this.queue = p.catch(() => null);
     this.inFlight.set(code, p);
     return p;
   }
 
-  private async fetchOne(code: string, prompt: string) {
+  private async fetchOne(code: string, prompt: string, retry = true): Promise<{ mime: string; data: Buffer } | null> {
     try {
       const res = await this.f(portraitUrl(code, prompt), { signal: AbortSignal.timeout(TIMEOUT_MS), headers: { Accept: 'image/jpeg,image/png,image/webp' } });
+      if ((res.status === 429 || res.status === 503) && retry) {
+        await new Promise(r => setTimeout(r, this.busyWaitMs));
+        return this.fetchOne(code, prompt, false);
+      }
       const mime = (res.headers.get('content-type') ?? '').split(';')[0].trim();
       if (!res.ok || !/^image\/(jpeg|png|webp)$/.test(mime)) return null;
       const data = Buffer.from(await res.arrayBuffer());

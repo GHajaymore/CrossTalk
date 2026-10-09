@@ -47,12 +47,20 @@ export function betterVoicesTip(): string {
   return 'Microsoft Edge has free Natural voices that sound much more like real people.';
 }
 
-/** Two different voices for the two hosts, honouring saved choices. */
-export function voicesFor(prefs: VoicePrefs): Record<SpeakerId, SpeechSynthesisVoice | null> {
+/** A host's preferred English accent from their home, e.g. "en-IN"; null to use the usual voices. */
+export type Accents = Partial<Record<SpeakerId, string | null>>;
+const langOf = (v: SpeechSynthesisVoice) => v.lang.toLowerCase().replace('_', '-');
+
+/** Two different voices for the two hosts, honouring saved choices, then each host's home accent when the device has a decent one. */
+export function voicesFor(prefs: VoicePrefs, accents: Accents = {}): Record<SpeakerId, SpeechSynthesisVoice | null> {
   const list = englishVoices();
   const byName = (n: string) => list.find(v => v.name === n) ?? null;
-  const A = byName(prefs.A) ?? list[0] ?? null;
-  const B = byName(prefs.B) ?? list.find(v => v !== A && v.lang === A?.lang) ?? list.find(v => v !== A) ?? A;
+  const local = (id: SpeakerId, not?: SpeechSynthesisVoice | null) => {
+    const want = accents[id]?.toLowerCase();
+    return want ? list.find(v => v !== not && langOf(v) === want && voiceQuality(v) !== 'basic') ?? null : null;
+  };
+  const A = byName(prefs.A) ?? local('A') ?? list[0] ?? null;
+  const B = byName(prefs.B) ?? local('B', A) ?? list.find(v => v !== A && v.lang === A?.lang) ?? list.find(v => v !== A) ?? A;
   return { A, B };
 }
 
@@ -73,7 +81,7 @@ export function chunks(text: string, max = 220): string[] {
 
 export class BrowserSpeech implements SpeechProvider {
   private token = 0;
-  constructor(private prefs: () => VoicePrefs) {}
+  constructor(private prefs: () => VoicePrefs, private accents: () => Accents = () => ({})) {}
 
   get available() { return !!synth(); }
 
@@ -82,7 +90,7 @@ export class BrowserSpeech implements SpeechProvider {
     if (!s) return;
     this.stop();
     const my = ++this.token;
-    const voices = voicesFor(this.prefs());
+    const voices = voicesFor(this.prefs(), this.accents());
     const queue = items.flatMap(item => chunks(item.text).map((text, i, all) => ({ item, text, last: i === all.length - 1 })));
     const next = () => {
       if (my !== this.token) return;

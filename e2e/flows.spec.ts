@@ -17,6 +17,23 @@ test('length: a Short episode is 8 turns, chosen by listening time', async ({ pa
   await page.getByRole('group', { name: 'Length' }).getByRole('button', { name: /Normal/ }).click();
 });
 
+test('hosts from somewhere: the name bar, the style hint, and their first lines', async ({ page }) => {
+  await page.goto('/#/create');
+  await page.getByRole('region', { name: 'Speaker A' }).getByLabel('Home').selectOption('KE');
+  await page.getByRole('region', { name: 'Speaker B' }).getByLabel('Home').selectOption('IN');
+  await expect(page.getByRole('region', { name: 'Speaker A' })).toContainText('Warm and spirited: clearly there at Lively.');
+  await expect(page.locator('.set-l3').first()).toContainText('Kenya');
+  await expect(page.locator('.set-l3').nth(1)).toContainText('India');
+  await page.getByRole('region', { name: 'Speaker B' }).getByLabel('Home').selectOption('');
+  await expect(page.locator('.set-l3').nth(1)).not.toContainText('India');
+  await page.getByRole('region', { name: 'Speaker B' }).getByLabel('Home').selectOption('IN');
+  await page.getByRole('button', { name: /Start recording/ }).click();
+  await expect(page.locator('.status-line')).toContainText('Complete', { timeout: 60_000 });
+  await page.getByRole('link', { name: /Read/ }).first().click();
+  await expect(page.locator('.turn').first()).toContainText('Coming to you from Kenya today.');
+  await expect(page.locator('.turn').nth(1)).toContainText('Coming to you from India today.');
+});
+
 test('create → run → stop → refresh keeps every finished turn', async ({ page }) => {
   await page.goto('/#/create');
   await page.getByRole('button', { name: /Start recording/ }).click();

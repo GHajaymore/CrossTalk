@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ARTIST, AUDIENCES, blockedHit, DEFAULT_RULES, episodeLabel, FORMATS, hostSubtitle, isSensitive, LENGTHS, LENS_MAX, MODES, NAME_MAX, PERSONAS, PRESETS, resolveSpeakers, ROLE_MAX,
+  ARTIST, AUDIENCES, HOME_CODES, HOMES, homeOf, SCOUT_COUNTRIES, SCOUT_REGIONS, TALK_STYLES, blockedHit, DEFAULT_RULES, episodeLabel, FORMATS, hostSubtitle, isSensitive, LENGTHS, LENS_MAX, MODES, NAME_MAX, PERSONAS, PRESETS, resolveSpeakers, ROLE_MAX,
   TEMPERATURE_ORDER, TEMPERATURES, TOPIC_MAX,
-  type AppConfig, type Audience, type CreateConversation, type Format, type Length, type Mode, type PersonaKey, type ScoutTopic, type SpeakerDraft, type SpeakerId, type Temperature,
+  type AppConfig, type Audience, type CreateConversation, type Format, type HomeCode, type Length, type Mode, type PersonaKey, type ScoutTopic, type SpeakerDraft, type SpeakerId, type Temperature,
 } from '@crosstalk/shared';
 import { api } from '../api/client';
 import { BudgetBanner, realBlocked, SetupBanner } from '../lib/Banners';
@@ -13,6 +13,9 @@ import { StudioSet } from '../studio/StudioSet';
 import { Footer } from './Footer';
 
 const seatDraft = (persona: PersonaKey): SpeakerDraft => ({ name: '', autoName: true, persona, autoPersona: true, lens: '', role: '', autoRole: true });
+const HOME_REGIONS = ['na', 'latam', 'europe', 'mideast', 'africa', 'asia', 'oceania'] as const;
+/** How much a host's home style shows at each Temperature. */
+const styleShows: Record<Temperature, string> = { calm: 'a light touch at Calm.', lively: 'clearly there at Lively.', heated: 'full strength at Heated.' };
 const maxTemp = (a: Audience): Temperature => (a === 'kids' ? 'lively' : 'heated');
 
 type Props = { config: AppConfig | null; go: (hash: string) => void; refreshConfig: () => void; toast: (m: string) => void };
@@ -106,6 +109,18 @@ export function Create({ config, go, refreshConfig, toast }: Props) {
         </label>
         {d.autoRole && <p className="hint" style={{ margin: '-4px 0 0' }}>{real ? 'A fitting job for this topic is written by the AI when recording starts.' : 'A job that fits this topic.'} Type your own to change it.</p>}
         <label className="fld">
+          <span className="tag">Home</span>
+          <select value={d.home ?? ''} onChange={e => edit(k, { home: e.target.value as HomeCode | '' })}>
+            <option value="">Anywhere · no regional style</option>
+            {HOME_REGIONS.map(r => (
+              <optgroup key={r} label={SCOUT_REGIONS[r]}>
+                {HOME_CODES.filter(c => HOMES[c].region === r).map(c => <option key={c} value={c}>{SCOUT_COUNTRIES[c]}</option>)}
+              </optgroup>
+            ))}
+          </select>
+        </label>
+        {homeOf(d.home) && <p className="hint" style={{ margin: '-4px 0 0' }}>{TALK_STYLES[homeOf(d.home)!.style].label}: {styleShows[temperature]} Their name and face fit {homeOf(d.home)!.country}{homeOf(d.home)!.voice ? ', with a local English voice if your device has one' : ''}.</p>}
+        <label className="fld">
           <span className="tag">Personality</span>
           <select value={d.autoPersona ? 'auto' : d.persona}
             onChange={e => e.target.value === 'auto' ? edit(k, { autoPersona: true }) : edit(k, { autoPersona: false, persona: e.target.value as PersonaKey })}>
@@ -136,8 +151,8 @@ export function Create({ config, go, refreshConfig, toast }: Props) {
         tags={`${MODES[mode].label} · ${AUDIENCES[audience].label} · ${TEMPERATURES[temperature].label}`}
         temperature={temperature}
         hosts={{
-          A: { name: speakers.A.name, role: real && drafts.A.autoRole ? 'Role written when you start' : hostSubtitle(speakers.A) },
-          B: { name: speakers.B.name, role: real && drafts.B.autoRole ? 'Role written when you start' : hostSubtitle(speakers.B) },
+          A: { name: speakers.A.name, role: real && drafts.A.autoRole ? 'Role written when you start' : hostSubtitle(speakers.A), home: speakers.A.home },
+          B: { name: speakers.B.name, role: real && drafts.B.autoRole ? 'Role written when you start' : hostSubtitle(speakers.B), home: speakers.B.home },
         }}
         speaking={null}
         voiceLevel={0}
