@@ -12,21 +12,27 @@ export type ServerConfig = ReturnType<typeof loadConfig>;
  */
 export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
   const mode = str(env.PROVIDER_MODE).toLowerCase() || 'mock';
-  if (mode !== 'mock' && mode !== 'openrouter') {
-    throw new Error(`PROVIDER_MODE=${mode} isn't supported. Use mock or openrouter.`);
+  if (mode !== 'mock' && mode !== 'openrouter' && mode !== 'groq') {
+    throw new Error(`PROVIDER_MODE=${mode} isn't supported. Use mock, openrouter or groq.`);
   }
-  const real = mode === 'openrouter';
+  // Real models come from one free service: OpenRouter (free ":free" models) or Groq (its Free plan).
+  const real = mode !== 'mock';
+  const groq = mode === 'groq';
   const models = real
     ? { A: str(env.SPEAKER_A_MODEL), B: str(env.SPEAKER_B_MODEL) }
     // Mock IDs, shown in the UI like real model IDs. Not real models.
     : { A: 'mock/wren-v1', B: 'mock/hale-v1' };
   const artistModel = real ? str(env.ARTIST_MODEL) || null : null;
-  const apiKey = real ? str(env.OPENROUTER_API_KEY) : '';
+  const keyName = groq ? 'GROQ_API_KEY' : 'OPENROUTER_API_KEY';
+  const apiKey = real ? str(env[keyName]) : '';
 
   // Problems that block every real run until fixed. Each names what to change.
   const problems: string[] = [];
   if (real) {
-    if (!apiKey) problems.push('OPENROUTER_API_KEY is not set.');
+    if (!apiKey) problems.push(`${keyName} is not set.`);
+    // Groq has no price list to check, so its Free plan (no card on the account) is what keeps every
+    // request free. The owner confirms it once; without that, nothing runs.
+    if (groq && str(env.GROQ_PLAN).toLowerCase() !== 'free') problems.push('Set GROQ_PLAN=free to confirm your Groq account is on the Free plan (no card added), so no request can ever be charged.');
     if (!models.A) problems.push('SPEAKER_A_MODEL is not set.');
     if (!models.B) problems.push('SPEAKER_B_MODEL is not set.');
     if (models.A && models.A === models.B) problems.push('Speaker A and Speaker B must use different models.');
@@ -35,7 +41,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
 
   // Reachable from other machines (e.g. hosted on Render) with real models means it must be locked with an
   // access code: that's where a key and the free request budget live. Mock mode has neither, so it stays
-  // open (owner's decision, Oct 8, 2026); the lock returns by itself when PROVIDER_MODE=openrouter.
+  // open (owner's decision, Oct 8, 2026); the lock returns by itself with real models (openrouter or groq).
   const host = str(env.HOST) || '127.0.0.1';
   const accessCode = real ? str(env.ACCESS_CODE) : '';
   const local = host === '127.0.0.1' || host === 'localhost' || host === '::1';
@@ -48,7 +54,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
   const adminCode = [str(env.ADMIN_CODE), str(env.ACCESS_CODE)].find(c => c.length >= ACCESS_CODE_MIN) ?? null;
 
   return {
-    providerMode: mode as 'mock' | 'openrouter',
+    providerMode: mode as 'mock' | 'openrouter' | 'groq',
+    /** The env var the key is read from, for messages (never the key itself). */
+    keyName,
     host,
     accessCode: accessCode || null,
     /** Reachable from other machines (hosted). */

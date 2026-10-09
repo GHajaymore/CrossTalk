@@ -224,6 +224,7 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
             {cuesBefore(t.seq)}
             <TurnCard seq={t.seq} speakerId={t.speakerId} name={sp[t.speakerId].name} objective={t.objective}
               modelId={t.modelId} text={t.text} state="completed" onCopy={() => copy(t.text)}
+              laughedBy={t.funny ? sp[t.speakerId === 'A' ? 'B' : 'A'].name : undefined}
               speaking={play.state !== 'idle' && play.seq === t.seq} onPlayFrom={play.available ? () => play.playFrom(t.seq) : undefined}
               onDeeper={() => deeper(t.seq)} deeperBlocked={cues.blocked}
               onBranch={() => setBranchFrom(t.seq)} branchBlocked={branchBlocked}

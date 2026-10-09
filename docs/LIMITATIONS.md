@@ -27,6 +27,9 @@ CrossTalk is a prototype for one person. These are the honest gaps.
   in the episode's language (en, es, hi, pt, fr, de, it for now), and it's a separate short line, so
   on some devices it lands a beat late. Pauses between hosts are timers in the browser, not real
   breaths. The odd "I mean…" or self-correction is asked of real AI hosts only; mock lines are fixed.
+- **Laughs** come from a hidden [funny] tag the AI host adds to a joke; a model can miss a joke or tag a
+  weak one. The co-host laughs out loud ("Ha!") only with two different device voices; otherwise the
+  laugh is on their face. Mock episodes tag the few lines their script answers with "Ha,".
 - **Recorded voices** (`tools/voice`) are rendered on your machine, one episode at a time, and aren't
   part of the hosted version yet. There are no emotion or laughter cues yet.
 - **Iris paints from her own lines.** Painting and Dreamscape are her sketch with brushwork, light and

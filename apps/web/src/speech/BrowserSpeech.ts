@@ -1,5 +1,5 @@
 // Browser speech synthesis (free, on-device). Voices differ between devices.
-import { LANGUAGES, sentencesOf, VOICE_STYLES, type Language, type SpeakerId, type VoiceStyle } from '@crosstalk/shared';
+import { LANGUAGES, sentencesOf, startsLaughing, VOICE_STYLES, type Language, type SpeakerId, type VoiceStyle } from '@crosstalk/shared';
 import type { SpeechHandlers, SpeechItem, SpeechProvider } from './types';
 
 export type VoicePrefs = { A: string; B: string; rate: number };
@@ -129,26 +129,43 @@ export const BACKCHANNELS: Partial<Record<Language, string[]>> = {
   it: ['Mm.', 'Sì.', 'Certo.'],
 };
 
+/** Fired when a host laughs: `big` for the one who heard the joke, a smile-and-chuckle for the one who made it or opens with "Ha,". */
+export const LAUGH_EVENT = 'crosstalk:laugh';
+
+/** A short laugh the listening host gives after a joke, per language. */
+export const LAUGHS: Partial<Record<Language, string[]>> = {
+  en: ['Ha!', 'Haha.', 'Ha, yes.'],
+  es: ['¡Ja!', 'Jaja.'],
+  hi: ['हाहा।', 'हा!'],
+  pt: ['Haha.', 'Ha!'],
+  fr: ['Ha !', 'Haha.'],
+  de: ['Haha.', 'Ha!'],
+  it: ['Ahah.', 'Ha!'],
+};
+
 export type SpokenPart =
-  | { kind: 'line'; item: SpeechItem; speakerId: SpeakerId; text: string; last: boolean; pauseMs: number; rate: number }
-  | { kind: 'murmur'; speakerId: SpeakerId; text: string; pauseMs: number; rate: number };
+  | { kind: 'line'; item: SpeechItem; speakerId: SpeakerId; text: string; last: boolean; pauseMs: number; rate: number; laughing?: boolean }
+  | { kind: 'murmur'; speakerId: SpeakerId; text: string; pauseMs: number; rate: number }
+  /** The other host laughs at a joke: out loud when `text` is set, otherwise only on their face. */
+  | { kind: 'laugh'; speakerId: SpeakerId; joker: SpeakerId; text: string | null; pauseMs: number; rate: number };
 
 /**
  * How a run of turns is spoken, like people rather than a reader: a short beat when the other host
  * takes over, a breath after a question, a slightly different pace for each sentence group, and now
  * and then the listening host's "mm-hm" between the speaker's sentences.
  */
-export function planSpeech(items: SpeechItem[], o: { backchannels: string[] | null; rand?: () => number }): SpokenPart[] {
+export function planSpeech(items: SpeechItem[], o: { backchannels: string[] | null; laughs?: string[] | null; lang?: Language; rand?: () => number }): SpokenPart[] {
   const r = o.rand ?? Math.random;
   const out: SpokenPart[] = [];
   let prev: SpeakerId | null = null;
-  for (const item of items) {
+  for (const [n, item] of items.entries()) {
     const parts = chunks(item.text);
     let murmured = false;
     parts.forEach((text, i) => {
       const pauseMs = i === 0 ? (prev && prev !== item.speakerId ? 260 + Math.round(r() * 260) : 0)
         : /[?？؟]["'”’)]*$/.test(parts[i - 1]) ? 380 : 120;
-      out.push({ kind: 'line', item, speakerId: item.speakerId, text, last: i === parts.length - 1, pauseMs, rate: 0.97 + r() * 0.06 });
+      const laughing = i === 0 && startsLaughing(text, o.lang);
+      out.push({ kind: 'line', item, speakerId: item.speakerId, text, last: i === parts.length - 1, pauseMs, rate: 0.97 + r() * 0.06, ...(laughing ? { laughing } : {}) });
       // At most one murmur per turn, only between the speaker's own sentences.
       if (o.backchannels?.length && !murmured && i < parts.length - 1 && r() < 0.45) {
         murmured = true;
@@ -156,6 +173,14 @@ export function planSpeech(items: SpeechItem[], o: { backchannels: string[] | nu
         out.push({ kind: 'murmur', speakerId: other, text: o.backchannels[Math.floor(r() * o.backchannels.length)], pauseMs: 90, rate: 1.05 });
       }
     });
+    // After a joke the other host laughs: out loud only if their next line doesn't already open with a laugh.
+    if (item.funny) {
+      const other: SpeakerId = item.speakerId === 'A' ? 'B' : 'A';
+      const next = items[n + 1];
+      const opensLaughing = !!next && next.speakerId === other && startsLaughing(next.text, o.lang);
+      const say = o.laughs?.length && !opensLaughing ? o.laughs[Math.floor(r() * o.laughs.length)] : null;
+      out.push({ kind: 'laugh', speakerId: other, joker: item.speakerId, text: say, pauseMs: 140, rate: 1.1 });
+    }
     prev = item.speakerId;
   }
   return out;
@@ -176,7 +201,9 @@ export class BrowserSpeech implements SpeechProvider {
     const hosts = this.hosts();
     const voices = voicesFor(this.prefs(), hosts, lang);
     // Murmurs need two different voices, or they'd sound like the speaker talking to themselves.
-    const queue = planSpeech(items, { backchannels: voices.A && voices.B && voices.A !== voices.B ? BACKCHANNELS[lang] ?? null : null });
+    const twoVoices = !!voices.A && !!voices.B && voices.A !== voices.B;
+    const queue = planSpeech(items, { backchannels: twoVoices ? BACKCHANNELS[lang] ?? null : null, laughs: twoVoices ? LAUGHS[lang] ?? null : null, lang });
+    const laugh = (seat: SpeakerId, big: boolean) => window.dispatchEvent(new CustomEvent(LAUGH_EVENT, { detail: { seat, big } }));
     let timer: ReturnType<typeof setTimeout> | undefined;
     const next = () => {
       if (my !== this.token) return;
@@ -184,7 +211,13 @@ export class BrowserSpeech implements SpeechProvider {
       if (!q) { h.onDone?.(); return; }
       const say = () => {
         if (my !== this.token) return;
-        const u = new SpeechSynthesisUtterance(q.text);
+        if (q.kind === 'laugh') {
+          laugh(q.speakerId, true);
+          laugh(q.joker, false);
+          // No second voice to laugh with: the faces laugh, and the show waits a moment for it.
+          if (!q.text) { timer = setTimeout(() => { if (my === this.token) next(); }, 650); return; }
+        }
+        const u = new SpeechSynthesisUtterance(q.text!);
         const v = voices[q.speakerId];
         if (v) u.voice = v;
         // With no voice picked, the language still lets the browser choose a fitting one.
@@ -196,13 +229,14 @@ export class BrowserSpeech implements SpeechProvider {
         u.rate = Math.min(2, this.prefs().rate * styled.rate * q.rate);
         // A small pitch difference keeps two hosts apart when a device has only one good voice.
         u.pitch = styled.pitch * (voices.A === voices.B ? (q.speakerId === 'A' ? 0.9 : 1.12) : 1);
-        if (q.kind === 'murmur') {
-          // The listener's "mm-hm": quieter, and their head nods. Captions stay with the speaker.
-          u.volume = 0.7;
-          u.onstart = () => window.dispatchEvent(new CustomEvent(MURMUR_EVENT, { detail: { seat: q.speakerId } }));
+        if (q.kind === 'murmur' || q.kind === 'laugh') {
+          // The listener's "mm-hm" or laugh: quieter, and their face shows it. Captions stay with the speaker.
+          u.volume = q.kind === 'laugh' ? 0.8 : 0.7;
+          if (q.kind === 'laugh') u.pitch *= 1.08;
+          else u.onstart = () => window.dispatchEvent(new CustomEvent(MURMUR_EVENT, { detail: { seat: q.speakerId } }));
           u.onend = u.onerror = () => { if (my === this.token) next(); };
         } else {
-          u.onstart = () => h.onChunk?.(q.item, q.text);
+          u.onstart = () => { if (q.laughing) laugh(q.speakerId, false); h.onChunk?.(q.item, q.text); };
           u.onboundary = e => h.onWord?.(q.item, q.text, e.charIndex ?? 0);
           u.onend = u.onerror = () => { if (my !== this.token) return; if (q.last) h.onItemEnd?.(q.item); next(); };
         }

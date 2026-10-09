@@ -302,4 +302,8 @@ export const MIGRATIONS: string[] = [
     PRIMARY KEY (conversation_id, version)
   );
   `,
+  `
+  -- A line the host meant as a joke: their co-host laughs along.
+  ALTER TABLE turns ADD COLUMN funny INTEGER NOT NULL DEFAULT 0;
+  `,
 ];

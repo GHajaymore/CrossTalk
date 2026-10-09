@@ -21,6 +21,18 @@ const maxTemp = (a: Audience): Temperature => (a === 'kids' ? 'lively' : 'heated
 
 type Props = { config: AppConfig | null; go: (hash: string) => void; refreshConfig: () => void; toast: (m: string) => void };
 
+/** What this episode costs from today's free requests, and how many more of this length still fit. */
+function budgetLine(c: AppConfig, length: Length) {
+  const per = LENGTHS[length].turns + 1;
+  const left = Math.max(0, c.dailyLimit - c.requestsToday);
+  const fits = Math.floor(left / per);
+  const shortPer = LENGTHS.short.turns + 1;
+  const base = `Uses about ${per} requests: one per turn, plus one for Iris (a few more if a turn is retried). ${left} left today`;
+  if (fits >= 1) return `${base}: room for ${fits === 1 ? 'one more episode' : `${fits} episodes`} this length.`;
+  if (length !== 'short' && left >= shortPer) return `${base}: not enough for this length, but a Short one (about ${shortPer}) fits.`;
+  return `${base}: not enough for a full episode. The count resets tomorrow.`;
+}
+
 export function Create({ config, go, refreshConfig, toast }: Props) {
   const [topic, setTopic] = useState<string>(PRESETS[2]);
   const [mode, setMode] = useState<Mode>('explore');
@@ -57,7 +69,7 @@ export function Create({ config, go, refreshConfig, toast }: Props) {
   const suggested = languagesFor([drafts.A.home, drafts.B.home]);
   const edit = (k: SpeakerId, patch: Partial<SpeakerDraft>) => setDrafts(d => ({ ...d, [k]: { ...d[k], ...patch } }));
   const busy = !!config?.activeConversationId;
-  const real = config?.providerMode === 'openrouter';
+  const real = !!config && config.providerMode !== 'mock';
   const overBudget = !!config && config.requestsToday >= config.dailyLimit;
   const blocked = realBlocked(config);
   // The Control room's rules: blocked words keep a topic off air; Mature and Heated can be switched off.
@@ -271,7 +283,7 @@ export function Create({ config, go, refreshConfig, toast }: Props) {
           {blocked ? 'Real mode is blocked; see above.' : overBudget ? 'Daily limit reached.' : busy
             ? <>Another discussion is still generating. <a href={`#/studio/${config!.activeConversationId}`} style={{ color: 'var(--cue)' }}>Open it</a> to pause or stop it first.</>
             : !topic.trim() ? 'Add a topic first.'
-            : config?.providerMode === 'openrouter' ? `Uses about ${LENGTHS[length].turns + 1} requests to free models: one per turn, plus one for Iris (a few more if a turn is retried).`
+            : real ? budgetLine(config!, length)
             : 'Mock mode: scripted text, no model is called.'}
         </span>
       </div>

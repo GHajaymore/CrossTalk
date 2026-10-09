@@ -8,7 +8,8 @@ import { ConversationController, ControllerError, type ControllerEvent } from '.
 import { openDb, Repo } from './db/repo';
 import { FreeModelGuard } from './guard/freeModelGuard';
 import { MockProvider, type MockTiming } from './providers/mock';
-import { OpenRouterProvider } from './providers/openrouter';
+import { OpenRouterProvider, SERVICES } from './providers/openrouter';
+import { GroqModelGuard } from './guard/groqModelGuard';
 import type { Provider } from './providers/types';
 import type { ServerConfig } from './config';
 import { registerAccess, registerAdmin, registerWeb } from './access';
@@ -36,14 +37,15 @@ export type AppOptions = {
 
 export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
   const repo = new Repo(openDb(cfg.dbPath));
-  const real = cfg.providerMode === 'openrouter';
+  const real = cfg.providerMode !== 'mock';
   let mock: MockSettings = { failOnce: false, fast: false };
   const f = opts.fetch ?? fetch;
 
   const provider: Provider = real
-    ? new OpenRouterProvider({ apiKey: cfg.apiKey, maxOutputTokens: cfg.maxOutputTokens, timeoutMs: cfg.requestTimeoutMs, fetch: f })
+    ? new OpenRouterProvider({ apiKey: cfg.apiKey, maxOutputTokens: cfg.maxOutputTokens, timeoutMs: cfg.requestTimeoutMs, fetch: f, service: SERVICES[cfg.providerMode === 'groq' ? 'groq' : 'openrouter'] })
     : new MockProvider(() => mock, opts.timing);
-  const guard = real ? new FreeModelGuard(f, cfg.allowPaidModels) : null;
+  // Every real model must pass its service's free check before anything runs.
+  const guard = !real ? null : cfg.providerMode === 'groq' ? new GroqModelGuard(f, cfg.apiKey) : new FreeModelGuard(f, cfg.allowPaidModels);
   const guardedModels = [cfg.models.A, cfg.models.B, ...(cfg.artistModel ? [cfg.artistModel] : [])].filter(Boolean);
   const checkModels = async () => (guard ? guard.check(guardedModels) : []);
 
@@ -128,7 +130,7 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
   const scoutView = () => ({ prefs: scout.prefs(), status: scout.status(), topics: scout.tray() });
   const interrupted = controller.recoverInterrupted();
 
-  // Never log request headers or bodies: the key travels only from this server to OpenRouter.
+  // Never log request headers or bodies: the key travels only from this server to the AI service.
   // Behind a host's proxy (only when locked for hosting), so wrong-code limits see the real address.
   // Hosted behind one proxy (Render): trust only its hop, so a client can't fake its address with X-Forwarded-For.
   const app = Fastify({ logger: opts.logger ?? false, trustProxy: cfg.hosted ? (_addr: string, hop: number) => hop < 1 : false });
@@ -167,6 +169,7 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
 
   const config = (cookie?: string): AppConfig => ({
     providerMode: cfg.providerMode,
+    keyName: cfg.keyName,
     models: cfg.models,
     artistModel: cfg.artistModel,
     dailyLimit: cfg.dailyLimit,

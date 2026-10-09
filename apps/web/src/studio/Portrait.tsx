@@ -5,7 +5,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { hostTraits, lookCode, type HairStyle, type OutfitKind } from '@crosstalk/shared';
 import { usePolledImage } from '../lib/usePolledImage';
-import { MURMUR_EVENT } from '../speech/BrowserSpeech';
+import { LAUGH_EVENT, MURMUR_EVENT } from '../speech/BrowserSpeech';
 
 type Seat = 'A' | 'B';
 type Mood = 'calm' | 'lively' | 'heated';
@@ -109,6 +109,7 @@ function useLife(ref: React.RefObject<Element | null>, seat: Seat, mood: Mood, r
       const smiley = m === 'calm' ? 0.45 : m === 'heated' ? 0.12 : 0.28;
       const frowny = m === 'heated' ? 0.45 : m === 'calm' ? 0.05 : 0.15;
       const r = Math.random();
+      set('--laugh', 0);
       // Head: a talker gestures with their head; a listener mostly holds still, turned toward the voice.
       set('--tilt', talking ? between(-5, 5) : toward * between(1, 4) + between(-1.5, 1.5), 'deg');
       set('--turn', talking ? between(-4, 4) : toward * between(2, 5), 'px');
@@ -149,9 +150,33 @@ function useLife(ref: React.RefObject<Element | null>, seat: Seat, mood: Mood, r
       set('--brow', -between(0.5, 1.5), 'px');
       timer = window.setTimeout(step, 700 + Math.random() * 500);
     };
+    // A laugh: the one who heard the joke laughs properly (a wide smile, lifted brows, the head bobbing
+    // back a few times); the one who made it, or who opens with "Ha,", gives a pleased chuckle.
+    const onLaugh = (e: Event) => {
+      const d = (e as CustomEvent<{ seat: string; big: boolean }>).detail;
+      if (d?.seat !== seat) return;
+      window.clearTimeout(timer);
+      set('--dur', 0.14, 's');
+      set('--smile', 1);
+      set('--furrow', 0, 'deg');
+      set('--brow', d.big ? -2.5 : -1.2, 'px');
+      set('--tilt', (seat === 'A' ? -1 : 1) * (d.big ? between(3, 5) : between(1, 2.5)), 'deg');
+      if (d.big) set('--laugh', 1);
+      const bob = d.big ? [-2.5, 2.5, -2, 2, -1, 0.5] : [-1.2, 1.5, 0];
+      let k = 0;
+      const beat = () => {
+        if (k < bob.length) { set('--nod', bob[k++], 'px'); timer = window.setTimeout(beat, 150); }
+        else { set('--dur', 0.6, 's'); set('--laugh', 0); timer = window.setTimeout(step, 900 + Math.random() * 500); }
+      };
+      beat();
+    };
     window.addEventListener(REACT_EVENT, onReact);
     window.addEventListener(MURMUR_EVENT, onMurmur);
-    return () => { window.clearTimeout(timer); window.removeEventListener(REACT_EVENT, onReact); window.removeEventListener(MURMUR_EVENT, onMurmur); };
+    window.addEventListener(LAUGH_EVENT, onLaugh);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener(REACT_EVENT, onReact); window.removeEventListener(MURMUR_EVENT, onMurmur); window.removeEventListener(LAUGH_EVENT, onLaugh);
+    };
   }, [ref, seat, restart]);
 }
 
@@ -198,6 +223,14 @@ export function Portrait(props: PortraitProps) {
           <path className="p-rest" d="M89 121 Q100 126 111 121" stroke="#7a3b30" strokeWidth="2.4" fill="none" strokeLinecap="round" />
           <path className="p-smile" d="M86 118 Q100 133 114 118" stroke="#7a3b30" strokeWidth="2.6" fill="none" strokeLinecap="round" />
           <ellipse className="p-mouth" cx="100" cy="123" rx="9" ry="6" fill="#4a1f1a" />
+          {/* A real laugh: eyes creased shut and the mouth open wide */}
+          <g className="p-laugh">
+            <ellipse cx="84" cy="92" rx="7" ry="5.5" fill={L.skin} />
+            <ellipse cx="116" cy="92" rx="7" ry="5.5" fill={L.skin} />
+            <path d="M78 94 Q84 87 90 94 M110 94 Q116 87 122 94" stroke="#2a1d14" strokeWidth="2.4" fill="none" strokeLinecap="round" />
+            <path d="M87 118 Q100 120 113 118 Q111 133 100 134 Q89 133 87 118 Z" fill="#4a1f1a" />
+            <path d="M89 119 Q100 121 111 119 L110 122 Q100 124 90 122 Z" fill="#f4efe8" />
+          </g>
           {L.glasses && (
             <g fill="none" stroke="#1d1b1a" strokeWidth="2.2">
               <rect x="74" y="84" width="20" height="15" rx="5" />
