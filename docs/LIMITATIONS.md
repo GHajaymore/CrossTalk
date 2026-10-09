@@ -74,6 +74,11 @@ CrossTalk is a prototype for one person. These are the honest gaps.
 - **Iris's home styles are broad traditions drawn around her own lines** (ink wash, folk colour, tile
   pattern, miniature, woven border), not reproductions of any artist or specific artwork, and only for
   hosts from those regions. Europe, North America and Oceania use her usual styles.
+- **The social clip records in real time** (30 to 45 seconds) on your device: keep the tab open while it
+  records. Device voices can't be captured, so the clip has captions and, if you leave it on, a soft
+  music bed composed on the device from plain tones (nothing anyone else wrote, free to post). It's
+  MP4 where the browser can make one (Safari, recent Chrome) and WebM otherwise. Nothing is posted;
+  you download or share it yourself.
 - **Young hosts are shown as adults.** On a Teens show the right seat is a Gen Z student; roles like
   student, intern or creator look about nineteen to their twenties. CrossTalk never makes a
   photo-real face of anyone under eighteen.

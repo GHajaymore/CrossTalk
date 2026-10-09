@@ -596,3 +596,4 @@ img.living{object-fit:cover}
 /* The social clip: a phone-shaped preview while it records, then the video. */
 .clip-canvas,.clip-video{display:block;width:100%;max-width:240px;aspect-ratio:9/16;margin:8px auto;border-radius:12px;border:1px solid var(--line);background:#111214}
 .clip-canvas[hidden]{display:none}
+.clip-tile .check{display:flex;gap:8px;align-items:flex-start;font-size:13px;color:var(--muted);margin:2px 0 6px}

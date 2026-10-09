@@ -59,6 +59,7 @@ function ClipTile({ c, toast, photos }: { c: ConversationView; toast: (m: string
   const [state, setState] = useState<'idle' | 'recording' | 'done'>('idle');
   const [progress, setProgress] = useState({ sec: 0, total: 0 });
   const [video, setVideo] = useState<{ url: string; file: File } | null>(null);
+  const [music, setMusic] = useState(true);
   const stop = useRef<AbortController | null>(null);
   useEffect(() => () => { stop.current?.abort(); if (video) URL.revokeObjectURL(video.url); }, [video]);
   const stamp = `${c.artist?.version}|${c.artist?.artStyle}|${c.title}|${c.turns.length}`;
@@ -68,7 +69,7 @@ function ClipTile({ c, toast, photos }: { c: ConversationView; toast: (m: string
     stop.current = new AbortController();
     try {
       const { recordClip, clipName } = await import('../lib/clip');
-      const { blob, ext } = await recordClip(c, canvas.current!, { photos, signal: stop.current.signal, onProgress: (sec, total) => setProgress({ sec, total }) });
+      const { blob, ext } = await recordClip(c, canvas.current!, { photos, music, signal: stop.current.signal, onProgress: (sec, total) => setProgress({ sec, total }) });
       setVideo({ url: URL.createObjectURL(blob), file: new File([blob], `${clipName(c)}.${ext}`, { type: blob.type }) });
       setState('done');
     } catch (e) { toast((e as Error).message); setState('idle'); }
@@ -77,9 +78,10 @@ function ClipTile({ c, toast, photos }: { c: ConversationView; toast: (m: string
   return (
     <div className="kit-tile clip-tile"><b>Social clip</b>
       {state === 'idle' && <p>The key moment as a vertical video for Reels, Shorts or TikTok: the hosts, captions that light up word by word, where they landed, and Iris's art. 30 to 45 seconds, made on this device while you watch.</p>}
+      {state === 'idle' && <label className="check"><input type="checkbox" checked={music} onChange={e => setMusic(e.target.checked)} /> Soft music, composed for this episode on your device (free to post)</label>}
       <canvas ref={canvas} className="clip-canvas" hidden={state !== 'recording'} aria-label="Your clip, being recorded" />
       {state === 'recording' && <p className="hint" role="status">Recording {Math.floor(progress.sec)} of {Math.round(progress.total) || '…'} seconds. Keep this tab open.</p>}
-      {video && <video className="clip-video" src={video.url} controls playsInline muted loop aria-label={`Social clip for ${c.topic}`} />}
+      {video && <video className="clip-video" src={video.url} controls playsInline loop aria-label={`Social clip for ${c.topic}`} />}
       <div className="dock-row">
         {state === 'idle' && <button className="btn sm" onClick={make} disabled={!c.turns.length}>Make clip</button>}
         {state === 'recording' && <button className="btn sm ghost" onClick={() => stop.current?.abort()}>Stop</button>}
@@ -87,7 +89,7 @@ function ClipTile({ c, toast, photos }: { c: ConversationView; toast: (m: string
         {canShare && <button className="btn sm ghost" onClick={() => navigator.share({ files: [video!.file], title: c.topic }).catch(() => {})}>Share</button>}
         {video && <button className="btn sm ghost" onClick={() => { setVideo(null); setState('idle'); }}>Make again</button>}
       </div>
-      <span className="badge ok">Free · made on this device · silent, with captions</span>
+      <span className="badge ok">Free · made on this device · captions{music ? ' and music' : ''}</span>
     </div>
   );
 }

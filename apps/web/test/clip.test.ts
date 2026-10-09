@@ -38,3 +38,15 @@ describe('the social clip', () => {
     expect(clipName(episode())).toBe('crosstalk-ep03-clip');
   });
 });
+
+describe('the clip\'s music bed', () => {
+  it('is the same for the same episode, differs between episodes, and follows the heat', async () => {
+    const { musicPlan } = await import('../src/lib/clipMusic');
+    expect(musicPlan('ep-1', 'lively', 40)).toEqual(musicPlan('ep-1', 'lively', 40));
+    const keys = new Set(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].map(s => JSON.stringify(musicPlan(s, 'lively', 40).chords)));
+    expect(keys.size).toBeGreaterThan(3);
+    expect(musicPlan('x', 'calm', 40)).toMatchObject({ bpm: 72, arp: false, pulse: false });
+    expect(musicPlan('x', 'heated', 40)).toMatchObject({ bpm: 108, arp: true, pulse: true });
+    expect(musicPlan('x', 'lively', 40, [20, 30]).chimes).toEqual([20, 30]);
+  });
+});

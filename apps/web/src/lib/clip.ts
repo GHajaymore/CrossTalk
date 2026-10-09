@@ -11,6 +11,8 @@ import {
   type ConversationView, type SpeakerId,
 } from '@crosstalk/shared';
 import { Portrait } from '../studio/Portrait';
+import fixWebmDuration from 'fix-webm-duration';
+import { musicPlan, playMusic } from './clipMusic';
 import { C, loadImage, SAY, TAG, UI, wrap } from './poster';
 
 export const CLIP_W = 720, CLIP_H = 1280, CLIP_FPS = 30;
@@ -302,9 +304,11 @@ export function drawFrame(ctx: CanvasRenderingContext2D, v: ConversationView, pl
   ctx.restore();
 }
 
-/** The best video format this browser can record. */
-export function clipFormat(): { mime: string; ext: string } | null {
+/** The best video format this browser can record (with a sound track when there's music). */
+export function clipFormat(audio = false): { mime: string; ext: string } | null {
   if (typeof MediaRecorder === 'undefined') return null;
+  const withAudio = [['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'mp4'], ['video/mp4;codecs=avc1,opus', 'mp4'], ['video/webm;codecs=vp9,opus', 'webm'], ['video/webm;codecs=vp8,opus', 'webm']] as const;
+  if (audio) for (const [mime, ext] of withAudio) if (MediaRecorder.isTypeSupported(mime)) return { mime, ext };
   for (const [mime, ext] of [['video/mp4;codecs=avc1.42E01E', 'mp4'], ['video/mp4;codecs=avc1', 'mp4'], ['video/mp4', 'mp4'], ['video/webm;codecs=vp9', 'webm'], ['video/webm;codecs=vp8', 'webm'], ['video/webm', 'webm']] as const) {
     if (MediaRecorder.isTypeSupported(mime)) return { mime, ext };
   }
@@ -315,8 +319,10 @@ export function clipFormat(): { mime: string; ext: string } | null {
  * Records the clip in real time onto `canvas` (which can be on screen, as a live preview).
  * Resolves with the video. Keep the tab in front: browsers slow hidden tabs down.
  */
-export async function recordClip(v: ConversationView, canvas: HTMLCanvasElement, opts: { photos: boolean; onProgress?: (sec: number, total: number) => void; signal?: AbortSignal }) {
-  const format = clipFormat();
+export async function recordClip(v: ConversationView, canvas: HTMLCanvasElement, opts: { photos: boolean; music?: boolean; onProgress?: (sec: number, total: number) => void; signal?: AbortSignal }) {
+  const Ctx = typeof window !== 'undefined' ? (window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext) : undefined;
+  const music = !!opts.music && !!Ctx && !!clipFormat(true);
+  const format = clipFormat(music);
   if (!format || typeof canvas.captureStream !== 'function') throw new Error("This browser can't record video. Try Chrome, Edge or Safari on a computer or phone.");
   await Promise.all([`600 52px ${SAY}`, `italic 30px ${SAY}`, `700 28px ${UI}`, `18px ${TAG}`].map(f => document.fonts?.load(f).catch(() => {})));
   const plan = planClip(v);
@@ -324,7 +330,18 @@ export async function recordClip(v: ConversationView, canvas: HTMLCanvasElement,
   canvas.width = CLIP_W; canvas.height = CLIP_H;
   const ctx = canvas.getContext('2d')!;
   drawFrame(ctx, v, plan, assets, 0);
-  const stream = canvas.captureStream(CLIP_FPS);
+  const video = canvas.captureStream(CLIP_FPS);
+  // The music bed goes straight into the file: you hear it when you play the clip, not while it records.
+  let ac: AudioContext | null = null, stopMusic = () => {};
+  const tracks = [...video.getVideoTracks()];
+  if (music) {
+    ac = new Ctx!();
+    await ac.resume().catch(() => {});
+    const dest = ac.createMediaStreamDestination();
+    stopMusic = playMusic(ac, musicPlan(v.id, v.temperature, plan.duration, [plan.meter?.start, plan.art?.start].filter((x): x is number => x != null)), dest);
+    tracks.push(...dest.stream.getAudioTracks());
+  }
+  const stream = new MediaStream(tracks);
   const rec = new MediaRecorder(stream, { mimeType: format.mime, videoBitsPerSecond: 2_500_000 });
   const chunks: Blob[] = [];
   rec.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
@@ -336,7 +353,7 @@ export async function recordClip(v: ConversationView, canvas: HTMLCanvasElement,
   const t0 = performance.now();
   await new Promise<void>((resolve, reject) => {
     const tick = () => {
-      if (opts.signal?.aborted) { rec.stop(); reject(new Error('Stopped.')); return; }
+      if (opts.signal?.aborted) { rec.stop(); stopMusic(); void ac?.close(); reject(new Error('Stopped.')); return; }
       const t = (performance.now() - t0) / 1000;
       drawFrame(ctx, v, plan, assets, Math.min(t, plan.duration - 0.001));
       opts.onProgress?.(Math.min(t, plan.duration), plan.duration);
@@ -346,7 +363,11 @@ export async function recordClip(v: ConversationView, canvas: HTMLCanvasElement,
     requestAnimationFrame(tick);
   });
   rec.stop();
+  stopMusic();
   stream.getTracks().forEach(tr => tr.stop());
+  void ac?.close();
   for (const h of Object.values(assets.hosts)) if (h.photo?.src.startsWith('blob:')) URL.revokeObjectURL(h.photo.src);
-  return { blob: await done, ext: format.ext };
+  // Browsers save WebM without its length, so players can't show a timeline; write it in.
+  const blob = await done;
+  return { blob: format.ext === 'webm' ? await fixWebmDuration(blob, plan.duration * 1000, { logger: false }).catch(() => blob) : blob, ext: format.ext };
 }
