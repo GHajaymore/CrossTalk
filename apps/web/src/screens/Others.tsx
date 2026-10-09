@@ -5,8 +5,35 @@ import { ScoutPrefsEditor } from '../scout/ScoutPrefsEditor';
 import { BrowserSpeech } from '../speech/BrowserSpeech';
 import { useVoices } from '../speech/usePlayback';
 import { VoicePicker } from '../speech/VoicePicker';
-import { SetupBanner } from '../lib/Banners';
+import { ago, SetupBanner, StorageBanner } from '../lib/Banners';
 import { Footer } from './Footer';
+
+/** Online only: is every episode really being kept? Asks the bucket itself, not just the settings. */
+function BackupSection({ config, refreshConfig }: { config: AppConfig; refreshConfig: () => void }) {
+  const [checking, setChecking] = useState(false);
+  const b = config.backup;
+  const check = async () => {
+    setChecking(true);
+    try { await api.checkBackup(); } finally { setChecking(false); refreshConfig(); }
+  };
+  const state = config.storage === 'forgets' ? '✕ Not set up: everything is forgotten when the server restarts.'
+    : b.state === 'ok' ? `✓ Working. The bucket's newest copy is from ${b.lastAt ? ago(b.lastAt) : 'just now'}.`
+    : b.state === 'failing' ? `✕ Not reaching the bucket${b.detail ? `: ${b.detail}` : '.'}`
+    : '… Checking the bucket (about a minute after the server starts).';
+  return (
+    <section className="sec"><h2>Backup</h2>
+      <dl className="kv">
+        <dt>Episodes and art</dt><dd>{state}</dd>
+        {b.restore && <><dt>This start</dt><dd>{b.restore === 'restored' ? 'Brought back from the bucket.' : 'The bucket had nothing to bring back, so it started empty.'}</dd></>}
+        {b.checkedAt && <><dt>Last checked</dt><dd>{ago(b.checkedAt)}</dd></>}
+      </dl>
+      {config.storage === 'backed-up' && <div className="dock-row">
+        <button className="btn sm" disabled={checking} onClick={check}>{checking ? 'Checking…' : 'Check backup now'}</button>
+        <span className="hint">Asks the bucket what it holds. Copies go up about 10 seconds after each change.</span>
+      </div>}
+    </section>
+  );
+}
 
 export function Settings({ config, refreshConfig }: { config: AppConfig | null; refreshConfig: () => void }) {
   const [checking, setChecking] = useState(false);
@@ -36,6 +63,7 @@ export function Settings({ config, refreshConfig }: { config: AppConfig | null; 
     <div className="page">
       <div><h1>Settings</h1><p className="hint">What Iris has learned from you is on the <a href="#/iris">Iris</a> page.</p></div>
       <SetupBanner config={config} onSettings />
+      <StorageBanner config={config} />
       <VoiceSettings />
       <ScoutSettings real={real} />
       <section className="sec"><h2>Models</h2>
@@ -63,6 +91,7 @@ export function Settings({ config, refreshConfig }: { config: AppConfig | null; 
         </dl>
         <p className="hint">The daily limit is a local safety limit set by the app. It is not a billing guarantee from any provider.</p>
       </section>
+      {config && config.storage !== 'local' && <BackupSection config={config} refreshConfig={refreshConfig} />}
       <section className="sec"><h2>API key</h2>
         <p className="hint">The {service} key lives only in the server's settings, read by the local server. The browser never receives it.</p>
         <dl className="kv"><dt>{config?.keyName ?? 'OPENROUTER_API_KEY'}</dt><dd>{!real ? 'not needed in mock mode' : config?.apiKeySet ? 'set' : 'not set'}</dd></dl>

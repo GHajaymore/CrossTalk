@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { StorageBanner } from '../lib/Banners';
 import { artworkSvg, episodeLabel, LANGUAGES, MODES, TITLE_MAX, turnTotal, type AppConfig } from '@crosstalk/shared';
 import { api, type ConversationSummary } from '../api/client';
 import { sketchSrc } from '../studio/ArtistCard';
@@ -33,6 +34,7 @@ export function Episodes({ config, toast }: { config: AppConfig | null; toast: (
 
   return (
     <div className="page">
+      <StorageBanner config={config} />
       <div><h1>Episodes</h1><p className="hint">Every episode you've made, with its branches underneath. Iris's art is also in her gallery on the <a href="#/iris">Iris</a> page.</p></div>
       {items && <RecapPanel items={items} photos={!!config?.portraits} toast={toast} />}
       {items && items.length > 3 && (

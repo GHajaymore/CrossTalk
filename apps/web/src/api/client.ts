@@ -21,6 +21,7 @@ export type ConversationSummary = Conversation & { run: Run | null; turnCount: n
 export const api = {
   config: () => call<AppConfig>('/config'),
   checkModels: () => call<AppConfig>('/guard/check', { method: 'POST' }),
+  checkBackup: () => call<AppConfig>('/backup/check', { method: 'POST' }),
   setMock: (m: MockSettings) => call<MockSettings>('/mock', { method: 'PUT', body: JSON.stringify(m) }),
   access: () => call<Access>('/access'),
   unlock: (code: string) => call<Access>('/access', { method: 'POST', body: JSON.stringify({ code }) }),
