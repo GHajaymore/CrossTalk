@@ -593,3 +593,6 @@ img.living{object-fit:cover}
 .home-style-list img{width:72px;height:43px;border-radius:4px;object-fit:cover}
 .home-styles:not(.on) .home-style-list{opacity:.75}
 .home-styles .style-pick{height:auto}
+/* The social clip: a phone-shaped preview while it records, then the video. */
+.clip-canvas,.clip-video{display:block;width:100%;max-width:240px;aspect-ratio:9/16;margin:8px auto;border-radius:12px;border:1px solid var(--line);background:#111214}
+.clip-canvas[hidden]{display:none}

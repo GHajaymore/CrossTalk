@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { comicName, makeComic } from '../lib/comic';
 import { makePoster, posterName } from '../lib/poster';
 import { ARTIST, AUDIENCES, episodeLabel, MODES, NOTICE, TEMPERATURES, type ConversationView } from '@crosstalk/shared';
@@ -50,8 +50,50 @@ function ImageTile({ c, toast, title, blurb, button, alt, make: draw, name }: Im
   );
 }
 
+/**
+ * The social clip: a vertical video of the key moment, recorded on this device in real time. You
+ * watch it being made, then download or share it. Silent with big captions, like most social clips.
+ */
+function ClipTile({ c, toast, photos }: { c: ConversationView; toast: (m: string) => void; photos: boolean }) {
+  const canvas = useRef<HTMLCanvasElement>(null);
+  const [state, setState] = useState<'idle' | 'recording' | 'done'>('idle');
+  const [progress, setProgress] = useState({ sec: 0, total: 0 });
+  const [video, setVideo] = useState<{ url: string; file: File } | null>(null);
+  const stop = useRef<AbortController | null>(null);
+  useEffect(() => () => { stop.current?.abort(); if (video) URL.revokeObjectURL(video.url); }, [video]);
+  const stamp = `${c.artist?.version}|${c.artist?.artStyle}|${c.title}|${c.turns.length}`;
+  useEffect(() => { setVideo(null); setState('idle'); }, [stamp]);
+  const make = async () => {
+    setState('recording');
+    stop.current = new AbortController();
+    try {
+      const { recordClip, clipName } = await import('../lib/clip');
+      const { blob, ext } = await recordClip(c, canvas.current!, { photos, signal: stop.current.signal, onProgress: (sec, total) => setProgress({ sec, total }) });
+      setVideo({ url: URL.createObjectURL(blob), file: new File([blob], `${clipName(c)}.${ext}`, { type: blob.type }) });
+      setState('done');
+    } catch (e) { toast((e as Error).message); setState('idle'); }
+  };
+  const canShare = !!video && typeof navigator.canShare === 'function' && navigator.canShare({ files: [video.file] });
+  return (
+    <div className="kit-tile clip-tile"><b>Social clip</b>
+      {state === 'idle' && <p>The key moment as a vertical video for Reels, Shorts or TikTok: the hosts, captions that light up word by word, where they landed, and Iris's art. 30 to 45 seconds, made on this device while you watch.</p>}
+      <canvas ref={canvas} className="clip-canvas" hidden={state !== 'recording'} aria-label="Your clip, being recorded" />
+      {state === 'recording' && <p className="hint" role="status">Recording {Math.floor(progress.sec)} of {Math.round(progress.total) || '…'} seconds. Keep this tab open.</p>}
+      {video && <video className="clip-video" src={video.url} controls playsInline muted loop aria-label={`Social clip for ${c.topic}`} />}
+      <div className="dock-row">
+        {state === 'idle' && <button className="btn sm" onClick={make} disabled={!c.turns.length}>Make clip</button>}
+        {state === 'recording' && <button className="btn sm ghost" onClick={() => stop.current?.abort()}>Stop</button>}
+        {video && <a className="btn sm" href={video.url} download={video.file.name}>Download</a>}
+        {canShare && <button className="btn sm ghost" onClick={() => navigator.share({ files: [video!.file], title: c.topic }).catch(() => {})}>Share</button>}
+        {video && <button className="btn sm ghost" onClick={() => { setVideo(null); setState('idle'); }}>Make again</button>}
+      </div>
+      <span className="badge ok">Free · made on this device · silent, with captions</span>
+    </div>
+  );
+}
+
 /** What a finished episode can become. Text is ready now; audio, clips and prints come later and always wait for your OK. */
-export function EpisodeKit({ c, toast }: { c: ConversationView; toast: (m: string) => void }) {
+export function EpisodeKit({ c, toast, photos = false }: { c: ConversationView; toast: (m: string) => void; photos?: boolean }) {
   const copy = async () => {
     try { await navigator.clipboard.writeText(showNotes(c)); toast('Show notes copied'); } catch { toast('Copying is blocked in this browser'); }
   };
@@ -70,7 +112,7 @@ export function EpisodeKit({ c, toast }: { c: ConversationView; toast: (m: strin
           blurb="The question, the hosts, Iris's sketch and quote, and where each host landed, in one image to share." />
         <ImageTile c={c} toast={toast} title="Comic strip" button="Make comic" alt="Comic strip of" make={makeComic} name={comicName}
           blurb="The episode in 4 panels: the opening, the clash, the moment Iris drew, and where the hosts landed." />
-        <div className="kit-tile"><b>Social clip</b><p>The key moment as a 30–60 second vertical clip: the studio, live captions, and Iris's sketch at the end.</p><span className="badge later">Later</span></div>
+        <ClipTile c={c} toast={toast} photos={photos} />
         <div className="kit-tile"><b>Iris print</b><p>{c.artist?.state === 'done' ? `“${c.artist.artTitle}”, her sketch of turn ${c.artist.momentSeq}, prepared as a listing for your shop.` : 'Her drawing of the moment that stayed with her, prepared as a listing.'}</p><span className="badge later">Later</span></div>
       </div>
       <p className="hint publish-line">

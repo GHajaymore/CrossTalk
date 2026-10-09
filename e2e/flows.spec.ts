@@ -420,6 +420,27 @@ test('Hot seat: vote who moved you, then make the episode poster', async ({ page
   expect(dl2.suggestedFilename()).toMatch(/^crosstalk-ep\d+-comic\.png$/);
 });
 
+test('social clip: recorded on this device while you watch, then a real video to download', async ({ page }) => {
+  test.setTimeout(150_000);
+  const id = await finishedEpisode(page.request);
+  await page.goto(`/#/studio/${id}/read`);
+  const tile = page.locator('.clip-tile');
+  await tile.getByRole('button', { name: 'Make clip' }).click();
+  await expect(tile.getByRole('status')).toContainText(/Recording \d+ of \d+ seconds/);
+  await expect(tile.locator('canvas.clip-canvas')).toBeVisible();
+  await expect(tile.locator('video.clip-video')).toBeVisible({ timeout: 90_000 });
+  const [dl] = await Promise.all([page.waitForEvent('download'), tile.getByRole('link', { name: 'Download' }).click()]);
+  expect(dl.suggestedFilename()).toMatch(/^crosstalk-ep\d+-clip\.(mp4|webm)$/);
+  const size = (await import('fs')).statSync((await dl.path())!).size;
+  expect(size).toBeGreaterThan(100_000);
+  // The video really plays: it has a length.
+  const length = await tile.locator('video.clip-video').evaluate(async (v: HTMLVideoElement) => {
+    if (!Number.isFinite(v.duration)) { v.currentTime = 1e9; await new Promise(r => v.addEventListener('durationchange', r, { once: true })); }
+    return v.duration;
+  });
+  expect(length).toBeGreaterThan(15);
+});
+
 test('raise your hand: the host invites you in, you speak, they answer', async ({ page, request }) => {
   await page.goto('/#/create');
   await page.getByRole('button', { name: /Start recording/ }).click();
