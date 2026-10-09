@@ -4,7 +4,7 @@
 import { z } from 'zod';
 import { ART_STYLES, cleanStyles, episodeStyles, sentencesOf, wordsIn, defaultPaintStyle, type ArtistNotes, type ConversationView, type IrisFeedback, type PaintStyle } from '@crosstalk/shared';
 import type { Repo } from '../db/repo';
-import { buildIrisPrompt } from './prompt';
+import { buildIrisPrompt, type RecentWork } from './prompt';
 import { MOCK_LANGS } from '../providers/mockScriptsLocal';
 import { mockSketch, SCENE_BRIEFS, sceneFor } from './mockSketches';
 import { safeSvg } from './svgSafety';
@@ -12,7 +12,7 @@ import { safeSvg } from './svgSafety';
 /** Whatever answers Iris's request: a model, or the scripted mock. Returns the raw reply text. */
 export interface ArtistBackend {
   readonly modelId: string;
-  draw(prompt: { system: string; user: string }, episode: ConversationView, feedback: IrisFeedback[], taste: PaintStyle | null, version?: number): Promise<string>;
+  draw(prompt: { system: string; user: string }, episode: ConversationView, feedback: IrisFeedback[], taste: PaintStyle | null, version?: number, recent?: RecentWork[]): Promise<string>;
 }
 
 const Reply = z.object({
@@ -108,10 +108,16 @@ export class Iris {
       .filter(s => s !== 'picture' || this.opts.pictures !== false);
     const learned = favouriteStyle(this.repo.listenerStyles());
     const taste = learned && allowed.includes(learned) ? learned : null;
+    // Her memory: her last few pieces for other episodes (not this one, its branches or its rounds).
+    const family = new Set([view.id, view.parentId, view.roundOf].filter(Boolean));
+    const recent: RecentWork[] = this.repo.gallery().filter(g => !family.has(g.conversationId) && !family.has(g.parentId ?? '')).slice(0, 3).flatMap(g => {
+      const a = g.artworks.find(x => g.current && x.version === g.current.version) ?? g.artworks[0];
+      return a ? [{ title: a.title, episode: g.episode, topic: g.topic, caption: a.caption }] : [];
+    });
     let raw: string;
     try {
       this.opts.countRequest();
-      raw = await this.backend.draw(buildIrisPrompt(view, feedback, taste, allowed), view, feedback, taste, version);
+      raw = await this.backend.draw(buildIrisPrompt(view, feedback, taste, allowed, recent), view, feedback, taste, version, recent);
     } catch (e) {
       return fail(`Iris couldn't finish: ${e instanceof Error ? e.message : 'the model failed'}. Try again.`);
     }
@@ -145,7 +151,7 @@ const PAINT_STYLE_NAME: Record<PaintStyle, string> = { picture: 'full paintings'
 /** Mock Iris: no model call. Picks a moment, writes a perspective, draws a scene, and shows she read your notes. */
 export const mockArtist: ArtistBackend = {
   modelId: 'mock/iris-v1',
-  async draw(_prompt, c, feedback, taste, version = 1) {
+  async draw(_prompt, c, feedback, taste, version = 1, recent = []) {
     // Like real Iris: the turn that answered the listener first, then a change of mind.
     const cue = c.interventions.find(x => x.status === 'applied' && x.kind !== 'temp');
     const answered = cue && c.turns.find(t => t.seq === cue.appliesBeforeSeq);
@@ -170,6 +176,8 @@ export const mockArtist: ArtistBackend = {
     const perspective = [
       opener,
       L?.wish ?? `I wish they had spent a turn on the people who never get asked about this.`,
+      // Her memory: a nod to her last piece, when there is one.
+      recent[0] ? L?.echo(recent[0].title, recent[0].episode) ?? `It took me back to “${recent[0].title}”, the piece I made for Ep. ${String(recent[0].episode).padStart(2, '0')}.` : '',
       lastNote ? L?.note(lastNote.note.slice(0, 80)) ?? `You told me "${lastNote.note.slice(0, 80)}", so I tried to keep that in mind.` : '',
       taste ? L?.taste(taste) ?? `You keep choosing ${PAINT_STYLE_NAME[taste]} for my work, so that's how I made this one.` : '',
       L?.question ?? `My question for you: what would it take to change your mind?`,
