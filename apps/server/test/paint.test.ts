@@ -37,18 +37,20 @@ describe('Iris paints her sketch', () => {
     expect(out.match(/fill="#0F1013"/g)).toHaveLength(1);
   });
 
-  it('shows saved art in its style, and "picture" (not available yet) as a sketch', () => {
+  it('shows saved art in its style, and a Picture as her Painting wherever line art is shown', () => {
     const notes = { sketchSvg: sketch, conversationId: 'ep', artStyle: 'painting' };
     expect(artworkSvg(notes)).toBe(paintSvg(sketch, 'painting', 'ep'));
-    expect(artworkSvg({ ...notes, artStyle: 'picture' })).toBe(sketch);
+    expect(artworkSvg({ ...notes, artStyle: 'picture' })).toBe(paintSvg(sketch, 'painting', 'ep'));
     expect(artworkSvg({ ...notes, sketchSvg: null })).toBeNull();
   });
 
-  it("picks a style from how the episode felt", () => {
-    expect(defaultPaintStyle({ mode: 'explore', temperature: 'calm' })).toBe('sketch');
-    expect(defaultPaintStyle({ mode: 'explore', temperature: 'lively' })).toBe('dreamscape');
-    expect(defaultPaintStyle({ mode: 'debate', temperature: 'heated' })).toBe('painting');
-    expect(defaultPaintStyle({ mode: 'hotseat', temperature: 'lively' })).toBe('painting');
+  it("paints a full Picture when she can, else picks a style from how the episode felt", () => {
+    expect(defaultPaintStyle({ mode: 'explore', temperature: 'calm' })).toBe('picture');
+    const lines = ['sketch', 'painting', 'dreamscape'] as const;
+    expect(defaultPaintStyle({ mode: 'explore', temperature: 'calm' }, lines)).toBe('sketch');
+    expect(defaultPaintStyle({ mode: 'explore', temperature: 'lively' }, lines)).toBe('dreamscape');
+    expect(defaultPaintStyle({ mode: 'debate', temperature: 'heated' }, lines)).toBe('painting');
+    expect(defaultPaintStyle({ mode: 'hotseat', temperature: 'lively' }, lines)).toBe('painting');
   });
 
   it("learns the listener's favourite once they've chosen it twice lately", () => {
@@ -74,13 +76,18 @@ const replyWith = (artStyle: unknown): ArtistBackend => ({
 describe("Iris's style choice", () => {
   it("uses the style a model picks, and falls back to the episode's feel when it picks something unknown", async () => {
     const s = setup();
-    const opts = { canRequest: () => true, countRequest: () => {}, onChange: () => {} };
+    const opts = { canRequest: () => true, countRequest: () => {}, onChange: () => {}, pictures: false };
     const a = await finished(s);
     await new Iris(s.repo, replyWith('painting'), opts).listen(a);
     expect(s.repo.getArtist(a)!.artStyle).toBe('painting');
     const b = await finished(s);
     await new Iris(s.repo, replyWith('oil on canvas'), opts).listen(b);
     expect(s.repo.getArtist(b)!.artStyle).toBe('dreamscape');
+    // With full paintings on, an unknown pick becomes her Picture.
+    const s2 = setup();
+    const c = await finished(s2);
+    await new Iris(s2.repo, replyWith('oil on canvas'), { ...opts, pictures: true }).listen(c);
+    expect(s2.repo.getArtist(c)!.artStyle).toBe('picture');
   });
 
   it("tells a real model the listener's taste, and asks for a style", () => {
@@ -93,7 +100,7 @@ describe("Iris's style choice", () => {
 
 describe('restyling through the app', () => {
   it('saves the listener\'s pick, refuses bad styles, and Iris leans their way next time', async () => {
-    const { app, controller, iris, repo } = buildApp(mockConfig({ dbPath: ':memory:', dailyLimit: 200 }), { timing: { thinkMs: () => 0, wordMs: () => 0 } });
+    const { app, controller, iris, repo } = buildApp(mockConfig({ dbPath: ':memory:', dailyLimit: 200, irisPictures: false }), { timing: { thinkMs: () => 0, wordMs: () => 0 } });
     const episode = async () => {
       const id = (await app.inject({ method: 'POST', url: '/api/conversations', payload: draft() })).json().id;
       await app.inject({ method: 'POST', url: `/api/conversations/${id}/start` });
@@ -173,12 +180,12 @@ describe('styles from the hosts\' homes', () => {
     expect(homeStylesFor({ A: { home: 'JP' }, B: { home: 'MX' } })).toEqual(['inkwash', 'folk']);
     expect(homeStylesFor({ A: { home: 'KR' }, B: { home: 'JP' } })).toEqual(['inkwash']);
     expect(homeStylesFor({ A: { home: 'GB' }, B: {} })).toEqual([]);
-    expect(episodeStyles(PAINT_STYLES, { A: { home: 'IN' }, B: {} })).toEqual(['sketch', 'painting', 'dreamscape', 'miniature']);
+    expect(episodeStyles(PAINT_STYLES, { A: { home: 'IN' }, B: {} })).toEqual(['picture', 'sketch', 'painting', 'dreamscape', 'miniature']);
     expect(episodeStyles(['sketch'], { A: { home: 'IN' }, B: {} }, false)).toEqual(['sketch']);
   });
 
   it('Iris paints a host\'s home style, can be switched back, and never uses one that doesn\'t fit', async () => {
-    const t = buildApp(mockConfig({ dbPath: ':memory:', dailyLimit: 500 }), { timing: INSTANT });
+    const t = buildApp(mockConfig({ dbPath: ':memory:', dailyLimit: 500, irisPictures: false }), { timing: INSTANT });
     try {
       const d = draft();
       const withHome = (home: string) => ({ ...d, length: 'short', speakers: { ...d.speakers, B: { ...d.speakers.B, home } } });

@@ -81,6 +81,97 @@ test('host photos: "still being made" is waited for, then the photo shows and mo
   await expect.poll(motion, { timeout: 8000 }).not.toBe('');
 });
 
+test('the director: while a host speaks, the camera favours them', async ({ page }) => {
+  // No real voices in the test browser: a stand-in takes a moment over each line.
+  await page.addInitScript(() => {
+    const fake = {
+      speaking: false, paused: false, pending: false,
+      speak(u: SpeechSynthesisUtterance) { setTimeout(() => { u.onstart?.(new Event('start') as SpeechSynthesisEvent); setTimeout(() => u.onend?.(new Event('end') as SpeechSynthesisEvent), 600); }, 5); },
+      cancel() {}, pause() {}, resume() {}, getVoices: () => [], addEventListener() {}, removeEventListener() {},
+    };
+    Object.defineProperty(window, 'speechSynthesis', { value: fake, configurable: true });
+  });
+  const id = await finishedEpisode(page.request);
+  await page.goto(`/#/studio/${id}/watch`);
+  await expect(page.locator('.set-tiles')).not.toHaveClass(/dir-/);
+  await page.getByRole('button', { name: /Play/ }).first().click();
+  await expect(page.locator('.set-tiles')).toHaveClass(/dir-(A|B)/);
+  const first = (await page.locator('.set-tiles').getAttribute('class'))!.match(/dir-(A|B)/)![1];
+  // When the other host takes over, the camera follows.
+  await expect(page.locator('.set-tiles')).toHaveClass(new RegExp(`dir-${first === 'A' ? 'B' : 'A'}`), { timeout: 15_000 });
+});
+
+test('react while you listen: emoji float up, and each line keeps its count', async ({ page }) => {
+  const id = await finishedEpisode(page.request);
+  await page.goto(`/#/studio/${id}/watch`);
+  const bar = page.getByRole('group', { name: /React to turn \d+/ });
+  await bar.getByRole('button', { name: /Funny/ }).click();
+  await expect(bar.locator('.react-floats span')).toHaveCount(1);
+  await bar.getByRole('button', { name: /Funny/ }).click();
+  await bar.getByRole('button', { name: /Applause/ }).click();
+  await page.getByRole('link', { name: /Read/ }).first().click();
+  await expect(page.getByLabel('Your reactions: Applause 1, Funny 2')).toBeVisible();
+});
+
+test('Iris gallery as an exhibition: play, step with the keys, pause, close with Esc', async ({ page }) => {
+  await finishedEpisode(page.request);
+  await finishedEpisode(page.request, 'Should cities ban cars from their centres?');
+  await page.goto('/#/iris');
+  await page.getByRole('button', { name: '▶ Play the gallery' }).first().click();
+  const show = page.getByRole('dialog', { name: /gallery, piece 1 of \d+/ });
+  await expect(show).toBeVisible();
+  await expect(show.getByRole('button', { name: 'Close' })).toBeFocused();
+  await page.keyboard.press('ArrowRight');
+  await expect(page.getByRole('dialog', { name: /piece 2 of/ })).toBeVisible();
+  await page.getByRole('button', { name: '❚❚ Pause' }).click();
+  await expect(page.getByRole('button', { name: '▶ Play', exact: true })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+});
+
+test('this week on CrossTalk: a recap of the latest episodes, recorded on this device', async ({ page }) => {
+  test.setTimeout(180_000);
+  await finishedEpisode(page.request);
+  await finishedEpisode(page.request, 'Should cities ban cars from their centres?');
+  await page.goto('/#/episodes');
+  const recap = page.getByRole('region', { name: "This week's recap" });
+  await recap.getByRole('button', { name: /Make the recap/ }).click();
+  await expect(recap.getByRole('status')).toContainText(/Recording \d+ of \d+ seconds/);
+  await expect(recap.locator('video.clip-video')).toBeVisible({ timeout: 150_000 });
+  const [dl] = await Promise.all([page.waitForEvent('download'), recap.getByRole('link', { name: 'Download' }).click()]);
+  expect(dl.suggestedFilename()).toMatch(/^crosstalk-week-\d{4}-\d{2}-\d{2}\.(mp4|webm)$/);
+});
+
+test('Iris, unique: her sketchbook brief under the picture, and Hear Iris reads her reflection while she redraws', async ({ page }) => {
+  const id = await finishedEpisode(page.request);
+  await page.goto(`/#/studio/${id}/read`);
+  const card = page.getByRole('region', { name: "Iris's perspective" });
+  const book = card.getByRole('complementary', { name: 'From her sketchbook' });
+  await expect(book).toBeVisible();
+  expect((await book.innerText()).split(/\s+/).length).toBeGreaterThan(25);
+  await card.getByRole('button', { name: /Hear Iris/ }).click();
+  await expect(card.getByRole('button', { name: '■ Stop' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(card.locator('.persp.speaking')).toBeVisible();
+  await card.getByRole('button', { name: '■ Stop' }).click();
+  await expect(card.getByRole('button', { name: /Hear Iris/ })).toHaveAttribute('aria-pressed', 'false');
+
+  // Her art, full size: click it, see the title, quote and sketchbook, close with Esc.
+  await card.getByRole('button', { name: /full size/ }).first().click();
+  const viewer = page.getByRole('dialog', { name: /full size/ });
+  await expect(viewer).toBeVisible();
+  await expect(viewer.getByRole('heading')).toContainText('“');
+  await expect(viewer).toContainText('From her sketchbook');
+  await expect(viewer.getByRole('button', { name: 'Close' })).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(viewer).toHaveCount(0);
+  // And from the gallery.
+  await page.goto('/#/iris');
+  await page.getByRole('button', { name: /full size/ }).first().click();
+  await expect(page.getByRole('dialog', { name: /full size/ })).toBeVisible();
+  await page.getByRole('dialog').getByRole('button', { name: 'Close' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+});
+
 test('create → run → stop → refresh keeps every finished turn', async ({ page }) => {
   await page.goto('/#/create');
   await page.getByRole('button', { name: /Start recording/ }).click();
@@ -168,7 +259,9 @@ test("Iris's card shows her sketch, perspective, and learns from feedback", asyn
 test("Iris: tick your styles, and the gallery keeps every version", async ({ page, request }) => {
   await page.goto('/#/iris');
   const picks = page.getByRole('group', { name: 'Styles Iris may use' });
-  // Untick Sketch and Dreamscape: Painting only.
+  // Untick Picture, Sketch and Dreamscape: Painting only.
+  await picks.getByRole('button', { name: /^Picture/ }).click();
+  await expect(page.getByRole('status')).toContainText('choose among Sketch, Painting, Dreamscape');
   await picks.getByRole('button', { name: /Sketch/ }).click();
   await expect(page.getByRole('status')).toContainText('choose among Painting, Dreamscape');
   await picks.getByRole('button', { name: /Dreamscape/ }).click();
@@ -188,7 +281,7 @@ test("Iris: tick your styles, and the gallery keeps every version", async ({ pag
   await versions.getByRole('button', { name: 'Painting' }).click();
   await expect(page.locator('.g-card').first().getByRole('img', { name: /Iris's painting/ })).toBeVisible();
   // Put the styles back for the other tests.
-  await request.put('/api/iris/styles', { data: { styles: ['sketch', 'painting', 'dreamscape'] } });
+  await request.put('/api/iris/styles', { data: { styles: ['picture', 'sketch', 'painting', 'dreamscape'] } });
 });
 
 test('up next: when an episode plays through, the next one starts on its own', async ({ page, request }) => {
@@ -418,6 +511,40 @@ test('Hot seat: vote who moved you, then make the episode poster', async ({ page
   const comic = page.locator('.poster-tile', { hasText: 'Comic strip' });
   const [dl2] = await Promise.all([page.waitForEvent('download'), comic.getByRole('link', { name: 'Download' }).click()]);
   expect(dl2.suggestedFilename()).toMatch(/^crosstalk-ep\d+-comic\.png$/);
+
+  // Iris's print: a print-ready A4 page, and listing text that says it's AI-made.
+  const print = page.locator('.poster-tile', { hasText: 'Iris print' });
+  await print.getByRole('button', { name: 'Make print' }).click();
+  await expect(page.getByRole('img', { name: /Iris print for/ })).toBeVisible();
+  const [dl3] = await Promise.all([page.waitForEvent('download'), print.getByRole('link', { name: 'Download' }).click()]);
+  expect(dl3.suggestedFilename()).toMatch(/^crosstalk-ep\d+-iris-print\.png$/);
+});
+
+test('social clip: recorded on this device while you watch, then a real video to download', async ({ page }) => {
+  test.setTimeout(150_000);
+  const id = await finishedEpisode(page.request);
+  await page.goto(`/#/studio/${id}/read`);
+  const tile = page.locator('.clip-tile');
+  // Stop part way: back to the start, cleanly.
+  await tile.getByRole('button', { name: 'Make clip' }).click();
+  await expect(tile.getByRole('status')).toContainText(/Recording \d+ of \d+ seconds/);
+  await tile.getByRole('button', { name: 'Stop' }).click();
+  await expect(tile.getByRole('button', { name: 'Make clip' })).toBeVisible();
+  await expect(tile.locator('video.clip-video')).toHaveCount(0);
+  await tile.getByRole('button', { name: 'Make clip' }).click();
+  await expect(tile.getByRole('status')).toContainText(/Recording \d+ of \d+ seconds/);
+  await expect(tile.locator('canvas.clip-canvas')).toBeVisible();
+  await expect(tile.locator('video.clip-video')).toBeVisible({ timeout: 90_000 });
+  const [dl] = await Promise.all([page.waitForEvent('download'), tile.getByRole('link', { name: 'Download' }).click()]);
+  expect(dl.suggestedFilename()).toMatch(/^crosstalk-ep\d+-clip\.(mp4|webm)$/);
+  const size = (await import('fs')).statSync((await dl.path())!).size;
+  expect(size).toBeGreaterThan(100_000);
+  // The video really plays: it has a length.
+  const length = await tile.locator('video.clip-video').evaluate(async (v: HTMLVideoElement) => {
+    if (!Number.isFinite(v.duration)) { v.currentTime = 1e9; await new Promise(r => v.addEventListener('durationchange', r, { once: true })); }
+    return v.duration;
+  });
+  expect(length).toBeGreaterThan(15);
 });
 
 test('raise your hand: the host invites you in, you speak, they answer', async ({ page, request }) => {

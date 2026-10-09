@@ -5,7 +5,8 @@ import { buildApp } from '../src/app';
 import { mockConfig } from '../src/config';
 import { draft, INSTANT } from './helpers';
 
-const app = () => buildApp(mockConfig({ dbPath: ':memory:', dailyLimit: 500 }), { timing: INSTANT });
+// Full paintings off here: these tests are about her line styles and the ones you tick.
+const app = () => buildApp(mockConfig({ dbPath: ':memory:', dailyLimit: 500, irisPictures: false }), { timing: INSTANT });
 
 async function episode(t: ReturnType<typeof app>, d = draft()) {
   const id = (await t.app.inject({ method: 'POST', url: '/api/conversations', payload: d })).json().id as string;
@@ -50,11 +51,11 @@ describe("Iris's gallery keeps every version", () => {
 });
 
 describe('the styles you tick', () => {
-  it('starts with all three, and refuses none or unknown styles', async () => {
+  it('starts with all four, and refuses none or unknown styles', async () => {
     const t = app();
     try {
-      expect((await t.app.inject({ url: '/api/iris/styles' })).json()).toEqual({ styles: ['sketch', 'painting', 'dreamscape'], homeStyles: true });
-      for (const bad of [[], ['picture'], ['sketch', 'oil'], 'sketch', null]) {
+      expect((await t.app.inject({ url: '/api/iris/styles' })).json()).toEqual({ styles: ['picture', 'sketch', 'painting', 'dreamscape'], homeStyles: true });
+      for (const bad of [[], ['oil'], ['sketch', 'oil'], 'sketch', null]) {
         expect((await t.app.inject({ method: 'PUT', url: '/api/iris/styles', payload: { styles: bad } })).statusCode, JSON.stringify(bad)).toBe(400);
       }
       expect((await t.app.inject({ method: 'PUT', url: '/api/iris/styles', payload: { styles: ['dreamscape', 'sketch'] } })).json()).toEqual({ styles: ['sketch', 'dreamscape'], homeStyles: true });
@@ -82,7 +83,7 @@ describe('the styles you tick', () => {
     expect(defaultPaintStyle({ mode: 'explore', temperature: 'lively' }, ['sketch', 'painting'])).toBe('painting');
     expect(defaultPaintStyle({ mode: 'debate', temperature: 'calm' }, ['dreamscape'])).toBe('dreamscape');
     expect(cleanStyles(['dreamscape', 'x', 'sketch'])).toEqual(['sketch', 'dreamscape']);
-    expect(cleanStyles([])).toEqual(['sketch', 'painting', 'dreamscape']);
+    expect(cleanStyles([])).toEqual(['picture', 'sketch', 'painting', 'dreamscape']);
     const view = { topic: 't', mode: 'explore', round: 1, speakers: { A: { name: 'A' }, B: { name: 'B' } }, turns: [], interventions: [] } as unknown as ConversationView;
     expect(buildIrisPrompt(view, [], null, ['painting']).system).toContain('- artStyle: always "painting"');
     const two = buildIrisPrompt(view, [], null, ['sketch', 'dreamscape']).system;

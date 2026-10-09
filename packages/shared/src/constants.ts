@@ -116,6 +116,17 @@ export const TEMPERATURE_ORDER = ['calm', 'lively', 'heated'] as const;
  * How a host sounds. Device voices can't really act, so each style is a small change of pace and
  * pitch, plus a line in the host's prompt about how they speak. Auto follows their personality.
  */
+/** Reactions a listener can tap while an episode plays. The label says what each one means (never the emoji alone). */
+export const REACTIONS = {
+  clap: { emoji: '👏', label: 'Applause' },
+  hmm: { emoji: '🤔', label: 'Makes me think' },
+  funny: { emoji: '😂', label: 'Funny' },
+  wow: { emoji: '😮', label: 'Surprising' },
+  love: { emoji: '❤️', label: 'Love this' },
+} as const;
+/** At most this many reactions per episode, so a stuck finger can't flood it. */
+export const REACTIONS_MAX = 300;
+
 export const VOICE_STYLES = {
   warm: { label: 'Warm', help: 'Unhurried and friendly, a little lower.', rate: 0.96, pitch: 0.94, speak: 'warm and unhurried: friendly, generous phrasing' },
   energetic: { label: 'Energetic', help: 'Quicker and brighter.', rate: 1.08, pitch: 1.06, speak: 'energetic and quick: short punchy sentences' },

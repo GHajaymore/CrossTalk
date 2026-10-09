@@ -53,7 +53,7 @@ describe('Iris, the Artist', () => {
     await iris.listen(id);
     await iris.listen(id); // a second call does nothing: once per completed run
     const a = repo.view(id)!.artist!;
-    expect(a).toMatchObject({ state: 'done', modelId: 'mock/iris-v1', artTitle: 'The Empty Friday', artStyle: 'dreamscape', version: 1, error: null });
+    expect(a).toMatchObject({ state: 'done', modelId: 'mock/iris-v1', artTitle: 'The Empty Friday', artStyle: 'picture', version: 1, error: null });
     expect(a.sketchSvg).toMatch(/^<svg /);
     expect(a.caption.split(/\s+/).length).toBeLessThanOrEqual(21);
     expect(repo.listTurns(id).find(t => t.seq === a.momentSeq)).toBeTruthy();
@@ -132,5 +132,32 @@ describe('Iris through the app', () => {
       expect(fb.statusCode).toBe(201);
       expect(fb.json()[0]).toMatchObject({ rating: 'down', note: 'More people, fewer objects', artTitle: 'The Empty Friday' });
     } finally { await app.close(); }
+  });
+});
+
+describe('Iris remembers her own work', () => {
+  it('her prompt lists her last pieces for other episodes (never this one or its family), and mock Iris makes the connection', async () => {
+    const { buildApp } = await import('../src/app');
+    const { mockConfig } = await import('../src/config');
+    const { buildIrisPrompt } = await import('../src/artist/prompt');
+    const t = buildApp(mockConfig({ dbPath: ':memory:', dailyLimit: 500, irisPictures: false }), { timing: { thinkMs: () => 0, wordMs: () => 0 } });
+    try {
+      const run = async (topic: string) => {
+        const id = (await t.app.inject({ method: 'POST', url: '/api/conversations', payload: { ...draft(topic), length: 'short' } })).json().id as string;
+        await t.controller.start(id); await t.controller.settled(id); await t.iris.settled(id);
+        return id;
+      };
+      const first = await run('Is a four-day workweek practical?');
+      expect(t.repo.view(first)!.artist!.perspective).not.toMatch(/took me back/);
+      const second = await run('Should cities ban cars from their centres?');
+      expect(t.repo.view(second)!.artist!.perspective).toMatch(/It took me back to “The Empty Friday”, the piece I made for Ep\. 01\./);
+      const p = buildIrisPrompt(t.repo.view(second)!, [], null, ['sketch'], [{ title: 'The Empty Friday', episode: 1, topic: 'four-day week', caption: 'Yeah.' }]);
+      expect(p.user).toContain('<her_recent_work>\n- “The Empty Friday”, Ep. 01, about: four-day week');
+      expect(p.system).toContain('Never use them to compare or judge hosts');
+      // Asking again for the first episode remembers the second, not itself.
+      await t.app.inject({ method: 'POST', url: `/api/conversations/${first}/artist` });
+      await t.iris.settled(first);
+      expect(t.repo.view(first)!.artist!.perspective).toMatch(/“Room to Walk”/);
+    } finally { await t.app.close(); }
   });
 });

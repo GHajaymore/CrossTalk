@@ -16,8 +16,8 @@ export type MockLang = {
   hotseat: [string, string];
   iris: {
     guest: (who: string) => string; challenge: (who: string) => string; deeper: (who: string, seq: number | null) => string;
-    steered: (who: string) => string; changed: (who: string, other: string) => string;
-    wish: string; note: (note: string) => string; taste: (style: PaintStyle) => string; question: string;
+    steered: (who: string) => string; changed: (who: string, other: string) => string; loved: (who: string) => string;
+    wish: string; echo: (title: string, episode: number) => string; note: (note: string) => string; taste: (style: PaintStyle) => string; question: string;
     titles: Record<string, string>;
   };
 };
@@ -82,10 +82,12 @@ const ES: MockLang = {
     challenge: who => `Me quedé con ${who} enfrentando tu desafío de frente en lugar de darle vueltas.`,
     deeper: (who, seq) => `Me quedé con ${who} volviendo al turno ${seq} cuando lo pediste, y encontrando más.`,
     steered: who => `Me quedé con el momento en que guiaste el programa y ${who} te siguió, por un camino que la primera versión nunca tomó.`,
+    loved: who => `Me quedé con la frase de ${who} que te hizo reaccionar. Algo en ella tocó una fibra, así que es la que dibujé.`,
     changed: (who, other) => `Me quedé con el momento en que ${who} le dio la razón a ${other}. Ahí la charla se volvió sincera, porque alguien cambió de opinión en voz alta.`,
     wish: 'Ojalá hubieran dedicado un turno a la gente a la que nunca le preguntan por esto.',
+    echo: (title, ep) => `Me recordó a «${title}», la obra que hice para el Ep. ${String(ep).padStart(2, '0')}.`,
     note: note => `Me dijiste «${note}», así que intenté tenerlo en cuenta.`,
-    taste: style => `Sigues eligiendo ${({ sketch: 'bocetos', painting: 'pinturas', dreamscape: 'paisajes de sueño', inkwash: 'aguadas de tinta', folk: 'piezas de color popular', tiles: 'patrones de azulejos', miniature: 'miniaturas', woven: 'bordes tejidos' } as const)[style]} para mi trabajo, así que así hice este.`,
+    taste: style => `Sigues eligiendo ${({ picture: 'cuadros completos', sketch: 'bocetos', painting: 'pinturas', dreamscape: 'paisajes de sueño', inkwash: 'aguadas de tinta', folk: 'piezas de color popular', tiles: 'patrones de azulejos', miniature: 'miniaturas', woven: 'bordes tejidos' } as const)[style]} para mi trabajo, así que así hice este.`,
     question: 'Mi pregunta para ti: ¿qué haría falta para que cambiaras de opinión?',
     titles: { 'The Empty Friday': 'El viernes vacío', 'Long Ball, Short Course': 'Bola larga, campo corto', 'Room to Walk': 'Espacio para caminar', 'The Fee on the Table': 'La tarifa sobre la mesa', 'Open Sign': 'El cartel de abierto', 'Two Chairs, One Question': 'Dos sillas, una pregunta' },
   },
@@ -151,10 +153,12 @@ const HI: MockLang = {
     challenge: who => `मेरे मन में ${who} का वह पल रह गया, जब उन्होंने आपकी चुनौती को टालने के बजाय सीधे उसका सामना किया।`,
     deeper: (who, seq) => `मेरे मन में वह पल रह गया, जब आपके कहने पर बात टर्न ${seq} पर लौटी और ${who} ने उसमें और भी कुछ खोज निकाला।`,
     steered: who => `मेरे मन में वह पल रह गया, जब आपने शो की दिशा बदली और ${who} ने उस नए रास्ते को अपनाया, जिस पर पहला रूप कभी नहीं गया था।`,
+    loved: who => `मेरे मन में ${who} की वह बात रह गई, जिस पर आपने प्रतिक्रिया दी। उसमें कुछ तो छू गया, इसलिए मैंने वही बनाया।`,
     changed: (who, other) => `मेरे मन में वह पल रह गया, जब ${who} ने ${other} की बात मानी। बातचीत वहीं सच्ची हुई, क्योंकि किसी ने खुलकर अपनी राय बदली।`,
     wish: 'काश उन्होंने एक टर्न उन लोगों पर भी बिताया होता, जिनसे इस बारे में कभी पूछा ही नहीं जाता।',
+    echo: (title, ep) => `इससे मुझे "${title}" याद आया, जो मैंने एपिसोड ${ep} के लिए बनाया था।`,
     note: note => `आपने मुझसे कहा था "${note}", तो मैंने उसे ध्यान में रखने की कोशिश की।`,
-    taste: style => `मेरे काम के लिए आपकी पसंद बार-बार ${({ sketch: 'स्केच', painting: 'पेंटिंग', dreamscape: 'स्वप्न-दृश्य', inkwash: 'स्याही-चित्र', folk: 'लोक-रंग', tiles: 'टाइल-नक्काशी', miniature: 'लघुचित्र', woven: 'बुनी हुई किनारी' } as const)[style]} रही है, इसलिए यह भी वैसा ही बनाया।`,
+    taste: style => `मेरे काम के लिए आपकी पसंद बार-बार ${({ picture: 'पूरे चित्र', sketch: 'स्केच', painting: 'पेंटिंग', dreamscape: 'स्वप्न-दृश्य', inkwash: 'स्याही-चित्र', folk: 'लोक-रंग', tiles: 'टाइल-नक्काशी', miniature: 'लघुचित्र', woven: 'बुनी हुई किनारी' } as const)[style]} रही है, इसलिए यह भी वैसा ही बनाया।`,
     question: 'मेरा सवाल आपसे: आपकी राय बदलने के लिए क्या चाहिए होगा?',
     titles: { 'The Empty Friday': 'ख़ाली शुक्रवार', 'Long Ball, Short Course': 'लंबा शॉट, छोटा मैदान', 'Room to Walk': 'चलने की जगह', 'The Fee on the Table': 'मेज़ पर रखा शुल्क', 'Open Sign': '"खुला है" का बोर्ड', 'Two Chairs, One Question': 'दो कुर्सियाँ, एक सवाल' },
   },

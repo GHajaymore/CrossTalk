@@ -279,4 +279,27 @@ export const MIGRATIONS: string[] = [
   -- The language an episode is spoken in.
   ALTER TABLE conversations ADD COLUMN language TEXT NOT NULL DEFAULT 'en';
   `,
+  `
+  -- Listener reactions while an episode plays (an emoji on a line).
+  CREATE TABLE reactions (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    conversation_id  TEXT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+    seq              INTEGER NOT NULL,
+    kind             TEXT NOT NULL,
+    created_at       TEXT NOT NULL
+  );
+  CREATE INDEX reactions_by_conversation ON reactions (conversation_id, seq);
+  `,
+  `
+  -- Iris's real paintings: one per drawing version, made by a free image service from her own brief.
+  ALTER TABLE artworks ADD COLUMN image_prompt TEXT NOT NULL DEFAULT '';
+  CREATE TABLE iris_pictures (
+    conversation_id  TEXT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+    version          INTEGER NOT NULL,
+    mime             TEXT NOT NULL,
+    data             BLOB NOT NULL,
+    created_at       TEXT NOT NULL,
+    PRIMARY KEY (conversation_id, version)
+  );
+  `,
 ];

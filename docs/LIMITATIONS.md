@@ -23,6 +23,10 @@ CrossTalk is a prototype for one person. These are the honest gaps.
 
 - **Browser voices depend on the device.** They sound different everywhere and can sound robotic.
   Headless browsers have none, so voice playback isn't covered by the automated tests.
+- **The listening host's "mm-hm"** plays only when the device gives the two hosts different voices
+  in the episode's language (en, es, hi, pt, fr, de, it for now), and it's a separate short line, so
+  on some devices it lands a beat late. Pauses between hosts are timers in the browser, not real
+  breaths. The odd "I mean…" or self-correction is asked of real AI hosts only; mock lines are fixed.
 - **Recorded voices** (`tools/voice`) are rendered on your machine, one episode at a time, and aren't
   part of the hosted version yet. There are no emotion or laughter cues yet.
 - **Iris paints from her own lines.** Painting and Dreamscape are her sketch with brushwork, light and
@@ -71,9 +75,18 @@ CrossTalk is a prototype for one person. These are the honest gaps.
   sample script. The topic stays as you typed it. Host roles stay in English (each face's age and clothes are read
   from the job title). The voice is your device's voice for that language; if it has none, the turns
   still show as text and the Voices panel says where to get one free.
+- **Iris's Picture comes from a free image service** that sometimes ignores parts of her brief, can
+  take up to a minute, and may be busy; her line art shows meanwhile and stays if it fails. Real
+  pictures can't be checked from the build environment (no outside network), so the tests use a
+  stand-in. At most 30 new paintings a day.
 - **Iris's home styles are broad traditions drawn around her own lines** (ink wash, folk colour, tile
   pattern, miniature, woven border), not reproductions of any artist or specific artwork, and only for
   hosts from those regions. Europe, North America and Oceania use her usual styles.
+- **The social clip records in real time** (30 to 45 seconds) on your device: keep the tab open while it
+  records. Device voices can't be captured, so the clip has captions and, if you leave it on, a soft
+  music bed composed on the device from plain tones (nothing anyone else wrote, free to post). It's
+  MP4 where the browser can make one (Safari, recent Chrome) and WebM otherwise. Nothing is posted;
+  you download or share it yourself.
 - **Young hosts are shown as adults.** On a Teens show the right seat is a Gen Z student; roles like
   student, intern or creator look about nineteen to their twenties. CrossTalk never makes a
   photo-real face of anyone under eighteen.

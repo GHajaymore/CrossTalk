@@ -124,3 +124,11 @@
 .set-tile.on .set-photo img{filter:brightness(1.06) saturate(1.05)}
 @keyframes photo-breathe{0%,100%{scale:1}50%{scale:1.008}}
 @media (prefers-reduced-motion:reduce){.set-photo img{animation:none;transition:none;transform:none}}
+/* The director: the speaker's shot widens and the camera pushes in slowly; the listener stays in frame. */
+.set-tiles{transition:grid-template-columns 1.1s cubic-bezier(.4,.1,.2,1)}
+.set-tiles.dir-A{grid-template-columns:1.5fr 1fr}
+.set-tiles.dir-B{grid-template-columns:1fr 1.5fr}
+.set-tile .set-cam{transition:transform 6s cubic-bezier(.2,.6,.3,1)}
+.set-tile.on .set-cam{transform:scale(1.06)}
+@media (max-width:640px){.set-tiles.dir-A{grid-template-columns:1.25fr 1fr}.set-tiles.dir-B{grid-template-columns:1fr 1.25fr}}
+@media (prefers-reduced-motion:reduce){.set-tiles{transition:none}.set-tile .set-cam,.set-tile.on .set-cam{transition:none;transform:none}}

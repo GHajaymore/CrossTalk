@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { artworkSvg, episodeLabel, MODES, TITLE_MAX, turnTotal, type AppConfig } from '@crosstalk/shared';
+import { artworkSvg, episodeLabel, LANGUAGES, MODES, TITLE_MAX, turnTotal, type AppConfig } from '@crosstalk/shared';
 import { api, type ConversationSummary } from '../api/client';
 import { sketchSrc } from '../studio/ArtistCard';
 import { Footer } from './Footer';
+import { RecapPanel } from './Recap';
 
 const STATUS: Record<string, string> = { idle: 'ready', generating: 'recording', paused: 'paused', completed: 'finished', cancelled: 'stopped', failed: 'failed' };
 const when = (iso: string) => new Date(iso).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
@@ -33,6 +34,7 @@ export function Episodes({ config, toast }: { config: AppConfig | null; toast: (
   return (
     <div className="page">
       <div><h1>Episodes</h1><p className="hint">Every episode you've made, with its branches underneath. Iris's art is also in her gallery on the <a href="#/iris">Iris</a> page.</p></div>
+      {items && <RecapPanel items={items} photos={!!config?.portraits} toast={toast} />}
       {items && items.length > 3 && (
         <label className="fld lib-search"><span className="sr-only">Search episodes</span>
           <input type="text" value={q} onChange={e => setQ(e.target.value)} placeholder="Search titles, topics and branch directions" />
@@ -91,6 +93,8 @@ function EpisodeRow({ c, depth, onChanged, toast }: { c: ConversationSummary; de
             <span className={`status ${st}`}>{c.run?.stopReason === 'interrupted' ? 'interrupted' : STATUS[st]}</span>
             <span>{episodeLabel(c.episode)}</span>
             <span>{MODES[c.mode].label}</span>
+            <span>{c.speakers.A.name} & {c.speakers.B.name}</span>
+            {c.language && c.language !== 'en' && <span lang={c.language}>{LANGUAGES[c.language].native}</span>}
             <span>{c.turnCount} of {turnTotal(c)} turns</span>
             {c.branchCount > 0 && <span>{c.branchCount} branch{c.branchCount === 1 ? '' : 'es'}</span>}
             <span>{when(c.createdAt)}</span>

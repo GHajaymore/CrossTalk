@@ -11,6 +11,7 @@ import { BriefBox } from '../scout/BriefBox';
 import { TodayTray } from '../scout/TodayTray';
 import { StudioSet } from '../studio/StudioSet';
 import { Footer } from './Footer';
+import { WhatsNew } from './WhatsNew';
 
 const seatDraft = (persona: PersonaKey): SpeakerDraft => ({ name: '', autoName: true, persona, autoPersona: true, lens: '', role: '', autoRole: true });
 const HOME_REGIONS = ['na', 'latam', 'europe', 'mideast', 'africa', 'asia', 'oceania'] as const;
@@ -155,6 +156,8 @@ export function Create({ config, go, refreshConfig, toast }: Props) {
         <h1>Choose a topic. Record it with two AI hosts.</h1>
         <p>Challenge their ideas, turn up the heat, branch from any moment, and keep the episode and Iris's art.</p>
       </div>
+
+      <WhatsNew />
 
       <StudioSet photos={config?.portraits}
         show={`CrossTalk · ${FORMATS[format].label}`}

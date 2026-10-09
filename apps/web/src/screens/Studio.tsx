@@ -19,6 +19,7 @@ import { CueCard } from '../studio/CueCard';
 import { cueState, CuePanel } from '../studio/CuePanel';
 import { EpisodeKit } from '../studio/EpisodeKit';
 import { ListenView } from '../studio/ListenView';
+import { ReactionBar } from '../studio/Reactions';
 import { SidePanel } from '../studio/SidePanel';
 import { StudioSet } from '../studio/StudioSet';
 import { TurnCard } from '../studio/TurnCard';
@@ -105,6 +106,10 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
   const sp = view.speakers;
   const st = view.run?.state ?? 'idle';
   const lastSeq = view.turns.reduce((m, t) => Math.max(m, t.seq), 0);
+  // Only the reactions change, so a live update that arrived meanwhile is never overwritten.
+  const setReactions = (r: NonNullable<ConversationView['reactions']>) => setView(v => (v ? { ...v, reactions: r } : v));
+  // Reactions land on the line being played, else the last line said (a line still being written isn't saved yet).
+  const reactSeq = play.state !== 'idle' && play.seq ? play.seq : lastSeq || null;
   const failedSeq = st === 'failed' ? lastSeq + 1 : null;
   const otherBusy = !!config?.activeConversationId && config.activeConversationId !== id;
   const cantRun = busy || otherBusy || realBlocked(config) || (!!config && config.requestsToday >= config.dailyLimit);
@@ -223,7 +228,8 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
               onDeeper={() => deeper(t.seq)} deeperBlocked={cues.blocked}
               onBranch={() => setBranchFrom(t.seq)} branchBlocked={branchBlocked}
               inherited={t.conversationId !== view.id}
-              splices={view.branches.filter(b => b.branchSeq === t.seq).map(b => ({ id: b.id, direction: b.direction }))} />
+              splices={view.branches.filter(b => b.branchSeq === t.seq).map(b => ({ id: b.id, direction: b.direction }))}
+              reactions={view.reactions?.[t.seq]} />
             {view.branchSeq === t.seq && <div className="cut-line" role="separator"><span>✂ Your branch starts here: “{view.branchDirection}”</span></div>}
           </div>
         ))}
@@ -241,11 +247,11 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
       </div>
       {view.mode === 'hotseat' && st === 'completed' && <VerdictCard view={view} setView={setView} toast={toast} />}
       {view.artist && (
-        <ArtistCard notes={view.artist} speakers={sp} conversationId={id} toast={toast} setView={setView}
+        <ArtistCard notes={view.artist} speakers={sp} conversationId={id} toast={toast} setView={setView} pictures={!!config?.irisPictures} lang={view.language} episodePlaying={play.state !== 'idle'}
           onAgain={() => { api.askIris(id).catch(e => toast((e as Error).message)); /* her progress arrives over the live stream */ }}
           onJump={seq => document.getElementById(`turn-${seq}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })} />
       )}
-      {st === 'completed' && view.artist?.state === 'done' && <EpisodeKit c={view} toast={toast} />}
+      {st === 'completed' && view.artist?.state === 'done' && <EpisodeKit c={view} toast={toast} photos={!!config?.portraits} />}
       {st === 'completed' && !view.parent && <RoundCard view={view} toast={toast} />}
     </>
   );
@@ -287,6 +293,7 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
             )}
             {onAir && <button className="btn sm leave-air" onClick={leaveAir}>Leave On air</button>}
           </div>
+          {view.turns.length > 0 && <ReactionBar view={view} seq={reactSeq} onReactions={setReactions} toast={toast} />}
           {view.brief && <details className="brief stage-brief"><summary>Today's brief · {view.brief.sources.join(', ')}</summary><BriefBox brief={view.brief} /></details>}
           <TurnRail turns={view.turns} liveSeq={live?.seq ?? null} failedSeq={failedSeq} speakers={sp} length={view.length}
             branchSeq={view.branchSeq} cueSeqs={view.interventions.filter(c => c.status === 'queued').map(c => c.appliesBeforeSeq)} />
@@ -305,6 +312,7 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
         {startError && <div className="banner" role="alert"><span><b>Couldn't start.</b> {startError}</span><button className="btn sm ghost" onClick={() => setStartError(null)}>Dismiss</button></div>}
 
         {tab === 'listen' && <ListenView view={view} play={play} rate={prefs.rate} setRate={r => update({ rate: r })} />}
+        {tab === 'listen' && view.turns.length > 0 && <ReactionBar view={view} seq={reactSeq} onReactions={setReactions} toast={toast} />}
         {tab === 'read' && transcript}
         {tab === 'watch' && view.turns.length > 0 && (
           <p className="hint tab-hint">The full transcript, Iris's sketch and the episode kit are on <a href={`#/studio/${id}/read`}>Read</a>. On your phone, <a href={`#/studio/${id}/listen`}>Listen</a> plays it like a podcast.</p>

@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { comicName, makeComic } from '../lib/comic';
 import { makePoster, posterName } from '../lib/poster';
+import { makePrint, printListing, printName } from '../lib/print';
 import { ARTIST, AUDIENCES, episodeLabel, MODES, NOTICE, TEMPERATURES, type ConversationView } from '@crosstalk/shared';
 
 export function showNotes(c: ConversationView) {
@@ -19,10 +20,10 @@ export function showNotes(c: ConversationView) {
   ].join('\n');
 }
 
-type ImageTileProps = { c: ConversationView; toast: (m: string) => void; title: string; blurb: string; button: string; alt: string; make: (c: ConversationView) => Promise<Blob>; name: (c: ConversationView) => string };
+type ImageTileProps = { c: ConversationView; toast: (m: string) => void; title: string; blurb: string; button: string; alt: string; make: (c: ConversationView) => Promise<Blob>; name: (c: ConversationView) => string; extra?: React.ReactNode };
 
 /** A share-ready image (poster or comic): made on this device, then downloaded or shared from the phone. */
-function ImageTile({ c, toast, title, blurb, button, alt, make: draw, name }: ImageTileProps) {
+function ImageTile({ c, toast, title, blurb, button, alt, make: draw, name, extra }: ImageTileProps) {
   const [url, setUrl] = useState<string | null>(null);
   const [blob, setBlob] = useState<Blob | null>(null);
   const [busy, setBusy] = useState(false);
@@ -44,14 +45,61 @@ function ImageTile({ c, toast, title, blurb, button, alt, make: draw, name }: Im
         {!url && <button className="btn sm" disabled={busy} onClick={make}>{busy ? 'Drawing…' : button}</button>}
         {url && <a className="btn sm" href={url} download={name(c)}>Download</a>}
         {canShare && <button className="btn sm ghost" onClick={() => navigator.share({ files: [file!], title: c.topic }).catch(() => {})}>Share</button>}
+        {extra}
       </div>
       <span className="badge ok">Free · made on this device</span>
     </div>
   );
 }
 
+/**
+ * The social clip: a vertical video of the key moment, recorded on this device in real time. You
+ * watch it being made, then download or share it. Silent with big captions, like most social clips.
+ */
+function ClipTile({ c, toast, photos }: { c: ConversationView; toast: (m: string) => void; photos: boolean }) {
+  const canvas = useRef<HTMLCanvasElement>(null);
+  const [state, setState] = useState<'idle' | 'recording' | 'done'>('idle');
+  const [progress, setProgress] = useState({ sec: 0, total: 0 });
+  const [video, setVideo] = useState<{ url: string; file: File } | null>(null);
+  const [music, setMusic] = useState(true);
+  const stop = useRef<AbortController | null>(null);
+  useEffect(() => () => { stop.current?.abort(); if (video) URL.revokeObjectURL(video.url); }, [video]);
+  const stamp = `${c.artist?.version}|${c.artist?.artStyle}|${c.title}|${c.turns.length}`;
+  // A new drawing or a rename makes the clip out of date; a recording in progress is stopped first.
+  useEffect(() => { stop.current?.abort(); setVideo(null); setState('idle'); }, [stamp]);
+  const make = async () => {
+    setState('recording');
+    const ctl = stop.current = new AbortController();
+    try {
+      const { recordClip, clipName } = await import('../lib/clip');
+      const { blob, ext } = await recordClip(c, canvas.current!, { photos, music, signal: ctl.signal, onProgress: (sec, total) => { if (!ctl.signal.aborted) setProgress({ sec, total }); } });
+      if (ctl.signal.aborted) return; // left the page, or a newer recording took over
+      setVideo({ url: URL.createObjectURL(blob), file: new File([blob], `${clipName(c)}.${ext}`, { type: blob.type }) });
+      setState('done');
+    } catch (e) { if (!ctl.signal.aborted || (e as Error).message !== 'Stopped.') toast((e as Error).message); if (stop.current === ctl) setState('idle'); }
+  };
+  const canShare = !!video && typeof navigator.canShare === 'function' && navigator.canShare({ files: [video.file] });
+  return (
+    <div className="kit-tile clip-tile"><b>Social clip</b>
+      {state === 'idle' && <p>The key moment as a vertical video for Reels, Shorts or TikTok: the hosts, captions that light up word by word, where they landed, and Iris's art. 30 to 45 seconds, made on this device while you watch.</p>}
+      {state === 'idle' && <label className="check"><input type="checkbox" checked={music} onChange={e => setMusic(e.target.checked)} /> Soft music, composed for this episode on your device (free to post)</label>}
+      <canvas ref={canvas} className="clip-canvas" hidden={state !== 'recording'} aria-label="Your clip, being recorded" />
+      {state === 'recording' && <p className="hint" role="status">Recording {Math.floor(progress.sec)} of {Math.round(progress.total) || '…'} seconds. Keep this tab open.</p>}
+      {video && <video className="clip-video" src={video.url} controls playsInline loop aria-label={`Social clip for ${c.topic}`} />}
+      <div className="dock-row">
+        {state === 'idle' && <button className="btn sm" onClick={make} disabled={!c.turns.length}>Make clip</button>}
+        {state === 'recording' && <button className="btn sm ghost" onClick={() => stop.current?.abort()}>Stop</button>}
+        {video && <a className="btn sm" href={video.url} download={video.file.name}>Download</a>}
+        {canShare && <button className="btn sm ghost" onClick={() => navigator.share({ files: [video!.file], title: c.topic }).catch(() => {})}>Share</button>}
+        {video && <button className="btn sm ghost" onClick={() => { setVideo(null); setState('idle'); }}>Make again</button>}
+      </div>
+      <span className="badge ok">Free · made on this device · captions{music ? ' and music' : ''}</span>
+    </div>
+  );
+}
+
 /** What a finished episode can become. Text is ready now; audio, clips and prints come later and always wait for your OK. */
-export function EpisodeKit({ c, toast }: { c: ConversationView; toast: (m: string) => void }) {
+export function EpisodeKit({ c, toast, photos = false }: { c: ConversationView; toast: (m: string) => void; photos?: boolean }) {
   const copy = async () => {
     try { await navigator.clipboard.writeText(showNotes(c)); toast('Show notes copied'); } catch { toast('Copying is blocked in this browser'); }
   };
@@ -70,8 +118,10 @@ export function EpisodeKit({ c, toast }: { c: ConversationView; toast: (m: strin
           blurb="The question, the hosts, Iris's sketch and quote, and where each host landed, in one image to share." />
         <ImageTile c={c} toast={toast} title="Comic strip" button="Make comic" alt="Comic strip of" make={makeComic} name={comicName}
           blurb="The episode in 4 panels: the opening, the clash, the moment Iris drew, and where the hosts landed." />
-        <div className="kit-tile"><b>Social clip</b><p>The key moment as a 30–60 second vertical clip: the studio, live captions, and Iris's sketch at the end.</p><span className="badge later">Later</span></div>
-        <div className="kit-tile"><b>Iris print</b><p>{c.artist?.state === 'done' ? `“${c.artist.artTitle}”, her sketch of turn ${c.artist.momentSeq}, prepared as a listing for your shop.` : 'Her drawing of the moment that stayed with her, prepared as a listing.'}</p><span className="badge later">Later</span></div>
+        <ClipTile c={c} toast={toast} photos={photos} />
+        <ImageTile c={c} toast={toast} title="Iris print" button="Make print" alt="Iris print for" make={makePrint} name={printName}
+          blurb={`“${c.artist?.artTitle ?? 'Her drawing'}” as a print-ready A4 page (300 dpi), matted like a gallery print, with her title and the quote.`}
+          extra={<button className="btn sm ghost" onClick={async () => { try { await navigator.clipboard.writeText(printListing(c)); toast('Listing text copied'); } catch { toast('Copying is blocked in this browser'); } }}>Copy listing text</button>} />
       </div>
       <p className="hint publish-line">
         <span className={`status ${c.publish === 'approved' ? 'completed' : c.publish === 'held' ? 'failed' : 'paused'}`}>{c.publish === 'approved' ? 'approved' : c.publish === 'held' ? 'held' : 'waiting for your OK'}</span>{' '}

@@ -2,8 +2,11 @@
 // no network: just SVG filters around her own lines, so it is free, works in mock mode and adds no
 // new drawing for the safety check to worry about. The same seed always gives the same picture.
 
-/** The styles you tick for her on the Iris page. "picture" (a full illustration) still needs an image model. */
-export const PAINT_STYLES = ['sketch', 'painting', 'dreamscape'] as const;
+/**
+ * The styles you tick for her on the Iris page. "picture" is a full painted illustration made by a free
+ * image service from her own brief; until it arrives (or if it can't be made) her Painting stands in.
+ */
+export const PAINT_STYLES = ['picture', 'sketch', 'painting', 'dreamscape'] as const;
 /**
  * Styles from the hosts' homes: broad art traditions, never a named artist. Iris may use one only
  * when a host comes from that part of the world (see HOME_ART), and only while you leave them on.
@@ -14,6 +17,7 @@ export type PaintStyle = (typeof ART_STYLES)[number];
 export type HomeStyle = (typeof HOME_STYLES)[number];
 
 export const PAINT_STYLE_INFO: Record<PaintStyle, { name: string; what: string }> = {
+  picture: { name: 'Picture', what: 'A full painted illustration of the moment, from her own art brief' },
   sketch: { name: 'Sketch', what: 'Her line drawing, crisp and clear' },
   painting: { name: 'Painting', what: 'Watercolour washes and inky lines on grained paper' },
   dreamscape: { name: 'Dreamscape', what: 'A drifting sky, echoes and glow, for big open ideas' },
@@ -64,6 +68,8 @@ function parts(svg: string) {
  */
 export function paintSvg(svg: string, style: PaintStyle, seedText: string): string {
   if (style === 'sketch' || !svg) return svg;
+  // The real picture is an image of its own; in line-art places (and while it's being made) her Painting stands in.
+  if (style === 'picture') return paintSvg(svg, 'painting', seedText);
   const { x, y, w, h, inner } = parts(svg);
   const seed = paintSeed(seedText);
   const r = rand(seed);
@@ -221,10 +227,11 @@ function homeStyle(style: HomeStyle, { x, y, w, h, inner, seed, r, box, head, gr
  * paints. Only from the styles the listener has ticked; the next closest one if her first choice isn't.
  */
 export function defaultPaintStyle(e: { mode: string; temperature: string }, allowed: readonly PaintStyle[] = PAINT_STYLES): PaintStyle {
-  // A style from a host's home is only in `allowed` when it fits this episode, so it comes first.
-  const order: PaintStyle[] = [...allowed.filter(isHomeStyle), ...(e.temperature === 'calm' ? ['sketch', 'painting', 'dreamscape'] as const
+  // Her full painting first (it carries the hosts' home traditions too); then a home style, which is
+  // only in `allowed` when it fits this episode; then her own feel for the talk.
+  const order: PaintStyle[] = ['picture', ...allowed.filter(isHomeStyle), ...(e.temperature === 'calm' ? ['sketch', 'painting', 'dreamscape'] as const
     : e.mode === 'explore' ? ['dreamscape', 'painting', 'sketch'] as const : ['painting', 'dreamscape', 'sketch'] as const)];
-  return order.find(s => allowed.includes(s)) ?? order[0];
+  return order.find(s => allowed.includes(s)) ?? allowed[0] ?? 'painting';
 }
 
 /** The listener's ticked styles, cleaned up: known styles only, in order, never empty. */

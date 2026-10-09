@@ -2,7 +2,7 @@ import { createReadStream, existsSync, readFileSync, rmSync, statSync } from 'no
 import { dirname, join } from 'node:path';
 import Fastify, { type FastifyServerOptions } from 'fastify';
 import { randomUUID } from 'node:crypto';
-import { BranchInput, CreateConversation, CueInput, DEFAULT_RULES, cleanStyles, episodeStyles, isSensitive, NoteInput, PAINT_STYLES, RenameInput, Rules, SCOUT_CATS, ScoutPrefs, type Overview, IrisFeedbackInput, MockSettings, type AppConfig, type ConversationView, type EpisodeAudio, type StreamEvent } from '@crosstalk/shared';
+import { BranchInput, CreateConversation, CueInput, DEFAULT_RULES, cleanStyles, episodeStyles, ReactionInput, REACTIONS_MAX, isSensitive, NoteInput, PAINT_STYLES, RenameInput, Rules, SCOUT_CATS, ScoutPrefs, type Overview, IrisFeedbackInput, MockSettings, type AppConfig, type ConversationView, type EpisodeAudio, type StreamEvent } from '@crosstalk/shared';
 import { Iris, mockArtist, type ArtistBackend } from './artist/iris';
 import { ConversationController, ControllerError, type ControllerEvent } from './controller/controller';
 import { openDb, Repo } from './db/repo';
@@ -14,6 +14,8 @@ import type { ServerConfig } from './config';
 import { registerAccess, registerAdmin, registerWeb } from './access';
 import { exportJson, exportMarkdown, exportName } from './export';
 import { exportHtml } from './episodePage';
+import { SerialQueue } from './freeImages';
+import { IrisPictures } from './pictures';
 import { Portraits } from './portraits';
 import { SAMPLE_HN, SAMPLE_NEWS, SAMPLE_RANKING, SAMPLE_REDDIT, SAMPLE_RSS, SAMPLE_SOCIAL, SAMPLE_TRENDS, SAMPLE_WIKIPEDIA } from './scout/samples';
 import { Scout, ScoutError } from './scout/scout';
@@ -52,6 +54,12 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
       : null)
     : mockArtist;
   let controllerRef: ConversationController | null = null;
+  // Styles saved before her Picture existed gain it once (it's her richest work); untick it any time.
+  if (!repo.getSetting('iris_styles_v2')) {
+    const saved = repo.getSetting<string[]>('iris_styles');
+    if (Array.isArray(saved) && !saved.includes('picture')) repo.setSetting('iris_styles', ['picture', ...saved]);
+    repo.setSetting('iris_styles_v2', true);
+  }
   const iris = new Iris(repo, artistBackend, {
     canRequest: () => !!controllerRef && controllerRef.requestsToday() < cfg.dailyLimit,
     countRequest: () => controllerRef?.countRequest(),
@@ -61,6 +69,7 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
       return v && !v.ok ? `Blocked by the free-model check: ${v.modelId}: ${v.reason}` : null;
     } : undefined,
     onChange: id => controllerRef?.notify(id),
+    pictures: cfg.irisPictures,
   });
 
   // The Control room's rules, saved with the app's settings.
@@ -175,6 +184,7 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
     admin: admin.state(cookie),
     storage: !cfg.hosted ? 'local' : cfg.backup ? 'backed-up' : 'forgets',
     portraits: cfg.portraits,
+    irisPictures: cfg.irisPictures,
   });
 
   app.get('/api/config', async req => config(req.headers.cookie));
@@ -270,14 +280,34 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
   // She remembers their taste for next time.
   app.put<{ Params: { id: string }; Body: { style?: unknown } }>('/api/conversations/:id/artist/style', async req => {
     const v = view(req.params.id);
-    const style = episodeStyles(PAINT_STYLES, v.speakers).find(s => s === req.body?.style);
+    const style = episodeStyles(PAINT_STYLES, v.speakers).filter(s => s !== 'picture' || cfg.irisPictures).find(s => s === req.body?.style);
     if (!style) throw new ControllerError('Pick Sketch, Painting, Dreamscape, or a style from one of the hosts\' homes.', 400);
     if (!repo.setArtStyle(req.params.id, style)) throw new ControllerError("Iris hasn't finished a drawing for this episode yet.", 409);
     return view(req.params.id);
   });
 
+  // Listener reactions: an emoji on a line, while it plays or after. Free (no model request).
+  app.post<{ Params: { id: string } }>('/api/conversations/:id/reactions', async req => {
+    const v = view(req.params.id);
+    const body = ReactionInput.safeParse(req.body);
+    if (!body.success) throw new ControllerError('Pick a reaction and a line.', 400);
+    if (!v.turns.some(t => t.seq === body.data.seq)) throw new ControllerError("That line hasn't been said yet.", 400);
+    if (repo.reactionCount(v.id) >= REACTIONS_MAX) throw new ControllerError('This episode has all the reactions it can hold.', 429);
+    repo.addReaction(v.id, body.data.seq, body.data.kind);
+    return { reactions: repo.reactionsFor(v.id) };
+  });
+
   // Photo portraits of the invented hosts: fetched once per look, then served from the database.
-  const portraits = new Portraits(repo, f);
+  // The hosts' photos and Iris's paintings come from the same free service, one picture at a time.
+  const imageQueue = new SerialQueue();
+  const portraits = new Portraits(repo, f, undefined, undefined, imageQueue);
+  const pictures = new IrisPictures(repo, f, imageQueue);
+  app.get<{ Params: { id: string; version: string } }>('/api/iris/picture/:id/:version', async (req, reply) => {
+    const found = cfg.irisPictures && safeId(req.params.id) ? pictures.check(req.params.id, Number(req.params.version.replace(/\.(jpg|png|webp)$/, '')) || 0) : null;
+    if (found === 'pending') return reply.status(202).header('Retry-After', '4').header('Cache-Control', 'no-store').send({ pending: true });
+    if (!found) return reply.status(404).send({ error: 'No painting for this drawing; her line art is shown.' });
+    return reply.header('Cache-Control', 'public, max-age=31536000, immutable').type(found.mime).send(found.data);
+  });
   // Never waits on the image service: 202 while a photo is being made (ask again shortly), 404 when
   // there won't be one. A held-open request would tie up the browser's few connections to the app.
   app.get<{ Params: { code: string } }>('/api/portraits/:code', async (req, reply) => {

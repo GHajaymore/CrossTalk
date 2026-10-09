@@ -115,6 +115,52 @@ export function chunks(text: string, max = 220): string[] {
   return out;
 }
 
+/** Fired when a listening host murmurs ("mm-hm"), so their portrait can nod. */
+export const MURMUR_EVENT = 'crosstalk:murmur';
+
+/** What a listening host says under their breath, per language (none where we haven't written any). */
+export const BACKCHANNELS: Partial<Record<Language, string[]>> = {
+  en: ['Mm-hm.', 'Right.', 'Yeah.', 'Mm.', 'Sure.', 'Okay.'],
+  es: ['Ajá.', 'Claro.', 'Sí.', 'Mm.'],
+  hi: ['हाँ।', 'हम्म।', 'सही।', 'अच्छा।'],
+  pt: ['Uhum.', 'Claro.', 'Sim.'],
+  fr: ['Mm.', 'Oui.', "D'accord."],
+  de: ['Mhm.', 'Ja.', 'Genau.'],
+  it: ['Mm.', 'Sì.', 'Certo.'],
+};
+
+export type SpokenPart =
+  | { kind: 'line'; item: SpeechItem; speakerId: SpeakerId; text: string; last: boolean; pauseMs: number; rate: number }
+  | { kind: 'murmur'; speakerId: SpeakerId; text: string; pauseMs: number; rate: number };
+
+/**
+ * How a run of turns is spoken, like people rather than a reader: a short beat when the other host
+ * takes over, a breath after a question, a slightly different pace for each sentence group, and now
+ * and then the listening host's "mm-hm" between the speaker's sentences.
+ */
+export function planSpeech(items: SpeechItem[], o: { backchannels: string[] | null; rand?: () => number }): SpokenPart[] {
+  const r = o.rand ?? Math.random;
+  const out: SpokenPart[] = [];
+  let prev: SpeakerId | null = null;
+  for (const item of items) {
+    const parts = chunks(item.text);
+    let murmured = false;
+    parts.forEach((text, i) => {
+      const pauseMs = i === 0 ? (prev && prev !== item.speakerId ? 260 + Math.round(r() * 260) : 0)
+        : /[?？؟]["'”’)]*$/.test(parts[i - 1]) ? 380 : 120;
+      out.push({ kind: 'line', item, speakerId: item.speakerId, text, last: i === parts.length - 1, pauseMs, rate: 0.97 + r() * 0.06 });
+      // At most one murmur per turn, only between the speaker's own sentences.
+      if (o.backchannels?.length && !murmured && i < parts.length - 1 && r() < 0.45) {
+        murmured = true;
+        const other: SpeakerId = item.speakerId === 'A' ? 'B' : 'A';
+        out.push({ kind: 'murmur', speakerId: other, text: o.backchannels[Math.floor(r() * o.backchannels.length)], pauseMs: 90, rate: 1.05 });
+      }
+    });
+    prev = item.speakerId;
+  }
+  return out;
+}
+
 export class BrowserSpeech implements SpeechProvider {
   private token = 0;
   constructor(private prefs: () => VoicePrefs, private hosts: () => Hosts = () => ({}), private lang: () => Language = () => 'en') {}
@@ -129,26 +175,41 @@ export class BrowserSpeech implements SpeechProvider {
     const lang = this.lang();
     const hosts = this.hosts();
     const voices = voicesFor(this.prefs(), hosts, lang);
-    const queue = items.flatMap(item => chunks(item.text).map((text, i, all) => ({ item, text, last: i === all.length - 1 })));
+    // Murmurs need two different voices, or they'd sound like the speaker talking to themselves.
+    const queue = planSpeech(items, { backchannels: voices.A && voices.B && voices.A !== voices.B ? BACKCHANNELS[lang] ?? null : null });
+    let timer: ReturnType<typeof setTimeout> | undefined;
     const next = () => {
       if (my !== this.token) return;
       const q = queue.shift();
       if (!q) { h.onDone?.(); return; }
-      const u = new SpeechSynthesisUtterance(q.text);
-      const v = voices[q.item.speakerId];
-      if (v) u.voice = v;
-      // With no voice picked, the language still lets the browser choose a fitting one.
-      u.lang = v?.lang ?? lang;
-      // Each host's voice style sets their pace and pitch, on top of your speed setting.
-      const st = hosts[q.item.speakerId]?.style;
-      const styled = st ? VOICE_STYLES[st] : { rate: 1, pitch: 1 };
-      u.rate = Math.min(2, this.prefs().rate * styled.rate);
-      // A small pitch difference keeps two hosts apart when a device has only one good voice.
-      u.pitch = styled.pitch * (voices.A === voices.B ? (q.item.speakerId === 'A' ? 0.9 : 1.12) : 1);
-      u.onstart = () => h.onChunk?.(q.item, q.text);
-      u.onboundary = e => h.onWord?.(q.item, q.text, e.charIndex ?? 0);
-      u.onend = u.onerror = () => { if (my !== this.token) return; if (q.last) h.onItemEnd?.(q.item); next(); };
-      s.speak(u);
+      const say = () => {
+        if (my !== this.token) return;
+        const u = new SpeechSynthesisUtterance(q.text);
+        const v = voices[q.speakerId];
+        if (v) u.voice = v;
+        // With no voice picked, the language still lets the browser choose a fitting one.
+        u.lang = v?.lang ?? lang;
+        // Each host's voice style sets their pace and pitch, on top of your speed setting; each
+        // sentence group varies a touch, as people do.
+        const st = hosts[q.speakerId]?.style;
+        const styled = st ? VOICE_STYLES[st] : { rate: 1, pitch: 1 };
+        u.rate = Math.min(2, this.prefs().rate * styled.rate * q.rate);
+        // A small pitch difference keeps two hosts apart when a device has only one good voice.
+        u.pitch = styled.pitch * (voices.A === voices.B ? (q.speakerId === 'A' ? 0.9 : 1.12) : 1);
+        if (q.kind === 'murmur') {
+          // The listener's "mm-hm": quieter, and their head nods. Captions stay with the speaker.
+          u.volume = 0.7;
+          u.onstart = () => window.dispatchEvent(new CustomEvent(MURMUR_EVENT, { detail: { seat: q.speakerId } }));
+          u.onend = u.onerror = () => { if (my === this.token) next(); };
+        } else {
+          u.onstart = () => h.onChunk?.(q.item, q.text);
+          u.onboundary = e => h.onWord?.(q.item, q.text, e.charIndex ?? 0);
+          u.onend = u.onerror = () => { if (my !== this.token) return; if (q.last) h.onItemEnd?.(q.item); next(); };
+        }
+        s.speak(u);
+      };
+      // Natural gaps: a beat between hosts, a breath after a question.
+      if (q.pauseMs > 0) { clearTimeout(timer); timer = setTimeout(say, q.pauseMs); } else say();
     };
     next();
   }
@@ -156,4 +217,39 @@ export class BrowserSpeech implements SpeechProvider {
   pause() { synth()?.pause(); }
   resume() { synth()?.resume(); }
   stop() { this.token++; synth()?.cancel(); }
+}
+
+/**
+ * Iris's own voice: a natural-sounding woman's voice in the episode's language when the device has
+ * one, chosen to differ from the hosts' voices where it can.
+ */
+export function irisVoice(lang: Language = 'en', avoid: (SpeechSynthesisVoice | null)[] = []): SpeechSynthesisVoice | null {
+  const list = voicesIn(lang).filter(v => !avoid.includes(v));
+  const all = voicesIn(lang);
+  return list.find(v => voiceLook(v) === 'w' && voiceQuality(v) !== 'basic') ?? list.find(v => voiceQuality(v) !== 'basic') ?? list[0] ?? all[0] ?? null;
+}
+
+/** Reads text aloud in Iris's voice: a touch slower and brighter than the hosts. Returns a stop function. */
+export function speakAsIris(text: string, lang: Language, onDone: () => void, avoid: (SpeechSynthesisVoice | null)[] = []): () => void {
+  const s = synth();
+  if (!s) { onDone(); return () => {}; }
+  s.cancel();
+  const v = irisVoice(lang, avoid);
+  const parts = chunks(text);
+  let stopped = false;
+  const next = () => {
+    if (stopped) return;
+    const t = parts.shift();
+    if (!t) { onDone(); return; }
+    const u = new SpeechSynthesisUtterance(t);
+    if (v) u.voice = v;
+    u.lang = v?.lang ?? lang;
+    u.rate = 0.94; u.pitch = 1.06;
+    u.onend = () => next();
+    // Cancelled (the episode started playing, or Stop): she stops, rather than reading on over it.
+    u.onerror = e => { if (e.error === 'canceled' || e.error === 'interrupted') { if (!stopped) { stopped = true; onDone(); } } else next(); };
+    s.speak(u);
+  };
+  next();
+  return () => { stopped = true; s.cancel(); };
 }

@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3';
-import { ArtistNotes, Conversation, Intervention, Run, type BranchSummary, type ConversationView, type ScoutStatus, type ScoutTopic, type GalleryEpisode, type IrisFeedback, paintStyleOf, type PaintStyle, type RunState, type Speakers, type Turn } from '@crosstalk/shared';
+import { ArtistNotes, Conversation, Intervention, Run, type BranchSummary, type ConversationView, type ScoutStatus, type ScoutTopic, type GalleryEpisode, type IrisFeedback, paintStyleOf, type PaintStyle, type ReactionKind, type RunState, type Speakers, type Turn } from '@crosstalk/shared';
 import { MIGRATIONS } from './schema';
 
 export type DB = Database.Database;
@@ -263,7 +263,24 @@ export class Repo {
       prevRound: link(prev), nextRound: link(next),
       brief: c.scoutTopicId ? this.getTopic(c.scoutTopicId) : null,
       artist: this.getArtist(id),
+      reactions: this.reactionsFor(id),
     };
+  }
+
+  /** Listener reactions per line: seq → kind → count. */
+  reactionsFor(conversationId: string): Record<number, Partial<Record<ReactionKind, number>>> {
+    const rows = this.db.prepare('SELECT seq, kind, COUNT(*) AS n FROM reactions WHERE conversation_id = ? GROUP BY seq, kind').all(conversationId) as { seq: number; kind: ReactionKind; n: number }[];
+    const out: Record<number, Partial<Record<ReactionKind, number>>> = {};
+    for (const r of rows) (out[r.seq] ??= {})[r.kind] = r.n;
+    return out;
+  }
+
+  reactionCount(conversationId: string): number {
+    return (this.db.prepare('SELECT COUNT(*) AS n FROM reactions WHERE conversation_id = ?').get(conversationId) as { n: number }).n;
+  }
+
+  addReaction(conversationId: string, seq: number, kind: ReactionKind, at = new Date().toISOString()) {
+    this.db.prepare('INSERT INTO reactions (conversation_id, seq, kind, created_at) VALUES (?, ?, ?, ?)').run(conversationId, seq, kind, at);
   }
 
   getArtist(conversationId: string): ArtistNotes | null {
@@ -292,6 +309,31 @@ export class Repo {
   savePortrait(code: string, mime: string, data: Buffer, at: string) {
     this.db.prepare('INSERT OR REPLACE INTO portraits (code, mime, data, created_at) VALUES (?, ?, ?, ?)').run(code, mime, data, at);
   }
+  /** What Iris wrote for one drawing version: her painting brief, title and quote (null if there's no such drawing). */
+  artworkBrief(conversationId: string, version: number): { imagePrompt: string; title: string; caption: string } | null {
+    // A row with her brief first (rows saved before briefs were kept have an empty one).
+    const r = this.db.prepare(`SELECT image_prompt, art_title, caption FROM artworks WHERE conversation_id = ? AND version = ? ORDER BY image_prompt = '', id LIMIT 1`).get(conversationId, version) as { image_prompt: string; art_title: string; caption: string } | undefined;
+    const a = this.getArtist(conversationId);
+    const current = a && a.state === 'done' && a.version === version ? a : null;
+    if (r) return { imagePrompt: r.image_prompt || current?.imagePrompt || '', title: r.art_title, caption: r.caption };
+    return current ? { imagePrompt: current.imagePrompt, title: current.artTitle, caption: current.caption } : null;
+  }
+  /** Whether a drawing version is, or was, shown as a Picture (only those are painted). */
+  pictureWanted(conversationId: string, version: number): boolean {
+    if (this.db.prepare(`SELECT 1 FROM artworks WHERE conversation_id = ? AND version = ? AND art_style = 'picture'`).get(conversationId, version)) return true;
+    const a = this.getArtist(conversationId);
+    return !!a && a.state === 'done' && a.version === version && a.artStyle === 'picture';
+  }
+  getPicture(conversationId: string, version: number): { mime: string; data: Buffer } | null {
+    return (this.db.prepare('SELECT mime, data FROM iris_pictures WHERE conversation_id = ? AND version = ?').get(conversationId, version) as { mime: string; data: Buffer } | undefined) ?? null;
+  }
+  savePicture(conversationId: string, version: number, mime: string, data: Buffer, at: string) {
+    this.db.prepare('INSERT OR REPLACE INTO iris_pictures (conversation_id, version, mime, data, created_at) VALUES (?, ?, ?, ?, ?)').run(conversationId, version, mime, data, at);
+  }
+  picturesMadeOn(day: string): number {
+    return (this.db.prepare("SELECT COUNT(*) AS n FROM iris_pictures WHERE substr(created_at, 1, 10) = ?").get(day) as { n: number }).n;
+  }
+
   portraitsMadeOn(day: string): number {
     return (this.db.prepare("SELECT COUNT(*) AS n FROM portraits WHERE substr(created_at, 1, 10) = ?").get(day) as { n: number }).n;
   }
@@ -308,8 +350,8 @@ export class Repo {
   /** Saves a finished drawing (in its current style) to the gallery, once per version and style. */
   private keepArtwork(a: ArtistNotes, at: string) {
     if (a.state !== 'done' || !a.sketchSvg) return;
-    this.db.prepare(`INSERT OR IGNORE INTO artworks (conversation_id, version, art_style, art_title, caption, moment_seq, sketch_svg, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).run(a.conversationId, a.version, a.artStyle, a.artTitle, a.caption, a.momentSeq, a.sketchSvg, at);
+    this.db.prepare(`INSERT OR IGNORE INTO artworks (conversation_id, version, art_style, art_title, caption, moment_seq, sketch_svg, image_prompt, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(a.conversationId, a.version, a.artStyle, a.artTitle, a.caption, a.momentSeq, a.sketchSvg, a.imagePrompt ?? '', at);
   }
 
   /** Iris's gallery: every episode she has drawn, newest work first, with all its versions and styles. */

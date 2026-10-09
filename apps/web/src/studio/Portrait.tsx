@@ -4,6 +4,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { hostTraits, lookCode, type HairStyle, type OutfitKind } from '@crosstalk/shared';
+import { usePolledImage } from '../lib/usePolledImage';
+import { MURMUR_EVENT } from '../speech/BrowserSpeech';
 
 type Seat = 'A' | 'B';
 type Mood = 'calm' | 'lively' | 'heated';
@@ -87,6 +89,9 @@ const between = (a: number, b: number) => a + Math.random() * (b - a);
  * toward the speaker and nod along. Heated talk frowns more, calm talk smiles more. Off for
  * reduced motion.
  */
+/** Fired on the window when the listener taps a reaction; the hosts respond. */
+export const REACT_EVENT = 'crosstalk:react';
+
 function useLife(ref: React.RefObject<Element | null>, seat: Seat, mood: Mood, restart = '') {
   const moodRef = useRef(mood);
   moodRef.current = mood;
@@ -123,7 +128,30 @@ function useLife(ref: React.RefObject<Element | null>, seat: Seat, mood: Mood, r
     };
     // Each host starts at their own moment, so the two never move in step.
     timer = window.setTimeout(step, between(0, 1600));
-    return () => window.clearTimeout(timer);
+    // When you react, the hosts react back: a smile, raised brows, a nod or a thoughtful tilt.
+    const onReact = (e: Event) => {
+      const kind = (e as CustomEvent<{ kind: string }>).detail?.kind;
+      window.clearTimeout(timer);
+      set('--dur', 0.35, 's');
+      if (kind === 'funny' || kind === 'love') { set('--smile', 1); set('--brow', -1.5, 'px'); }
+      else if (kind === 'wow') { set('--brow', -3.5, 'px'); set('--smile', 0); }
+      else if (kind === 'clap') { set('--nod', 3.5, 'px'); set('--smile', 0.7); }
+      else if (kind === 'hmm') { set('--tilt', seat === 'A' ? 5 : -5, 'deg'); set('--furrow', 6, 'deg'); }
+      timer = window.setTimeout(step, 1400 + Math.random() * 600);
+    };
+    // A murmur ("mm-hm", "right") comes with a small nod and a half smile from the host who said it.
+    const onMurmur = (e: Event) => {
+      if ((e as CustomEvent<{ seat: string }>).detail?.seat !== seat) return;
+      window.clearTimeout(timer);
+      set('--dur', 0.3, 's');
+      set('--nod', between(2.5, 4), 'px');
+      set('--smile', between(0.3, 0.6));
+      set('--brow', -between(0.5, 1.5), 'px');
+      timer = window.setTimeout(step, 700 + Math.random() * 500);
+    };
+    window.addEventListener(REACT_EVENT, onReact);
+    window.addEventListener(MURMUR_EVENT, onMurmur);
+    return () => { window.clearTimeout(timer); window.removeEventListener(REACT_EVENT, onReact); window.removeEventListener(MURMUR_EVENT, onMurmur); };
   }, [ref, seat, restart]);
 }
 
@@ -194,37 +222,18 @@ export function HostPortrait(props: PortraitProps & { photo?: boolean }) {
   const code = L.code;
   // Each face breathes at its own pace, so the two hosts never move together.
   const breathe = { animationDuration: `${4.2 + (L.h % 19) / 10}s`, animationDelay: `-${(L.h >>> 5) % 40 / 10}s` };
-  const [state, setState] = useState<'loading' | 'ok' | 'failed'>('loading');
-  const [src, setSrc] = useState<string | null>(null);
+  // The server answers at once: the photo, "still being made" (ask again shortly), or none.
+  // A short pause first, so typing a host's name or job on Create doesn't ask for a photo per keystroke.
+  const photo = usePolledImage(props.photo ? `/api/portraits/${code}.jpg` : null, 700);
+  // Shown once the image has actually drawn; a broken one falls back to the drawn host.
+  const [shown, setShown] = useState<'no' | 'ok' | 'broken'>('no');
+  useEffect(() => setShown('no'), [photo.src]);
+  const state = photo.state === 'failed' || shown === 'broken' ? 'failed' : shown === 'ok' ? 'ok' : 'loading';
+  const src = photo.src;
+  const setState = (s: 'ok' | 'failed') => setShown(s === 'ok' ? 'ok' : 'broken');
   const wrap = useRef<HTMLDivElement>(null);
   // The photo's wrapper comes and goes (photos on or off, a failed photo), so its motion restarts with it.
   useLife(wrap, props.seat, props.mood ?? 'lively', `${!!props.photo}:${state === 'failed'}:${code}`);
-  // The server answers at once: the photo, "still being made" (202, ask again in a few seconds), or none.
-  useEffect(() => {
-    setState('loading'); setSrc(null);
-    if (!props.photo) return;
-    let stop = false, timer = 0, url = '';
-    const tries = { left: 30 };
-    const ask = async () => {
-      try {
-        const r = await fetch(`/api/portraits/${code}.jpg`);
-        if (stop) return;
-        // 202 is "ok" too, so it's checked first: the photo is still being made.
-        if (r.status === 202) { if (tries.left-- > 0) { timer = window.setTimeout(ask, 4000); return; } }
-        else if (r.ok && (r.headers.get('content-type') ?? '').startsWith('image/')) {
-          const blob = await r.blob();
-          if (stop) return;
-          url = URL.createObjectURL(blob);
-          setSrc(url);
-          return;
-        }
-      } catch { /* offline: the drawn portrait stays */ }
-      if (!stop) setState('failed');
-    };
-    // A short pause first, so typing a host's name or job on Create doesn't ask for a photo per keystroke.
-    timer = window.setTimeout(ask, 700);
-    return () => { stop = true; window.clearTimeout(timer); if (url) URL.revokeObjectURL(url); };
-  }, [code, props.photo]);
   return (
     <>
       {/* Their own room behind the drawn portrait, matching the room in their photo. */}
