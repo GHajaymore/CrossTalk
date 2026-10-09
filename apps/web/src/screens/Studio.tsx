@@ -153,7 +153,7 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
   };
 
   const set = (
-    <StudioSet
+    <StudioSet photos={config?.portraits}
       show={`CrossTalk · ${view.format === 'live' ? '● Live' : episodeLabel(view.episode)}`}
       topic={view.topic}
       tags={`${view.round > 1 ? `Round ${view.round} · ` : ''}${view.length !== 'normal' ? `${LENGTHS[view.length].label} · ` : ''}${MODES[view.mode].label} · ${AUDIENCES[view.audience].label} · ${TEMPERATURES[view.temperature].label}`}

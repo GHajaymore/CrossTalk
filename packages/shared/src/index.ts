@@ -4,3 +4,4 @@ export * from './runState';
 export * from './auto';
 export * from './scout';
 export * from './paint';
+export * from './host';

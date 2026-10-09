@@ -352,6 +352,8 @@ export type AppConfig = {
   admin: { required: boolean; ok: boolean; configured: boolean };
   /** Where episodes and Iris's sketches are kept: this computer's disk, a disk with a cloud backup, or a disk the host wipes. */
   storage: 'local' | 'backed-up' | 'forgets';
+  /** Whether hosts get photo portraits (otherwise the drawn ones). */
+  portraits: boolean;
 };
 
 export const MockSettings = z.object({

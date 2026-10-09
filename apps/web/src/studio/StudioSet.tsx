@@ -2,7 +2,7 @@ import { useEffect, useRef, type ReactNode } from 'react';
 import { initials as toInitials, type RunState, type Temperature } from '@crosstalk/shared';
 import { HeatMeter } from '../lib/HeatMeter';
 import { clock } from '../lib/text';
-import { Portrait } from './Portrait';
+import { HostPortrait } from './Portrait';
 import './StudioSet.css';
 
 export type SeatKey = 'A' | 'B' | 'G';
@@ -38,6 +38,8 @@ export type StudioSetProps = {
   /** Episode length so far. While `running`, the clock ticks on from here. */
   clock: { seconds: number; running: boolean };
   iris: { text: string; active: boolean };
+  /** Photo-real host portraits (drawn ones underneath and as the fallback). */
+  photos?: boolean;
 };
 
 const REC: Record<StudioSetProps['runState'], [string, string]> = {
@@ -121,7 +123,7 @@ export function StudioSet(p: StudioSetProps) {
         {who.media
           ? <div className="set-media">{who.media}</div>
           : k !== 'G'
-            ? <Portrait name={who.name} role={who.role} seat={k} mood={p.temperature} />
+            ? <HostPortrait name={who.name} role={who.role} seat={k} mood={p.temperature} photo={p.photos} />
             : <div className="set-avatar"><span className="set-halo" /><span className="set-ini">{k === 'G' ? who.icon ?? '🎙' : toInitials(who.name)}</span></div>}
         <Mic />
         <span className="set-camtag">{k === 'G' ? 'Guest · real person' : 'Host · AI presenter'}</span>

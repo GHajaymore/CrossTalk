@@ -14,6 +14,7 @@ import type { ServerConfig } from './config';
 import { registerAccess, registerAdmin, registerWeb } from './access';
 import { exportJson, exportMarkdown, exportName } from './export';
 import { exportHtml } from './episodePage';
+import { Portraits } from './portraits';
 import { SAMPLE_HN, SAMPLE_NEWS, SAMPLE_RANKING, SAMPLE_REDDIT, SAMPLE_RSS, SAMPLE_SOCIAL, SAMPLE_TRENDS, SAMPLE_WIKIPEDIA } from './scout/samples';
 import { Scout, ScoutError } from './scout/scout';
 import { assertPublicUrl, GoogleTrendsSource, HackerNewsSource, newsSource, OpenSocialSource, redditSource, RssSource, SampleSource, WikipediaSource, type TopicSource } from './scout/sources';
@@ -173,6 +174,7 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
     rules: rules(),
     admin: admin.state(cookie),
     storage: !cfg.hosted ? 'local' : cfg.backup ? 'backed-up' : 'forgets',
+    portraits: cfg.portraits,
   });
 
   app.get('/api/config', async req => config(req.headers.cookie));
@@ -271,6 +273,15 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
     if (!style) throw new ControllerError('Pick Sketch, Painting or Dreamscape.', 400);
     if (!repo.setArtStyle(req.params.id, style)) throw new ControllerError("Iris hasn't finished a drawing for this episode yet.", 409);
     return view(req.params.id);
+  });
+
+  // Photo portraits of the invented hosts: fetched once per look, then served from the database.
+  const portraits = new Portraits(repo, f);
+  app.get<{ Params: { code: string } }>('/api/portraits/:code', async (req, reply) => {
+    const code = req.params.code.replace(/\.(jpg|png|webp)$/, '');
+    const found = cfg.portraits ? await portraits.get(code) : null;
+    if (!found) return reply.status(404).send({ error: 'No photo for this host; the drawn portrait is used.' });
+    return reply.header('Cache-Control', 'public, max-age=31536000, immutable').type(found.mime).send(found.data);
   });
 
   // Iris's gallery: every version of every drawing, in each style it was shown in.
