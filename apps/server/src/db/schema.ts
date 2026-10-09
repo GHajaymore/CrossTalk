@@ -279,4 +279,15 @@ export const MIGRATIONS: string[] = [
   -- The language an episode is spoken in.
   ALTER TABLE conversations ADD COLUMN language TEXT NOT NULL DEFAULT 'en';
   `,
+  `
+  -- Listener reactions while an episode plays (an emoji on a line).
+  CREATE TABLE reactions (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    conversation_id  TEXT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+    seq              INTEGER NOT NULL,
+    kind             TEXT NOT NULL,
+    created_at       TEXT NOT NULL
+  );
+  CREATE INDEX reactions_by_conversation ON reactions (conversation_id, seq);
+  `,
 ];

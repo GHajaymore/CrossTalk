@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3';
-import { ArtistNotes, Conversation, Intervention, Run, type BranchSummary, type ConversationView, type ScoutStatus, type ScoutTopic, type GalleryEpisode, type IrisFeedback, paintStyleOf, type PaintStyle, type RunState, type Speakers, type Turn } from '@crosstalk/shared';
+import { ArtistNotes, Conversation, Intervention, Run, type BranchSummary, type ConversationView, type ScoutStatus, type ScoutTopic, type GalleryEpisode, type IrisFeedback, paintStyleOf, type PaintStyle, type ReactionKind, type RunState, type Speakers, type Turn } from '@crosstalk/shared';
 import { MIGRATIONS } from './schema';
 
 export type DB = Database.Database;
@@ -263,7 +263,24 @@ export class Repo {
       prevRound: link(prev), nextRound: link(next),
       brief: c.scoutTopicId ? this.getTopic(c.scoutTopicId) : null,
       artist: this.getArtist(id),
+      reactions: this.reactionsFor(id),
     };
+  }
+
+  /** Listener reactions per line: seq → kind → count. */
+  reactionsFor(conversationId: string): Record<number, Partial<Record<ReactionKind, number>>> {
+    const rows = this.db.prepare('SELECT seq, kind, COUNT(*) AS n FROM reactions WHERE conversation_id = ? GROUP BY seq, kind').all(conversationId) as { seq: number; kind: ReactionKind; n: number }[];
+    const out: Record<number, Partial<Record<ReactionKind, number>>> = {};
+    for (const r of rows) (out[r.seq] ??= {})[r.kind] = r.n;
+    return out;
+  }
+
+  reactionCount(conversationId: string): number {
+    return (this.db.prepare('SELECT COUNT(*) AS n FROM reactions WHERE conversation_id = ?').get(conversationId) as { n: number }).n;
+  }
+
+  addReaction(conversationId: string, seq: number, kind: ReactionKind, at = new Date().toISOString()) {
+    this.db.prepare('INSERT INTO reactions (conversation_id, seq, kind, created_at) VALUES (?, ?, ?, ?)').run(conversationId, seq, kind, at);
   }
 
   getArtist(conversationId: string): ArtistNotes | null {

@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { SpeakerId } from '@crosstalk/shared';
+import type { ReactionKind } from '@crosstalk/shared';
+import { ReactionChips } from './Reactions';
 
 export type TurnCardProps = {
   seq: number;
@@ -22,6 +24,8 @@ export type TurnCardProps = {
   inherited?: boolean;
   /** Branches cut at this turn (splice marks). */
   splices?: { id: string; direction: string }[];
+  /** Your reactions to this line. */
+  reactions?: Partial<Record<ReactionKind, number>>;
 };
 
 /** One spoken turn, landing from its speaker's side of the table. */
@@ -56,6 +60,7 @@ export function TurnCard(p: TurnCardProps) {
         </p>
         <div className="card-foot">
           <span>{p.modelId}</span>
+          <ReactionChips counts={p.reactions} />
           <span>{p.state === 'streaming' ? 'streaming…' : p.state === 'failed' ? 'not saved' : p.inherited ? 'from the original' : 'saved'}</span>
         </div>
         {p.splices?.map(b => (

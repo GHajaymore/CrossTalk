@@ -2,7 +2,7 @@ import { createReadStream, existsSync, readFileSync, rmSync, statSync } from 'no
 import { dirname, join } from 'node:path';
 import Fastify, { type FastifyServerOptions } from 'fastify';
 import { randomUUID } from 'node:crypto';
-import { BranchInput, CreateConversation, CueInput, DEFAULT_RULES, cleanStyles, episodeStyles, isSensitive, NoteInput, PAINT_STYLES, RenameInput, Rules, SCOUT_CATS, ScoutPrefs, type Overview, IrisFeedbackInput, MockSettings, type AppConfig, type ConversationView, type EpisodeAudio, type StreamEvent } from '@crosstalk/shared';
+import { BranchInput, CreateConversation, CueInput, DEFAULT_RULES, cleanStyles, episodeStyles, ReactionInput, REACTIONS_MAX, isSensitive, NoteInput, PAINT_STYLES, RenameInput, Rules, SCOUT_CATS, ScoutPrefs, type Overview, IrisFeedbackInput, MockSettings, type AppConfig, type ConversationView, type EpisodeAudio, type StreamEvent } from '@crosstalk/shared';
 import { Iris, mockArtist, type ArtistBackend } from './artist/iris';
 import { ConversationController, ControllerError, type ControllerEvent } from './controller/controller';
 import { openDb, Repo } from './db/repo';
@@ -274,6 +274,17 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
     if (!style) throw new ControllerError('Pick Sketch, Painting, Dreamscape, or a style from one of the hosts\' homes.', 400);
     if (!repo.setArtStyle(req.params.id, style)) throw new ControllerError("Iris hasn't finished a drawing for this episode yet.", 409);
     return view(req.params.id);
+  });
+
+  // Listener reactions: an emoji on a line, while it plays or after. Free (no model request).
+  app.post<{ Params: { id: string } }>('/api/conversations/:id/reactions', async req => {
+    const v = view(req.params.id);
+    const body = ReactionInput.safeParse(req.body);
+    if (!body.success) throw new ControllerError('Pick a reaction and a line.', 400);
+    if (!v.turns.some(t => t.seq === body.data.seq)) throw new ControllerError("That line hasn't been said yet.", 400);
+    if (repo.reactionCount(v.id) >= REACTIONS_MAX) throw new ControllerError('This episode has all the reactions it can hold.', 429);
+    repo.addReaction(v.id, body.data.seq, body.data.kind);
+    return { reactions: repo.reactionsFor(v.id) };
   });
 
   // Photo portraits of the invented hosts: fetched once per look, then served from the database.

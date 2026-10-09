@@ -81,6 +81,18 @@ test('host photos: "still being made" is waited for, then the photo shows and mo
   await expect.poll(motion, { timeout: 8000 }).not.toBe('');
 });
 
+test('react while you listen: emoji float up, and each line keeps its count', async ({ page }) => {
+  const id = await finishedEpisode(page.request);
+  await page.goto(`/#/studio/${id}/watch`);
+  const bar = page.getByRole('group', { name: /React to turn \d+/ });
+  await bar.getByRole('button', { name: /Funny/ }).click();
+  await expect(bar.locator('.react-floats span')).toHaveCount(1);
+  await bar.getByRole('button', { name: /Funny/ }).click();
+  await bar.getByRole('button', { name: /Applause/ }).click();
+  await page.getByRole('link', { name: /Read/ }).first().click();
+  await expect(page.getByLabel('Your reactions: Applause 1, Funny 2')).toBeVisible();
+});
+
 test('create → run → stop → refresh keeps every finished turn', async ({ page }) => {
   await page.goto('/#/create');
   await page.getByRole('button', { name: /Start recording/ }).click();

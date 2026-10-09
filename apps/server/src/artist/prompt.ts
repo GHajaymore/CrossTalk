@@ -1,5 +1,5 @@
 // What Iris is asked to do after an episode (docs/PLAN.md, The Artist).
-import { isHomeStyle, type ConversationView, type IrisFeedback, type PaintStyle } from '@crosstalk/shared';
+import { isHomeStyle, REACTIONS, type ReactionKind, type ConversationView, type IrisFeedback, type PaintStyle } from '@crosstalk/shared';
 import { languageRule } from '../prompts/buildPrompt';
 import { IRIS_PALETTE } from './svgSafety';
 
@@ -19,7 +19,7 @@ export function buildIrisPrompt(c: ConversationView, feedback: IrisFeedback[], t
     c.mode === 'hotseat' ? 'This was a Hot seat episode: one host defended the less popular side and the other tried to win them over. Only the listener decides who moved them, so never say who held, won or lost.' : '',
     'Respond the way a thoughtful listener would:',
     '- perspective: about 80 words, first person, warm and specific: what stayed with you, what you wish they had asked, and end with one question for the listener.',
-    '- momentSeq: the turn you drew. If the listener challenged the hosts, sent a guest to the mic or asked them to go deeper, prefer the turn that answered them. Otherwise prefer a turn where a host concedes or changes their mind, then the sharpest disagreement, then the most vivid image.',
+    '- momentSeq: the turn you drew. If the listener challenged the hosts, sent a guest to the mic or asked them to go deeper, prefer the turn that answered them. Then a turn the listener reacted to most (their reactions show after a turn, like [listener reacted: 😂 Funny ×2]). Otherwise prefer a turn where a host concedes or changes their mind, then the sharpest disagreement, then the most vivid image.',
     '- caption: a quote of at most 20 words copied exactly from that turn.',
     '- artTitle: a short, evocative title for your drawing, at most 5 words.',
     `- sketchSvg: your drawing of that moment as simple line art: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 360">, using only g, path, line, polyline, polygon, rect, circle and ellipse, with fill="none" and stroke colours only from: ${palette}. No text, no style attributes, no other elements. 25 to 60 shapes. Draw a scene or a symbol, not a chart.`,
@@ -43,11 +43,17 @@ export function buildIrisPrompt(c: ConversationView, feedback: IrisFeedback[], t
     : x.kind === 'challenge' ? `Listener's challenge: ${clean(x.text ?? '')}`
     : x.kind === 'deeper' ? `Listener asked to go deeper on turn ${x.targetSeq}`
     : `Listener changed the mood: ${x.fromTemp} to ${x.toTemp}`);
+  // How the listener reacted to each line, as they listened.
+  const reacted = (seq: number) => {
+    const r = c.reactions?.[seq];
+    const parts = r ? (Object.keys(r) as ReactionKind[]).map(k => `${REACTIONS[k].emoji} ${REACTIONS[k].label} ×${r[k]}`) : [];
+    return parts.length ? ` [listener reacted: ${parts.join(', ')}]` : '';
+  };
   const roundNote = c.round > 1 ? `\nThis is round ${c.round}: the same two hosts picking the question back up where they left off last time.` : '';
   const branchNote = c.branchSeq ? `\nThis is a branch: from turn ${c.branchSeq + 1} the listener steered the show this way: ${clean(c.branchDirection ?? '')}` : '';
   const user = [
     `<episode>\nTopic: ${clean(c.topic)}\nHosts: ${c.speakers.A.name}${c.speakers.A.role ? ` (${clean(c.speakers.A.role)})` : ''} and ${c.speakers.B.name}${c.speakers.B.role ? ` (${clean(c.speakers.B.role)})` : ''}\n\n` +
-      c.turns.flatMap(t => [...cueBefore(t.seq), `Turn ${t.seq} · ${c.speakers[t.speakerId].name}: ${clean(t.text)}`]).join('\n') + branchNote + roundNote + '\n</episode>',
+      c.turns.flatMap(t => [...cueBefore(t.seq), `Turn ${t.seq} · ${c.speakers[t.speakerId].name}: ${clean(t.text)}${reacted(t.seq)}`]).join('\n') + branchNote + roundNote + '\n</episode>',
     notes.length
       ? `<listener_notes>\nWhat the listener has told you about your past work. Learn from it: keep what they liked, change what they asked you to change.\n${notes.join('\n')}\n</listener_notes>`
       : '',

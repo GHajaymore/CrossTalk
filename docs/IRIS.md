@@ -21,6 +21,7 @@ Iris listens to every finished episode and responds like a thoughtful listener: 
   `iris_styles` setting). She picks only from those: her own choice, then your learned taste, then the
   closest one to the episode's feel. A real model is told the ticked styles only.
 - **Styles from the hosts' homes** (on by default; one switch on the Iris page): when a host is from a place with its own art tradition, she may paint in it: Ink wash (East Asian ink painting), Folk colour (Latin American cut-paper folk art), Tile pattern (Middle Eastern and North African geometric tilework), Miniature (South Asian miniature painting) or Woven border (African textile traditions). Broad traditions only, never a named artist; her prompt asks for a respectful nod, never a stereotype, with the scene still about the conversation. Like her other styles, they're drawn in the browser from her own checked lines.
+- **She reads your reactions**: the emoji you tap while listening show on each line in her prompt. After a turn that answered your cue, she prefers the line you reacted to most (mock Iris too). Reactions are about the moment, never a score for either host.
 - **She speaks the episode's language**: her perspective, caption and title are in it; her picture prompt stays in English for the painter.
 - **Her gallery keeps every version** (`artworks` table): each drawing, each "Ask Iris again", and
   each style you chose, once each. The Iris page shows the current one per episode with the others as

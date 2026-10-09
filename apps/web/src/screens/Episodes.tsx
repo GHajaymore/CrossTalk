@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { artworkSvg, episodeLabel, MODES, TITLE_MAX, turnTotal, type AppConfig } from '@crosstalk/shared';
+import { artworkSvg, episodeLabel, LANGUAGES, MODES, TITLE_MAX, turnTotal, type AppConfig } from '@crosstalk/shared';
 import { api, type ConversationSummary } from '../api/client';
 import { sketchSrc } from '../studio/ArtistCard';
 import { Footer } from './Footer';
@@ -91,6 +91,8 @@ function EpisodeRow({ c, depth, onChanged, toast }: { c: ConversationSummary; de
             <span className={`status ${st}`}>{c.run?.stopReason === 'interrupted' ? 'interrupted' : STATUS[st]}</span>
             <span>{episodeLabel(c.episode)}</span>
             <span>{MODES[c.mode].label}</span>
+            <span>{c.speakers.A.name} & {c.speakers.B.name}</span>
+            {c.language && c.language !== 'en' && <span lang={c.language}>{LANGUAGES[c.language].native}</span>}
             <span>{c.turnCount} of {turnTotal(c)} turns</span>
             {c.branchCount > 0 && <span>{c.branchCount} branch{c.branchCount === 1 ? '' : 'es'}</span>}
             <span>{when(c.createdAt)}</span>

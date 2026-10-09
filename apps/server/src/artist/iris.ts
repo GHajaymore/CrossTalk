@@ -147,7 +147,10 @@ export const mockArtist: ArtistBackend = {
     const cue = c.interventions.find(x => x.status === 'applied' && x.kind !== 'temp');
     const answered = cue && c.turns.find(t => t.seq === cue.appliesBeforeSeq);
     const steered = !answered && c.branchSeq ? c.turns.find(t => t.seq === c.branchSeq! + 1) : undefined;
-    const pick = answered ?? steered ?? c.turns.find(t => t.objective === 'Rethink') ?? c.turns.find(t => t.objective === 'Catch') ?? c.turns[Math.floor(c.turns.length / 2)];
+    // Then the line the listener reacted to most.
+    const score = (seq: number) => Object.values(c.reactions?.[seq] ?? {}).reduce((n, x) => n + (x ?? 0), 0);
+    const loved = [...c.turns].sort((x, y) => score(y.seq) - score(x.seq)).find(t => score(t.seq) > 0);
+    const pick = answered ?? steered ?? loved ?? c.turns.find(t => t.objective === 'Rethink') ?? c.turns.find(t => t.objective === 'Catch') ?? c.turns[Math.floor(c.turns.length / 2)];
     const who = c.speakers[pick.speakerId].name;
     const other = c.speakers[pick.speakerId === 'A' ? 'B' : 'A'].name;
     // Spanish and Hindi episodes get Iris in their language too.
@@ -157,6 +160,7 @@ export const mockArtist: ArtistBackend = {
         : cue!.kind === 'challenge' ? L?.challenge(who) ?? `What stayed with me was ${who} taking your challenge head on instead of talking around it.`
         : L?.deeper(who, cue!.targetSeq) ?? `What stayed with me was ${who} going back to turn ${cue!.targetSeq} when you asked, and finding more in it.`
       : steered ? L?.steered(who) ?? `What stayed with me was the moment you steered the show and ${who} went with it, picking up a road the first version never took.`
+      : loved ? L?.loved(who) ?? `What stayed with me was the line from ${who} that you reacted to. Something in it landed, so that's the one I drew.`
       : L?.changed(who, other) ?? `What stayed with me was the moment ${who} gave ground to ${other}. The talk got honest right there, because someone changed their mind out loud.`;
     const lastNote = feedback.find(f => f.note);
     const sketch = mockSketch(c.topic, version);

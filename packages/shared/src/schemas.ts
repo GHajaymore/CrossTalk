@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { AUDIENCES, CUE_TEXT_MAX, LANGUAGES, VOICE_STYLES, SCOUT_CATS, SCOUT_COUNTRIES, SCOUT_INTERESTS_MAX, SCOUT_MAX_FEEDS, SCOUT_REGIONS, SCOUT_SOURCES, TITLE_MAX, FORMATS, LENGTHS, LENS_MAX, MODES, NAME_MAX, PERSONAS, ROLE_MAX, TEMPERATURES, TOPIC_MAX } from './constants';
+import { AUDIENCES, CUE_TEXT_MAX, LANGUAGES, REACTIONS, VOICE_STYLES, SCOUT_CATS, SCOUT_COUNTRIES, SCOUT_INTERESTS_MAX, SCOUT_MAX_FEEDS, SCOUT_REGIONS, SCOUT_SOURCES, TITLE_MAX, FORMATS, LENGTHS, LENS_MAX, MODES, NAME_MAX, PERSONAS, ROLE_MAX, TEMPERATURES, TOPIC_MAX } from './constants';
 
 const keys = <T extends Record<string, unknown>>(o: T) => Object.keys(o) as [keyof T & string, ...(keyof T & string)[]];
 
@@ -325,7 +325,12 @@ export type ConversationView = Conversation & {
   audio?: EpisodeAudio | null;
   /** Iris's notes for this episode, once she has listened. */
   artist?: ArtistNotes | null;
+  /** Listener reactions per line: seq → reaction → count. */
+  reactions?: Record<number, Partial<Record<ReactionKind, number>>>;
 };
+export const ReactionKind = z.enum(keys(REACTIONS));
+export type ReactionKind = z.infer<typeof ReactionKind>;
+export const ReactionInput = z.object({ seq: z.number().int().min(1), kind: ReactionKind });
 
 /** Events sent from the server over Server-Sent Events. */
 /** The turn being written right now, as far as it has got. */
