@@ -1,15 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { SpeakerId, Turn } from '@crosstalk/shared';
-import { BrowserSpeech, englishVoices, loadPrefs, savePrefs, type Accents, type VoicePrefs } from './BrowserSpeech';
+import { sentencesOf, type Language, type SpeakerId, type Turn } from '@crosstalk/shared';
+import { BrowserSpeech, loadPrefs, voicesIn, savePrefs, type Accents, type VoicePrefs } from './BrowserSpeech';
 import type { PlaybackState } from './types';
 
 /** The sentence being spoken, so captions stay short and follow the voice. */
 function sentenceAt(text: string, charIndex: number) {
-  const parts = text.split(/(?<=[.?!]["'”’)]*)\s+/);
+  const parts = sentencesOf(text);
   let pos = 0;
   for (const p of parts) {
-    if (charIndex < pos + p.length + 1) return p;
-    pos += p.length + 1;
+    const end = text.indexOf(p, pos) + p.length;
+    if (charIndex < end + 1) return p;
+    pos = end;
   }
   return parts[parts.length - 1] ?? text;
 }
@@ -36,27 +37,29 @@ export type Playback = {
 };
 
 /** The device's voices, refreshed when the browser finishes loading them. */
-export function useVoices() {
-  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>(() => englishVoices());
+export function useVoices(lang: Language = 'en') {
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>(() => voicesIn(lang));
   const [prefs, setPrefs] = useState<VoicePrefs>(loadPrefs);
   useEffect(() => {
     if (!('speechSynthesis' in window)) return;
-    const on = () => setVoices(englishVoices());
+    const on = () => setVoices(voicesIn(lang));
     on();
     speechSynthesis.addEventListener('voiceschanged', on);
     return () => speechSynthesis.removeEventListener('voiceschanged', on);
-  }, []);
+  }, [lang]);
   const update = useCallback((p: Partial<VoicePrefs>) => setPrefs(prev => { const next = { ...prev, ...p }; savePrefs(next); return next; }), []);
   return { voices, prefs, update };
 }
 
 /** Plays a conversation's saved turns aloud. Separate from generation: either can run without the other. */
-export function usePlayback(turns: Turn[], prefs: VoicePrefs, accents: Accents = {}): Playback {
+export function usePlayback(turns: Turn[], prefs: VoicePrefs, accents: Accents = {}, lang: Language = 'en'): Playback {
   const prefsRef = useRef(prefs);
   prefsRef.current = prefs;
   const accentsRef = useRef(accents);
   accentsRef.current = accents;
-  const speech = useMemo(() => new BrowserSpeech(() => prefsRef.current, () => accentsRef.current), []);
+  const langRef = useRef(lang);
+  langRef.current = lang;
+  const speech = useMemo(() => new BrowserSpeech(() => prefsRef.current, () => accentsRef.current, () => langRef.current), []);
   const [state, setState] = useState<PlaybackState>('idle');
   const [seq, setSeq] = useState<number | null>(null);
   const [speakerId, setSpeakerId] = useState<SpeakerId | null>(null);

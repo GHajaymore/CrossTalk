@@ -22,7 +22,7 @@ describe('photo portraits of the invented hosts', () => {
     expect(kenya).toMatch(/^A-[45]-[a-z]+-[0-6]-[01]-sweater-a[345]-b[0246]-KE$/);
     expect(parseLookCode(kenya)).toMatchObject({ home: 'KE' });
     expect(parseLookCode('A-1-short-1-1-blazer')).toMatchObject({ seat: 'A' }); // codes from before homes still work
-    for (const bad of ['', 'A-1-short-1-1-blazer-XX', 'A-1-short-1-1-blazer-q', 'A-1-short-1-1-blazer-w-ke', 'A-1-short-1-1-blazer-a1', 'A-1-short-1-1-blazer-a7', 'A-1-short-1-1-blazer-w-a4', 'C-1-short-1-1-blazer', 'A-9-short-1-1-blazer', 'A-1-mohawk-1-1-blazer', 'A-1-short-1-1-tuxedo', 'A-1-short-1-1-blazer;rm']) expect(parseLookCode(bad), bad).toBeNull();
+    for (const bad of ['', 'A-1-short-1-1-blazer-XX', 'A-1-short-1-1-blazer-q', 'A-1-short-1-1-blazer-w-ke', 'A-1-short-1-1-blazer-a0', 'A-1-short-1-1-blazer-a7', 'A-1-short-1-1-blazer-w-a4', 'C-1-short-1-1-blazer', 'A-9-short-1-1-blazer', 'A-1-mohawk-1-1-blazer', 'A-1-short-1-1-tuxedo', 'A-1-short-1-1-blazer;rm']) expect(parseLookCode(bad), bad).toBeNull();
   });
 
   it('the photo brief comes from the traits only: never a name, a job title or anything typed', () => {

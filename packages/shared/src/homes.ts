@@ -3,6 +3,7 @@
 // Styles describe broadcast habits as tendencies, never as rules about people: no accents written
 // out, no slang for show, no clichés. Everyone in a country looks different, so faces draw from a range.
 import { SCOUT_COUNTRIES, SCOUT_REGIONS } from './constants';
+import type { Language } from './schemas';
 
 export type HomeCode = keyof typeof SCOUT_COUNTRIES;
 
@@ -82,6 +83,19 @@ export const HOMES: Record<HomeCode, Home> = {
   AU: { region: 'oceania', style: 'plain', voice: 'en-AU', women: ['Matilda', 'Georgia', 'Brooke', 'Mia'], men: ['Lachlan', 'Jack', 'Hamish', 'Cooper'], surnames: ['Mitchell', 'Nguyen', "O'Brien", 'Campbell'], skins: ALL, hair: ALL },
   NZ: { region: 'oceania', style: 'plain', voice: 'en-NZ', women: ['Aroha', 'Ruby', 'Hana', 'Isla'], men: ['Nikau', 'Tama', 'Finn', 'Hamish'], surnames: ['Ngata', 'Wilson', 'Parata', 'Taylor'], skins: [0, 1, 2, 3, 4], hair: ALL },
 };
+
+/** The episode languages people speak in each home, offered first when a host is from there. */
+export const HOME_LANGUAGES: Partial<Record<HomeCode, Language[]>> = {
+  MX: ['es'], AR: ['es'], CO: ['es'], ES: ['es'], US: ['es'], BR: ['pt'], FR: ['fr'], CA: ['fr'], DE: ['de'], IT: ['it'],
+  IN: ['hi'], SA: ['ar'], AE: ['ar'], EG: ['ar'], JP: ['ja'], KR: ['ko'], SG: ['zh'], ID: ['id'],
+};
+
+/** Languages to offer first for these hosts: English, then their homes' languages. */
+export function languagesFor(homes: (string | undefined)[]): Language[] {
+  const out: Language[] = ['en'];
+  for (const h of homes) for (const l of HOME_LANGUAGES[h as HomeCode] ?? []) if (!out.includes(l)) out.push(l);
+  return out;
+}
 
 export const HOME_CODES = Object.keys(HOMES) as HomeCode[];
 /** A stored home code, or null for "Anywhere" (and for anything that isn't one). */

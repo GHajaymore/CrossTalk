@@ -2,7 +2,7 @@
 // One request after each completed run (never during it). Her failure never changes the discussion.
 // She learns: the listener's recent notes on her work go into every new request.
 import { z } from 'zod';
-import { cleanStyles, defaultPaintStyle, PAINT_STYLES, type ArtistNotes, type ConversationView, type IrisFeedback, type PaintStyle } from '@crosstalk/shared';
+import { cleanStyles, sentencesOf, wordsIn, defaultPaintStyle, PAINT_STYLES, type ArtistNotes, type ConversationView, type IrisFeedback, type PaintStyle } from '@crosstalk/shared';
 import type { Repo } from '../db/repo';
 import { buildIrisPrompt } from './prompt';
 import { mockSketch } from './mockSketches';
@@ -34,10 +34,13 @@ export function favouriteStyle(chosen: PaintStyle[]): PaintStyle | null {
 }
 
 const words = (t: string) => t.split(/\s+/).filter(Boolean);
+const wordsOf = wordsIn;
 const norm = (t: string) => t.toLowerCase().replace(/[‘’“”"'.,!?;:—–-]/g, ' ').replace(/\s+/g, ' ').trim();
 const firstSentence = (t: string) => {
-  const s = (t.match(/^.*?[.?!](\s|$)/)?.[0] ?? t).trim();
-  return words(s).length > 20 ? words(s).slice(0, 20).join(' ') + '…' : s;
+  const s = sentencesOf(t)[0] ?? t.trim();
+  if (wordsOf(s) <= 20) return s;
+  // Spaced languages keep 20 words; Chinese and Japanese keep about 40 characters.
+  return words(s).length > 1 ? words(s).slice(0, 20).join(' ') + '…' : [...s].slice(0, 40).join('') + '…';
 };
 
 export type IrisOptions = {
@@ -119,7 +122,7 @@ export class Iris {
 
     const turn = view.turns.find(t => t.seq === reply.momentSeq) ?? view.turns[Math.floor(view.turns.length / 2)];
     // The caption must be a real quote from that turn, 20 words or fewer.
-    const caption = reply.caption && words(reply.caption).length <= 20 && norm(turn.text).includes(norm(reply.caption.replace(/…$/, '')))
+    const caption = reply.caption && wordsOf(reply.caption) <= 20 && norm(turn.text).includes(norm(reply.caption.replace(/…$/, '')))
       ? reply.caption : firstSentence(turn.text);
     const svg = safeSvg(reply.sketchSvg);
 

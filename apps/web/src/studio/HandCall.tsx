@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { CUE_TEXT_MAX, HAND_WAIT_S, speakerFor, type ConversationView, type SpeakerId } from '@crosstalk/shared';
+import { CUE_TEXT_MAX, HAND_WAIT_S, LANGUAGES, speakerFor, type ConversationView, type SpeakerId } from '@crosstalk/shared';
 import { api } from '../api/client';
 import { useDictation } from '../speech/useDictation';
 
@@ -34,7 +34,9 @@ export function HandCall({ view, setView, toast, say, onCaption }: Props) {
   const [text, setText] = useState('');
   const [left, setLeft] = useState(HAND_WAIT_S);
   const [busy, setBusy] = useState(false);
-  const invite = useRef(pick(INVITES));
+  // In another language the host invites you in that language, in the voice that reads the episode.
+  const lang = LANGUAGES[view.language ?? 'en'];
+  const invite = useRef(lang.invite || pick(INVITES));
   const mic = useDictation(setText);
   const done = useRef(false);
 
@@ -62,7 +64,7 @@ export function HandCall({ view, setView, toast, say, onCaption }: Props) {
   useEffect(() => {
     if (holding || busy) return;
     if (left <= 0) {
-      const line = pick(LATER);
+      const line = lang.later || pick(LATER);
       onCaption({ who: host, text: line, speaking: !!say });
       say?.(line, host, () => onCaption(null));
       void resume();

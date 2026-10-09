@@ -34,6 +34,24 @@ test('hosts from somewhere: the name bar, the style hint, and their first lines'
   await expect(page.locator('.turn').nth(1)).toContainText('Coming to you from India today.');
 });
 
+test('language: a host from Mexico puts Spanish first; the episode greets in Spanish', async ({ page }) => {
+  await page.goto('/#/create');
+  await page.getByRole('region', { name: 'Speaker B' }).getByLabel('Home').selectOption('MX');
+  const lang = page.getByLabel('Language');
+  await expect(lang.locator('optgroup').first()).toHaveAttribute('label', 'For these hosts');
+  await expect(lang.locator('optgroup').first().locator('option')).toHaveText(['English', 'Spanish · Español']);
+  await lang.selectOption('es');
+  await expect(page.getByText(/Mock mode greets you in Spanish/)).toBeVisible();
+  await page.getByRole('group', { name: 'Length' }).getByRole('button', { name: /Short/ }).click();
+  await page.getByRole('button', { name: /Start recording/ }).click();
+  await expect(page.locator('.status-line')).toContainText('Complete', { timeout: 60_000 });
+  await page.getByRole('link', { name: /Read/ }).first().click();
+  await expect(page.locator('.table')).toHaveAttribute('lang', 'es');
+  await expect(page.locator('.turn').first()).toContainText('¡Hola y bienvenidos a CrossTalk!');
+  await page.goto('/#/create');
+  await page.getByRole('group', { name: 'Length' }).getByRole('button', { name: /Normal/ }).click();
+});
+
 test('create → run → stop → refresh keeps every finished turn', async ({ page }) => {
   await page.goto('/#/create');
   await page.getByRole('button', { name: /Start recording/ }).click();

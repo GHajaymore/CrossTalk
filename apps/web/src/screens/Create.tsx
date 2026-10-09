@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ARTIST, AUDIENCES, HOME_CODES, HOMES, homeOf, SCOUT_COUNTRIES, SCOUT_REGIONS, TALK_STYLES, blockedHit, DEFAULT_RULES, episodeLabel, FORMATS, hostSubtitle, isSensitive, LENGTHS, LENS_MAX, MODES, NAME_MAX, PERSONAS, PRESETS, resolveSpeakers, ROLE_MAX,
+  ARTIST, AUDIENCES, HOME_CODES, LANGUAGES, languagesFor, HOMES, homeOf, SCOUT_COUNTRIES, SCOUT_REGIONS, TALK_STYLES, blockedHit, DEFAULT_RULES, episodeLabel, FORMATS, hostSubtitle, isSensitive, LENGTHS, LENS_MAX, MODES, NAME_MAX, PERSONAS, PRESETS, resolveSpeakers, ROLE_MAX,
   TEMPERATURE_ORDER, TEMPERATURES, TOPIC_MAX,
-  type AppConfig, type Audience, type CreateConversation, type Format, type HomeCode, type Length, type Mode, type PersonaKey, type ScoutTopic, type SpeakerDraft, type SpeakerId, type Temperature,
+  type AppConfig, type Audience, type CreateConversation, type Format, type HomeCode, type Language, type Length, type Mode, type PersonaKey, type ScoutTopic, type SpeakerDraft, type SpeakerId, type Temperature,
 } from '@crosstalk/shared';
 import { api } from '../api/client';
 import { BudgetBanner, realBlocked, SetupBanner } from '../lib/Banners';
@@ -29,6 +29,7 @@ export function Create({ config, go, refreshConfig, toast }: Props) {
     try { const l = localStorage.getItem('ct_length'); return l === 'short' || l === 'long' ? l : 'normal'; } catch { return 'normal'; }
   });
   const setLength = (l: Length) => { setLengthState(l); try { localStorage.setItem('ct_length', l); } catch { /* storage blocked */ } };
+  const [language, setLanguage] = useState<Language>('en');
   const [audience, setAudience] = useState<Audience>('general');
   const [temperature, setTemperature] = useState<Temperature>('lively');
   const [drafts, setDrafts] = useState<{ A: SpeakerDraft; B: SpeakerDraft }>({ A: seatDraft('optimist'), B: seatDraft('skeptic') });
@@ -51,6 +52,8 @@ export function Create({ config, go, refreshConfig, toast }: Props) {
   const models = config?.models ?? { A: 'mock/wren-v1', B: 'mock/hale-v1' };
   // The same rule the server uses, so what you see is what gets saved.
   const speakers = useMemo(() => resolveSpeakers(topic, audience, drafts, models), [topic, audience, drafts, models.A, models.B]);
+  // English first, then the languages of the hosts' homes.
+  const suggested = languagesFor([drafts.A.home, drafts.B.home]);
   const edit = (k: SpeakerId, patch: Partial<SpeakerDraft>) => setDrafts(d => ({ ...d, [k]: { ...d[k], ...patch } }));
   const busy = !!config?.activeConversationId;
   const real = config?.providerMode === 'openrouter';
@@ -75,7 +78,7 @@ export function Create({ config, go, refreshConfig, toast }: Props) {
   const start = async () => {
     setStarting(true);
     try {
-      const body: CreateConversation = { topic: topic.trim(), mode, format, length, audience, temperature, speakers: drafts, scoutTopicId: briefOn ? scoutTopic!.id : null };
+      const body: CreateConversation = { topic: topic.trim(), mode, format, length, language, audience, temperature, speakers: drafts, scoutTopicId: briefOn ? scoutTopic!.id : null };
       const c = await api.create(body);
       await api.start(c.id);
       go(`#/studio/${c.id}`);
@@ -199,6 +202,21 @@ export function Create({ config, go, refreshConfig, toast }: Props) {
           {(Object.keys(LENGTHS) as Length[]).map(k => <button key={k} aria-pressed={length === k} onClick={() => setLength(k)}>{LENGTHS[k].label} · ~{LENGTHS[k].minutes} min</button>)}
         </div>
         <p className="mode-help">{LENGTHS[length].help}</p>
+      </div>
+
+      <div>
+        <label className="tag" htmlFor="language" style={{ display: 'block', marginBottom: 8 }}>Language</label>
+        <select id="language" style={{ maxWidth: 360 }} value={language} onChange={e => setLanguage(e.target.value as Language)}>
+          <optgroup label={suggested.length > 1 ? 'For these hosts' : 'Default'}>
+            {suggested.map(l => <option key={l} value={l}>{LANGUAGES[l].label}{l !== 'en' ? ` · ${LANGUAGES[l].native}` : ''}</option>)}
+          </optgroup>
+          <optgroup label="More languages">
+            {(Object.keys(LANGUAGES) as Language[]).filter(l => !suggested.includes(l)).map(l => <option key={l} value={l}>{LANGUAGES[l].label} · {LANGUAGES[l].native}</option>)}
+          </optgroup>
+        </select>
+        <p className="mode-help">{language === 'en'
+          ? 'The hosts and Iris speak English. Give a host a home to see their languages first.'
+          : `The hosts and Iris speak ${LANGUAGES[language].label}, read aloud by your device's ${LANGUAGES[language].label} voice. ${real ? '' : `Mock mode greets you in ${LANGUAGES[language].label}, then plays its sample script in English; real AI hosts speak it throughout.`}`}</p>
       </div>
 
       <div className="dials">

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { EventEmitter } from 'node:events';
-import {
+import { sentencesOf, wordsIn,
   assertTransition, blockedHit, BRANCH_TURNS, DEFAULT_RULES, extractStance, HAND_RAISED, mindChange, STANCE_END_JOBS, STANCE_START_JOBS, jobIn, resolveSpeakers, turnTotal, speakerFor, stepTemperature, TransitionError,
   type BranchInput, type Conversation, type ConversationView, type CreateConversation, type CueInput, type Intervention,
   type LiveTurn, type Rules, type Run, type RunState, type StreamEvent,
@@ -18,12 +18,12 @@ export const OTHER_WAIT_MS = 2_000;
 export const MAX_SPOKEN_WORDS = { kids: 60, other: 90 } as const;
 
 const isBusy = (e: ProviderError) => e.status === 429 || (e.status !== null && e.status >= 500) || /overload|busy|capacity/i.test(e.message);
-const wordCount = (t: string) => t.split(/\s+/).filter(Boolean).length;
+const wordCount = wordsIn;
 
 /** Keeps whole sentences up to `max` words. Leaves the text alone if trimming would leave too little. */
 export function fitToLength(text: string, max: number): string {
   if (wordCount(text) <= max) return text;
-  const sentences = text.match(/[^.?!]+[.?!]+["'”’)\]]?(\s+|$)/g) ?? [];
+  const sentences = sentencesOf(text).map(s => (/[。！？]$/.test(s) ? s : `${s} `));
   let out = '';
   for (const s of sentences) {
     if (wordCount(out + s) > max) break;
@@ -145,6 +145,7 @@ export class ConversationController {
       roundOf: null,
       round: 1,
       length: input.length ?? 'normal',
+      language: input.language ?? 'en',
       createdAt: at,
       updatedAt: at,
     };

@@ -2,7 +2,7 @@
 // Always sends exactly one `model`: never the fallback `models` array or an auto router,
 // so a model is never silently substituted.
 import { z } from 'zod';
-import { ROLE_MAX, type Audience } from '@crosstalk/shared';
+import { ROLE_MAX, wholeSentencesOf, wordsIn, type Audience, type Language } from '@crosstalk/shared';
 import { buildPrompt, rolesPrompt } from '../prompts/buildPrompt';
 import { AbortedError, ProviderError, type Provider, type TurnOptions, type TurnRequest, type Usage } from './types';
 
@@ -12,9 +12,7 @@ export const MIN_WORDS_AFTER_TRIM = 12;
 
 /** Text up to the last sentence ending (. ? ! possibly followed by a closing quote or bracket). */
 export function wholeSentences(text: string) {
-  const t = text.trim();
-  const m = t.match(/^[\s\S]*[.?!]["'”’)\]]?(?=\s|$)/);
-  return m ? m[0].trim() : '';
+  return wholeSentencesOf(text);
 }
 
 export type OpenRouterOptions = {
@@ -198,7 +196,7 @@ export class OpenRouterProvider implements Provider {
     if (cutOff) {
       // Never save half a sentence: keep whole sentences if enough is left, otherwise try again.
       const whole = wholeSentences(text);
-      if (whole.split(/\s+/).filter(Boolean).length < MIN_WORDS_AFTER_TRIM) {
+      if (wordsIn(whole) < MIN_WORDS_AFTER_TRIM) {
         throw new ProviderError('The reply was cut off by the length limit before it said enough.', true);
       }
       return { text: whole, usage };

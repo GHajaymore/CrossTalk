@@ -1,11 +1,13 @@
 import { z } from 'zod';
-import { AUDIENCES, CUE_TEXT_MAX, SCOUT_CATS, SCOUT_COUNTRIES, SCOUT_INTERESTS_MAX, SCOUT_MAX_FEEDS, SCOUT_REGIONS, SCOUT_SOURCES, TITLE_MAX, FORMATS, LENGTHS, LENS_MAX, MODES, NAME_MAX, PERSONAS, ROLE_MAX, TEMPERATURES, TOPIC_MAX } from './constants';
+import { AUDIENCES, CUE_TEXT_MAX, LANGUAGES, SCOUT_CATS, SCOUT_COUNTRIES, SCOUT_INTERESTS_MAX, SCOUT_MAX_FEEDS, SCOUT_REGIONS, SCOUT_SOURCES, TITLE_MAX, FORMATS, LENGTHS, LENS_MAX, MODES, NAME_MAX, PERSONAS, ROLE_MAX, TEMPERATURES, TOPIC_MAX } from './constants';
 
 const keys = <T extends Record<string, unknown>>(o: T) => Object.keys(o) as [keyof T & string, ...(keyof T & string)[]];
 
 export const Mode = z.enum(keys(MODES));
 export const Format = z.enum(keys(FORMATS));
 export const Length = z.enum(keys(LENGTHS));
+export const Language = z.enum(keys(LANGUAGES));
+export type Language = z.infer<typeof Language>;
 export type Length = z.infer<typeof Length>;
 export const Audience = z.enum(keys(AUDIENCES));
 export const Temperature = z.enum(keys(TEMPERATURES));
@@ -56,6 +58,8 @@ export const CreateConversation = z.object({
   scoutTopicId: z.string().nullable().optional(),
   /** Normal (16 turns) when left out. */
   length: Length.optional(),
+  /** English when left out. */
+  language: Language.optional(),
 });
 export type CreateConversation = z.infer<typeof CreateConversation>;
 
@@ -254,6 +258,8 @@ export const Conversation = z.object({
   roundOf: z.string().nullable().default(null),
   /** Short (8 turns), Normal (16) or Long (24). */
   length: Length.default('normal'),
+  /** What the hosts and Iris speak: English unless the listener picked another. */
+  language: Language.default('en'),
   round: z.number().int().min(1).default(1),
   createdAt: z.string(),
   updatedAt: z.string(),

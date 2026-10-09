@@ -27,6 +27,26 @@ export const LENGTHS = {
   normal: { label: 'Normal', minutes: 5, turns: 16, help: '16 short turns: the whole back-and-forth. About 17 free requests with Iris.' },
   long: { label: 'Long', minutes: 8, turns: 24, help: '24 turns: everything in Normal, plus a second story, the hardest case, a middle path and what changed their minds. About 25 free requests with Iris.' },
 } as const;
+/**
+ * The language an episode is spoken in. English by default. `native` is how it's written in itself;
+ * `hello` opens a mock episode so you can hear the voice; `invite` and `later` are a host's lines when you raise your hand; `rtl` languages are written right to left.
+ */
+export const LANGUAGES = {
+  en: { label: 'English', native: 'English', hello: '', invite: '', later: '' },
+  es: { label: 'Spanish', native: 'Español', hello: '¡Hola y bienvenidos a CrossTalk!', invite: 'Tenemos a alguien con la mano levantada. Adelante, estás al aire.', later: 'No pasa nada, quizá más tarde. ¿Dónde estábamos?' },
+  hi: { label: 'Hindi', native: 'हिन्दी', hello: 'नमस्ते, क्रॉसटॉक में आपका स्वागत है!', invite: 'लगता है किसी श्रोता ने हाथ उठाया है। बोलिए, आप ऑन एयर हैं।', later: 'कोई बात नहीं, शायद बाद में। तो, हम कहाँ थे?' },
+  pt: { label: 'Portuguese', native: 'Português', hello: 'Olá, bem-vindos ao CrossTalk!', invite: 'Temos alguém com a mão levantada. Pode falar, você está no ar.', later: 'Tudo bem, talvez mais tarde. Onde estávamos?' },
+  fr: { label: 'French', native: 'Français', hello: 'Bonjour et bienvenue sur CrossTalk !', invite: "On a quelqu'un qui lève la main. Allez-y, vous êtes à l'antenne.", later: 'Pas de souci, peut-être plus tard. On en était où ?' },
+  de: { label: 'German', native: 'Deutsch', hello: 'Hallo und willkommen bei CrossTalk!', invite: 'Da hat sich jemand gemeldet. Bitte, Sie sind auf Sendung.', later: 'Kein Problem, vielleicht später. Wo waren wir?' },
+  ar: { label: 'Arabic', native: 'العربية', hello: 'مرحبًا بكم في كروس توك!', invite: 'يبدو أن أحد المستمعين رفع يده. تفضل، أنت على الهواء.', later: 'لا بأس، ربما لاحقًا. أين كنا؟', rtl: true },
+  ja: { label: 'Japanese', native: '日本語', hello: 'こんにちは、クロストークへようこそ！', invite: 'リスナーの方が手を挙げています。どうぞ、オンエアです。', later: '大丈夫です、また後で。どこまで話しましたっけ？' },
+  ko: { label: 'Korean', native: '한국어', hello: '안녕하세요, 크로스토크에 오신 것을 환영합니다!', invite: '손을 드신 청취자분이 계시네요. 말씀하세요, 방송 중입니다.', later: '괜찮아요, 나중에 하셔도 돼요. 어디까지 얘기했죠?' },
+  zh: { label: 'Chinese', native: '中文', hello: '大家好，欢迎收听 CrossTalk！', invite: '有位听众举手了。请说，您正在直播中。', later: '没关系，等会儿再说。我们刚才说到哪儿了？' },
+  it: { label: 'Italian', native: 'Italiano', hello: 'Ciao e benvenuti a CrossTalk!', invite: "C'è qualcuno con la mano alzata. Prego, sei in onda.", later: 'Nessun problema, magari più tardi. Dove eravamo?' },
+  id: { label: 'Indonesian', native: 'Bahasa Indonesia', hello: 'Halo, selamat datang di CrossTalk!', invite: 'Ada pendengar yang mengangkat tangan. Silakan, Anda sedang mengudara.', later: 'Tidak apa-apa, mungkin nanti. Sampai mana kita tadi?' },
+} as const satisfies Record<string, { label: string; native: string; hello: string; invite: string; later: string; rtl?: boolean }>;
+export const isRtl = (lang: string) => !!(LANGUAGES as Record<string, { rtl?: boolean }>)[lang]?.rtl;
+
 /** Which of Normal's 16 turns each short turn plays. Odd stays odd, so each host keeps their seat. */
 export const SHORT_PLAN = [1, 2, 5, 10, 11, 14, 15, 16] as const;
 /** Long: Normal's first 12 turns, eight deeper ones, then Normal's last 4. Each host keeps their seat. */
