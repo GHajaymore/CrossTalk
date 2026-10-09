@@ -57,6 +57,8 @@ describe('Groq as the free AI service', () => {
     expect(chats.every(c => c.url === 'https://api.groq.com/openai/v1/chat/completions')).toBe(true);
     expect(chats[0].body).not.toHaveProperty('reasoning');
     expect(chats[0].body).not.toHaveProperty('usage');
+    // FREE_A/FREE_B aren't thinking models, so they never get Groq's reasoning field.
+    expect(chats[0].body).not.toHaveProperty('reasoning_effort');
     expect((chats[0].init.headers as Record<string, string>).Authorization).toBe(`Bearer ${KEY}`);
     expect(lines.join('')).not.toContain(KEY);
     const cfg = (await app.inject({ url: '/api/config' })).json();
@@ -100,5 +102,20 @@ describe('Groq as the free AI service', () => {
     expect(e).toBeInstanceOf(ProviderError);
     expect(e!.message).toMatch(/^Groq's free-model limit for today is used up/);
     expect(e!.retryable).toBe(false);
+  });
+
+  it('asks Groq\'s gpt-oss models to think briefly, and no others', async () => {
+    const net = fakeFetch({ replies: () => sse([delta('Fine.'), '[DONE]']) });
+    const p = new OpenRouterProvider({ apiKey: KEY, maxOutputTokens: 200, timeoutMs: 5000, fetch: net.f, service: SERVICES.groq });
+    const turn = (modelId: string) => p.generateTurn({ conversation: conv, seq: 1, speaker: { ...conv.speakers.A, modelId }, objective: 'Frame', history: [] }, { signal: new AbortController().signal, onToken: () => {} });
+    await turn('openai/gpt-oss-120b');
+    await turn('llama-3.3-70b-versatile');
+    await turn('qwen/qwen3.8-27b');
+    const [oss, llama, qwen] = net.chatCalls();
+    expect(oss.body).toMatchObject({ reasoning_effort: 'low' });
+    expect(llama.body).not.toHaveProperty('reasoning_effort');
+    expect(qwen.body).not.toHaveProperty('reasoning_effort');
+    await p.complete('openai/gpt-oss-20b', 's', 'u', 100);
+    expect(net.roleCalls().at(-1)!.body).toMatchObject({ reasoning_effort: 'low' });
   });
 });
