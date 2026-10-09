@@ -13,7 +13,7 @@ const walk = (dir: string): string[] => readdirSync(dir).flatMap(f => {
 
 describe('web app', () => {
   it('never reads a key or contains one in its source', () => {
-    for (const file of walk(join(web, 'src'))) expect(readFileSync(file, 'utf8'), file).not.toMatch(/sk-or-|import\.meta\.env|process\.env/);
+    for (const file of walk(join(web, 'src'))) expect(readFileSync(file, 'utf8'), file).not.toMatch(/sk-or-|gsk_|import\.meta\.env|process\.env/);
   });
 
   it('does not contain the API key after a build, even with the key in the environment', async () => {

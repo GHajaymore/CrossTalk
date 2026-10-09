@@ -5,6 +5,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { hostTraits, lookCode, type HairStyle, type OutfitKind } from '@crosstalk/shared';
 import { usePolledImage } from '../lib/usePolledImage';
+import { TalkingPhoto } from './TalkingPhoto';
 import { LAUGH_EVENT, MURMUR_EVENT } from '../speech/BrowserSpeech';
 
 type Seat = 'A' | 'B';
@@ -245,10 +246,11 @@ export function Portrait(props: PortraitProps) {
 }
 
 /**
- * A host on the set: a photo-real portrait of the same invented person when photos are on (made once
- * from their look and kept), with the drawn portrait underneath until it loads, and instead of it if
- * it can't. The photo gets the same random life: tilts, nods, leaning toward whoever is speaking, and a
- * small lift with the voice. Its lips don't move; the drawn one's do.
+ * A host on the set. With photos on: a photo-real portrait of the same invented person (made once from
+ * their look and kept) that talks (its mouth opens with the voice) and blinks, with the same random
+ * life as before: tilts, nods, leaning toward whoever is speaking. Never a drawing beside a photo:
+ * until the photo arrives, a quiet silhouette holds the seat, and a missing photo is asked for again.
+ * With photos off, the drawn portrait.
  */
 export function HostPortrait(props: PortraitProps & { photo?: boolean }) {
   const L = lookFor(props);
@@ -257,7 +259,7 @@ export function HostPortrait(props: PortraitProps & { photo?: boolean }) {
   const breathe = { animationDuration: `${4.2 + (L.h % 19) / 10}s`, animationDelay: `-${(L.h >>> 5) % 40 / 10}s` };
   // The server answers at once: the photo, "still being made" (ask again shortly), or none.
   // A short pause first, so typing a host's name or job on Create doesn't ask for a photo per keystroke.
-  const photo = usePolledImage(props.photo ? `/api/portraits/${code}.jpg` : null, 700);
+  const photo = usePolledImage(props.photo ? `/api/portraits/${code}.jpg` : null, 700, 30, 30_000);
   // Shown once the image has actually drawn; a broken one falls back to the drawn host.
   const [shown, setShown] = useState<'no' | 'ok' | 'broken'>('no');
   useEffect(() => setShown('no'), [photo.src]);
@@ -271,12 +273,26 @@ export function HostPortrait(props: PortraitProps & { photo?: boolean }) {
     <>
       {/* Their own room behind the drawn portrait, matching the room in their photo. */}
       <div className={`set-room r${L.room}`} aria-hidden="true" />
-      <Portrait {...props} />
+      {!props.photo ? <Portrait {...props} />
+        : state !== 'ok' && <PhotoWait />}
       {props.photo && state !== 'failed' && (
         <div ref={wrap} className={`set-photo${state === 'ok' ? ' ok' : ''}`} aria-hidden="true">
-          {src && <img src={src} alt="" style={breathe} onLoad={() => setState('ok')} onError={() => setState('failed')} />}
+          {src && <TalkingPhoto src={src} code={code} style={breathe} onLoad={() => setState('ok')} onError={() => setState('failed')} />}
         </div>
       )}
     </>
+  );
+}
+
+/** Holds a host's seat while their photo is being made: a soft silhouette, never a cartoon. */
+function PhotoWait() {
+  return (
+    <div className="set-wait" aria-hidden="true">
+      <svg viewBox="0 0 200 200" preserveAspectRatio="xMidYMax meet">
+        <ellipse cx="100" cy="88" rx="38" ry="46" />
+        <path d="M28 200 C32 150 62 134 100 134 C138 134 168 150 172 200 Z" />
+      </svg>
+      <span>Photo on its way…</span>
+    </div>
   );
 }

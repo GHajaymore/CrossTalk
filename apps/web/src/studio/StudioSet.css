@@ -117,12 +117,12 @@
 .set-room.r7{background:repeating-linear-gradient(90deg,#6b4a2e 0 12px,transparent 12px 26px) 0 22%/100% 28% no-repeat,radial-gradient(circle at 75% 25%,#c7965a 0,transparent 40%),linear-gradient(180deg,#3d2c20,#1a130e)}
 .set-photo{position:absolute;inset:0;opacity:0;transition:opacity .6s ease;overflow:hidden}
 .set-photo.ok{opacity:1}
-.set-photo img{position:absolute;left:0;bottom:0;width:78%;height:100%;object-fit:cover;object-position:50% 30%;
+.set-photo img,.set-photo canvas{position:absolute;left:0;bottom:0;width:78%;height:100%;object-fit:cover;object-position:50% 30%;
   -webkit-mask-image:linear-gradient(90deg,#000 80%,transparent),linear-gradient(0deg,transparent,#000 12%);mask-image:linear-gradient(90deg,#000 80%,transparent);
   transform-origin:50% 85%;
   transform:translate(var(--turn,0px),calc(var(--nod,0px) - var(--lvl,0) * 3px)) rotate(calc(var(--tilt,0deg) * .5)) scale(calc(1.02 + var(--lvl,0) * .015));
   transition:transform var(--dur,.6s) ease-in-out;animation:photo-breathe 5s ease-in-out infinite}
-.set-tile.on .set-photo img{filter:brightness(1.06) saturate(1.05)}
+.set-tile.on .set-photo img,.set-tile.on .set-photo canvas{filter:brightness(1.06) saturate(1.05)}
 @keyframes photo-breathe{0%,100%{scale:1}50%{scale:1.008}}
 @media (prefers-reduced-motion:reduce){.set-photo img{animation:none;transition:none;transform:none}}
 /* The director: the speaker's shot widens and the camera pushes in slowly; the listener stays in frame. */
@@ -133,3 +133,10 @@
 .set-tile.on .set-cam{transform:scale(1.06)}
 @media (max-width:640px){.set-tiles.dir-A{grid-template-columns:1.25fr 1fr}.set-tiles.dir-B{grid-template-columns:1fr 1.25fr}}
 @media (prefers-reduced-motion:reduce){.set-tiles{transition:none}.set-tile .set-cam,.set-tile.on .set-cam{transition:none;transform:none}}
+
+/* While a host's photo is being made: a quiet silhouette in their room, breathing slowly. */
+.set-wait{position:absolute;inset:0;display:flex;align-items:flex-end;justify-content:flex-start}
+.set-wait svg{width:78%;height:96%;fill:rgba(236,232,225,.10);animation:wait-breathe 3.2s ease-in-out infinite}
+.set-wait span{position:absolute;top:34%;left:39%;transform:translateX(-50%);font-size:12px;color:var(--muted);white-space:nowrap}
+@keyframes wait-breathe{0%,100%{opacity:.7}50%{opacity:1}}
+@media (prefers-reduced-motion:reduce){.set-wait svg{animation:none}}
