@@ -5,7 +5,7 @@ import { mockSketch } from '../src/artist/mockSketches';
 import { buildIrisPrompt } from '../src/artist/prompt';
 import { buildApp } from '../src/app';
 import { mockConfig } from '../src/config';
-import { draft, setup } from './helpers';
+import { draft, INSTANT, setup } from './helpers';
 
 const sketch = mockSketch('four-day workweek').svg;
 
@@ -149,5 +149,57 @@ describe('every new version of a drawing looks new; a saved one never changes', 
     expect(new Set(versions).size).toBe(5);
     expect(versions[0]).toBe(sketch);
     for (const v of versions) expect(safeSvg(v).ok).toBe(true);
+  });
+});
+
+describe('styles from the hosts\' homes', () => {
+  it('each one is a safe, repeatable picture built only from her lines', async () => {
+    const { HOME_STYLES, paintSvg, PAINT_STYLE_INFO } = await import('@crosstalk/shared');
+    const sketch = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 360"><g fill="none" stroke-width="2.6"><circle cx="300" cy="180" r="40" stroke="#E8A55A"/></g></svg>';
+    for (const s of HOME_STYLES) {
+      const out = paintSvg(sketch, s, 'ep-1');
+      expect(out, s).toMatch(/^<svg xmlns="http:\/\/www\.w3\.org\/2000\/svg" viewBox="0 0 600 360">[\s\S]*<\/svg>$/);
+      expect(out, s).toContain('<circle cx="300" cy="180" r="40" stroke="#E8A55A"/>');
+      expect(out, s).not.toMatch(/<script|<image|<foreignObject|href=|on\w+=|NaN|undefined/i);
+      expect(paintSvg(sketch, s, 'ep-1'), s).toBe(out);
+      expect(paintSvg(sketch, s, 'ep-2'), s).not.toBe(out);
+      // A tradition, never a named artist.
+      expect(PAINT_STYLE_INFO[s].what, s).toMatch(/tradition|folk art|painting/);
+    }
+  });
+
+  it('are only offered when a host comes from there, and only while switched on', async () => {
+    const { episodeStyles, homeStylesFor, PAINT_STYLES } = await import('@crosstalk/shared');
+    expect(homeStylesFor({ A: { home: 'JP' }, B: { home: 'MX' } })).toEqual(['inkwash', 'folk']);
+    expect(homeStylesFor({ A: { home: 'KR' }, B: { home: 'JP' } })).toEqual(['inkwash']);
+    expect(homeStylesFor({ A: { home: 'GB' }, B: {} })).toEqual([]);
+    expect(episodeStyles(PAINT_STYLES, { A: { home: 'IN' }, B: {} })).toEqual(['sketch', 'painting', 'dreamscape', 'miniature']);
+    expect(episodeStyles(['sketch'], { A: { home: 'IN' }, B: {} }, false)).toEqual(['sketch']);
+  });
+
+  it('Iris paints a host\'s home style, can be switched back, and never uses one that doesn\'t fit', async () => {
+    const t = buildApp(mockConfig({ dbPath: ':memory:', dailyLimit: 500 }), { timing: INSTANT });
+    try {
+      const d = draft();
+      const withHome = (home: string) => ({ ...d, length: 'short', speakers: { ...d.speakers, B: { ...d.speakers.B, home } } });
+      const run = async (body: object) => {
+        const id = (await t.app.inject({ method: 'POST', url: '/api/conversations', payload: body })).json().id as string;
+        await t.controller.start(id); await t.controller.settled(id);
+        for (let i = 0; i < 100 && t.repo.view(id)!.artist?.state !== 'done'; i++) await new Promise(r => setTimeout(r, 5));
+        return id;
+      };
+      const ng = await run(withHome('NG'));
+      expect(t.repo.view(ng)!.artist?.artStyle).toBe('woven');
+      expect((await t.app.inject({ method: 'PUT', url: `/api/conversations/${ng}/artist/style`, payload: { style: 'painting' } })).json().artist.artStyle).toBe('painting');
+      expect((await t.app.inject({ method: 'PUT', url: `/api/conversations/${ng}/artist/style`, payload: { style: 'inkwash' } })).statusCode).toBe(400);
+      const plain = await run(draft());
+      expect(['sketch', 'painting', 'dreamscape']).toContain(t.repo.view(plain)!.artist?.artStyle);
+      // Switched off: a host from Japan still gets one of your ticked styles.
+      expect((await t.app.inject({ method: 'PUT', url: '/api/iris/home-styles', payload: { homeStyles: false } })).json().homeStyles).toBe(false);
+      expect((await t.app.inject({ url: '/api/iris/styles' })).json().homeStyles).toBe(false);
+      const jp = await run(withHome('JP'));
+      expect(['sketch', 'painting', 'dreamscape']).toContain(t.repo.view(jp)!.artist?.artStyle);
+      expect((await t.app.inject({ method: 'PUT', url: '/api/iris/home-styles', payload: { homeStyles: 'yes' } })).statusCode).toBe(400);
+    } finally { await t.app.close(); }
   });
 });

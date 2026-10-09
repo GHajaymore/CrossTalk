@@ -2,7 +2,7 @@
 // One request after each completed run (never during it). Her failure never changes the discussion.
 // She learns: the listener's recent notes on her work go into every new request.
 import { z } from 'zod';
-import { cleanStyles, sentencesOf, wordsIn, defaultPaintStyle, PAINT_STYLES, type ArtistNotes, type ConversationView, type IrisFeedback, type PaintStyle } from '@crosstalk/shared';
+import { ART_STYLES, cleanStyles, episodeStyles, sentencesOf, wordsIn, defaultPaintStyle, type ArtistNotes, type ConversationView, type IrisFeedback, type PaintStyle } from '@crosstalk/shared';
 import type { Repo } from '../db/repo';
 import { buildIrisPrompt } from './prompt';
 import { MOCK_LANGS } from '../providers/mockScriptsLocal';
@@ -23,7 +23,7 @@ const Reply = z.object({
   sketchSvg: z.string().default(''),
   imagePrompt: z.string().trim().max(500).default(''),
   // Her pick of style; anything unknown falls back to the listener's taste or the episode's feel.
-  artStyle: z.enum(PAINT_STYLES).optional().catch(undefined),
+  artStyle: z.enum(ART_STYLES).optional().catch(undefined),
 });
 
 /** The style the listener keeps choosing, once they've chosen it at least twice lately. */
@@ -100,8 +100,9 @@ export class Iris {
     if (blocked) return fail(blocked);
 
     const feedback = this.repo.listFeedback(10);
-    // Only the styles the listener has ticked on the Iris page; within them, their taste, then her own feel.
-    const allowed = cleanStyles(this.repo.getSetting<PaintStyle[]>('iris_styles'));
+    // Only the styles the listener has ticked on the Iris page, plus a style from a host's home when one
+    // fits and those are on; within them, their taste, then her own feel.
+    const allowed = episodeStyles(cleanStyles(this.repo.getSetting<PaintStyle[]>('iris_styles')), view.speakers, this.repo.getSetting<boolean>('iris_home_styles') !== false);
     const learned = favouriteStyle(this.repo.listenerStyles());
     const taste = learned && allowed.includes(learned) ? learned : null;
     let raw: string;
@@ -136,7 +137,7 @@ export class Iris {
   }
 }
 
-const PAINT_STYLE_NAME: Record<PaintStyle, string> = { sketch: 'sketches', painting: 'paintings', dreamscape: 'dreamscapes' };
+const PAINT_STYLE_NAME: Record<PaintStyle, string> = { sketch: 'sketches', painting: 'paintings', dreamscape: 'dreamscapes', inkwash: 'ink washes', folk: 'folk-colour pieces', tiles: 'tile patterns', miniature: 'miniatures', woven: 'woven borders' };
 
 /** Mock Iris: no model call. Picks a moment, writes a perspective, draws a scene, and shows she read your notes. */
 export const mockArtist: ArtistBackend = {

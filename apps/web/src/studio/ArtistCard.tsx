@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ARTIST, artworkSvg, PAINT_STYLE_INFO, PAINT_STYLES, paintStyleOf, type ArtistNotes, type ConversationView, type PaintStyle, type Speakers } from '@crosstalk/shared';
+import { ARTIST, artworkSvg, homeStylesFor, PAINT_STYLE_INFO, PAINT_STYLES, paintStyleOf, type ArtistNotes, type ConversationView, type PaintStyle, type Speakers } from '@crosstalk/shared';
 import { api } from '../api/client';
 import { LivingSketch, useDrawReplay } from './LivingSketch';
 
@@ -75,7 +75,7 @@ export function ArtistCard({ notes: a, speakers, conversationId, onAgain, onJump
         <div className="artist-body">
           <div className="styles" role="group" aria-label="Art style">
             <span className="tag">Art style</span>
-            {PAINT_STYLES.map(s => <button key={s} className="chip sm" aria-pressed={style === s} disabled={!a.sketchSvg || restyling}
+            {[...PAINT_STYLES, ...homeStylesFor(speakers)].map(s => <button key={s} className="chip sm" aria-pressed={style === s} disabled={!a.sketchSvg || restyling}
               title={PAINT_STYLE_INFO[s].what} onClick={() => restyle(s)}>{PAINT_STYLE_INFO[s].name}</button>)}
             <button className="chip sm" disabled title="A full illustration needs an image model, and none is free yet">Picture · soon</button>
           </div>

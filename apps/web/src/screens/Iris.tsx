@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react';
-import { ARTIST, artSeed, episodeLabel, PAINT_STYLE_INFO, PAINT_STYLES, paintSvg, type AppConfig, type Artwork, type GalleryEpisode, type IrisFeedback, type PaintStyle } from '@crosstalk/shared';
+import { ARTIST, artSeed, episodeLabel, HOME_STYLES, PAINT_STYLE_INFO, PAINT_STYLES, paintSvg, type AppConfig, type Artwork, type GalleryEpisode, type IrisFeedback, type PaintStyle } from '@crosstalk/shared';
 import { api } from '../api/client';
 import { sketchSrc } from '../studio/ArtistCard';
 import { Footer } from './Footer';
+
+// A tiny scene to show each home style: two figures at a table under a lamp.
+const SAMPLE = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 360"><g fill="none" stroke-width="3" stroke-linecap="round"><path d="M120 290 L480 290" stroke="#ECE8E1"/><circle cx="220" cy="170" r="22" stroke="#E8A55A"/><path d="M220 192 Q205 240 215 288 M220 210 Q250 225 270 240" stroke="#E8A55A"/><circle cx="380" cy="170" r="22" stroke="#5FB8B0"/><path d="M380 192 Q395 240 385 288 M380 210 Q350 225 330 240" stroke="#5FB8B0"/><path d="M300 60 L300 110 M275 130 Q300 100 325 130 Z" stroke="#E9D36A"/><path d="M260 250 L340 250" stroke="#B9A4E6"/></g></svg>';
 
 const art = (g: GalleryEpisode, a: Artwork) => sketchSrc(paintSvg(a.svg, a.style, artSeed(g.conversationId, a.version)));
 
@@ -12,10 +15,11 @@ export function IrisPage({ config }: { config: AppConfig | null }) {
   const [notes, setNotes] = useState<IrisFeedback[] | null>(null);
   const [styles, setStyles] = useState<PaintStyle[] | null>(null);
   const [styleMsg, setStyleMsg] = useState('');
+  const [homeOn, setHomeOn] = useState<boolean | null>(null);
   useEffect(() => {
     api.irisGallery().then(setGallery).catch(() => setGallery([]));
     api.irisFeedback().then(setNotes).catch(() => setNotes([]));
-    api.irisStyles().then(r => setStyles(r.styles)).catch(() => setStyles([...PAINT_STYLES]));
+    api.irisStyles().then(r => { setStyles(r.styles); setHomeOn(r.homeStyles); }).catch(() => { setStyles([...PAINT_STYLES]); setHomeOn(true); });
   }, []);
 
   const pieces = (gallery ?? []).reduce((n, g) => n + g.artworks.length, 0);
@@ -75,6 +79,17 @@ export function IrisPage({ config }: { config: AppConfig | null }) {
           <li><div className="style-pick off"><span className="tick" aria-hidden="true" /><b>Picture <span className="soon">Soon</span></b>
             <span className="hint">A full illustration from her saved picture prompt. Needs an image model, and none is free yet.</span></div></li>
         </ul></div>
+        <div className={`home-styles${homeOn ? ' on' : ''}`}>
+          <button className="style-pick" aria-pressed={!!homeOn} disabled={homeOn === null}
+            onClick={async () => { try { const r = await api.setIrisHomeStyles(!homeOn); setHomeOn(r.homeStyles); setStyleMsg(r.homeStyles ? 'When a host is from one of these places, Iris may paint in its tradition.' : 'Iris will stick to the styles ticked above.'); } catch (e) { setStyleMsg((e as Error).message); } }}>
+            <span className="tick" aria-hidden="true">{homeOn ? '✓' : ''}</span>
+            <b>Styles from the hosts' homes</b>
+            <span className="hint">When a host is from a place with its own art tradition, she may paint in it. Never a named artist; a respectful nod, not a costume.</span>
+          </button>
+          <ul className="home-style-list">
+            {HOME_STYLES.map(s => <li key={s}><img src={sketchSrc(paintSvg(SAMPLE, s, s))} alt="" /><span><b>{PAINT_STYLE_INFO[s].name}</b> <span className="hint">{PAINT_STYLE_INFO[s].what.replace(/^.*?, from /, 'From ')}</span></span></li>)}
+          </ul>
+        </div>
         {styleMsg && <p className="hint" role="status">{styleMsg}</p>}
         <p className="hint">She paints in your browser from her own lines: no image model, nothing sent anywhere, always free.</p>
       </section>

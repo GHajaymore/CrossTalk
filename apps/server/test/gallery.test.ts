@@ -53,11 +53,11 @@ describe('the styles you tick', () => {
   it('starts with all three, and refuses none or unknown styles', async () => {
     const t = app();
     try {
-      expect((await t.app.inject({ url: '/api/iris/styles' })).json()).toEqual({ styles: ['sketch', 'painting', 'dreamscape'] });
+      expect((await t.app.inject({ url: '/api/iris/styles' })).json()).toEqual({ styles: ['sketch', 'painting', 'dreamscape'], homeStyles: true });
       for (const bad of [[], ['picture'], ['sketch', 'oil'], 'sketch', null]) {
         expect((await t.app.inject({ method: 'PUT', url: '/api/iris/styles', payload: { styles: bad } })).statusCode, JSON.stringify(bad)).toBe(400);
       }
-      expect((await t.app.inject({ method: 'PUT', url: '/api/iris/styles', payload: { styles: ['dreamscape', 'sketch'] } })).json()).toEqual({ styles: ['sketch', 'dreamscape'] });
+      expect((await t.app.inject({ method: 'PUT', url: '/api/iris/styles', payload: { styles: ['dreamscape', 'sketch'] } })).json()).toEqual({ styles: ['sketch', 'dreamscape'], homeStyles: true });
     } finally { await t.app.close(); }
   });
 
