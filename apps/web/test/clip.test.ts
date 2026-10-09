@@ -64,3 +64,22 @@ describe('the Iris print', () => {
     expect(printListing({ ...v, artist: null } as unknown as ConversationView)).toBe('');
   });
 });
+
+describe('clip fixes from review', () => {
+  it('short Chinese lines and one-word lines are never spaced out letter by letter', () => {
+    const p = planClip(episode({ artist: null, turns: [turn(1, '好的。'), turn(2, 'Yes.'), turn(3, 'Fair point, really.')] }));
+    expect(p.lines.map(l => l.spaced)).toEqual([false, false, true]);
+  });
+
+  it('asks for music only when the browser can record sound with the video', async () => {
+    const { clipFormat } = await import('../src/lib/clip');
+    const g = globalThis as { MediaRecorder?: unknown };
+    g.MediaRecorder = { isTypeSupported: (m: string) => m === 'video/webm' };
+    try {
+      expect(clipFormat(true)).toBeNull();
+      expect(clipFormat(false)).toEqual({ mime: 'video/webm', ext: 'webm' });
+      g.MediaRecorder = { isTypeSupported: (m: string) => m === 'video/webm;codecs=vp9,opus' || m === 'video/webm' };
+      expect(clipFormat(true)).toEqual({ mime: 'video/webm;codecs=vp9,opus', ext: 'webm' });
+    } finally { delete g.MediaRecorder; }
+  });
+});

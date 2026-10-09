@@ -106,6 +106,8 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
   const sp = view.speakers;
   const st = view.run?.state ?? 'idle';
   const lastSeq = view.turns.reduce((m, t) => Math.max(m, t.seq), 0);
+  // Only the reactions change, so a live update that arrived meanwhile is never overwritten.
+  const setReactions = (r: NonNullable<ConversationView['reactions']>) => setView(v => (v ? { ...v, reactions: r } : v));
   // Reactions land on the line being played, else the last line said (a line still being written isn't saved yet).
   const reactSeq = play.state !== 'idle' && play.seq ? play.seq : lastSeq || null;
   const failedSeq = st === 'failed' ? lastSeq + 1 : null;
@@ -291,7 +293,7 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
             )}
             {onAir && <button className="btn sm leave-air" onClick={leaveAir}>Leave On air</button>}
           </div>
-          {view.turns.length > 0 && <ReactionBar view={view} seq={reactSeq} setView={setView} toast={toast} />}
+          {view.turns.length > 0 && <ReactionBar view={view} seq={reactSeq} onReactions={setReactions} toast={toast} />}
           {view.brief && <details className="brief stage-brief"><summary>Today's brief · {view.brief.sources.join(', ')}</summary><BriefBox brief={view.brief} /></details>}
           <TurnRail turns={view.turns} liveSeq={live?.seq ?? null} failedSeq={failedSeq} speakers={sp} length={view.length}
             branchSeq={view.branchSeq} cueSeqs={view.interventions.filter(c => c.status === 'queued').map(c => c.appliesBeforeSeq)} />
@@ -310,7 +312,7 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
         {startError && <div className="banner" role="alert"><span><b>Couldn't start.</b> {startError}</span><button className="btn sm ghost" onClick={() => setStartError(null)}>Dismiss</button></div>}
 
         {tab === 'listen' && <ListenView view={view} play={play} rate={prefs.rate} setRate={r => update({ rate: r })} />}
-        {tab === 'listen' && view.turns.length > 0 && <ReactionBar view={view} seq={reactSeq} setView={setView} toast={toast} />}
+        {tab === 'listen' && view.turns.length > 0 && <ReactionBar view={view} seq={reactSeq} onReactions={setReactions} toast={toast} />}
         {tab === 'read' && transcript}
         {tab === 'watch' && view.turns.length > 0 && (
           <p className="hint tab-hint">The full transcript, Iris's sketch and the episode kit are on <a href={`#/studio/${id}/read`}>Read</a>. On your phone, <a href={`#/studio/${id}/listen`}>Listen</a> plays it like a podcast.</p>

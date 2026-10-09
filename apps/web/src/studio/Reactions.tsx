@@ -9,7 +9,7 @@ type Float = { id: number; emoji: string; x: number };
  * React while you listen: tap an emoji and it floats up, saved on the line being said (or the last
  * line). Free, no model request. Iris reads them when she picks the moment to draw.
  */
-export function ReactionBar({ view, seq, setView, toast }: { view: ConversationView; seq: number | null; setView: (v: ConversationView) => void; toast: (m: string) => void }) {
+export function ReactionBar({ view, seq, onReactions, toast }: { view: ConversationView; seq: number | null; onReactions: (r: NonNullable<ConversationView['reactions']>) => void; toast: (m: string) => void }) {
   const [floats, setFloats] = useState<Float[]>([]);
   const next = useRef(0);
   const target = seq ?? view.turns[view.turns.length - 1]?.seq ?? null;
@@ -22,7 +22,7 @@ export function ReactionBar({ view, seq, setView, toast }: { view: ConversationV
     window.dispatchEvent(new CustomEvent(REACT_EVENT, { detail: { kind } }));
     try {
       const r = await api.react(view.id, target, kind);
-      setView({ ...view, reactions: r.reactions });
+      onReactions(r.reactions);
     } catch (e) { toast((e as Error).message); }
   };
   return (

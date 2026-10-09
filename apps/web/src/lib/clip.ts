@@ -17,7 +17,7 @@ import { C, loadImage, SAY, TAG, UI, wrap } from './poster';
 
 export const CLIP_W = 720, CLIP_H = 1280, CLIP_FPS = 30;
 
-export type ClipLine = { seq: number; speakerId: SpeakerId; job: string; tokens: string[]; start: number; end: number };
+export type ClipLine = { seq: number; speakerId: SpeakerId; job: string; tokens: string[]; spaced: boolean; start: number; end: number };
 export type ClipPlan = {
   intro: { start: number; end: number };
   lines: ClipLine[];
@@ -55,9 +55,10 @@ export function planClip(v: ConversationView): ClipPlan {
   let t = 0;
   const intro = { start: t, end: (t += 3.5) };
   const lines = picked.map(turn => {
-    const tokens = tokensOf(clipText(turn.text));
-    const read = Math.min(10, Math.max(3.5, wordsIn(tokens.join(' ')) / 2.7 + 1));
-    return { seq: turn.seq, speakerId: turn.speakerId, job: turn.objective, tokens, start: t, end: (t += read) };
+    const text = clipText(turn.text);
+    const tokens = tokensOf(text);
+    const read = Math.min(10, Math.max(3.5, wordsIn(text) / 2.7 + 1));
+    return { seq: turn.seq, speakerId: turn.speakerId, job: turn.objective, tokens, spaced: / /.test(text.trim()) || tokens.length < 2, start: t, end: (t += read) };
   });
   const m = mindChange(v.turns);
   const meter = [m.A.start, m.A.end, m.B.start, m.B.end].every(x => x != null) ? { start: t, end: (t += 4.5) } : null;
@@ -217,7 +218,8 @@ export function drawFrame(ctx: CanvasRenderingContext2D, v: ConversationView, pl
     // Captions: the words said so far bright, the rest dim.
     const p = (t - line.start) / (line.end - line.start - 0.4);
     const lit = Math.ceil(Math.min(1, Math.max(0, p)) * line.tokens.length);
-    const joiner = line.tokens.every(x => [...x].length === 1) && line.tokens.length > 6 ? '' : ' ';
+    // Spaced languages light up word by word; Chinese and Japanese character by character, with no gaps.
+    const joiner = line.spaced ? ' ' : '';
     ctx.font = `600 40px ${SAY}`;
     const rows = wrap(ctx, line.tokens.join(joiner === '' ? '​' : ' '), CLIP_W - 112, 6).map(r => r.replace(/​/g, ''));
     let count = 0;
@@ -308,7 +310,10 @@ export function drawFrame(ctx: CanvasRenderingContext2D, v: ConversationView, pl
 export function clipFormat(audio = false): { mime: string; ext: string } | null {
   if (typeof MediaRecorder === 'undefined') return null;
   const withAudio = [['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'mp4'], ['video/mp4;codecs=avc1,opus', 'mp4'], ['video/webm;codecs=vp9,opus', 'webm'], ['video/webm;codecs=vp8,opus', 'webm']] as const;
-  if (audio) for (const [mime, ext] of withAudio) if (MediaRecorder.isTypeSupported(mime)) return { mime, ext };
+  if (audio) {
+    for (const [mime, ext] of withAudio) if (MediaRecorder.isTypeSupported(mime)) return { mime, ext };
+    return null;
+  }
   for (const [mime, ext] of [['video/mp4;codecs=avc1.42E01E', 'mp4'], ['video/mp4;codecs=avc1', 'mp4'], ['video/mp4', 'mp4'], ['video/webm;codecs=vp9', 'webm'], ['video/webm;codecs=vp8', 'webm'], ['video/webm', 'webm']] as const) {
     if (MediaRecorder.isTypeSupported(mime)) return { mime, ext };
   }
@@ -327,47 +332,71 @@ export async function recordClip(v: ConversationView, canvas: HTMLCanvasElement,
   await Promise.all([`600 52px ${SAY}`, `italic 30px ${SAY}`, `700 28px ${UI}`, `18px ${TAG}`].map(f => document.fonts?.load(f).catch(() => {})));
   const plan = planClip(v);
   const assets = await loadClipAssets(v, opts.photos);
-  canvas.width = CLIP_W; canvas.height = CLIP_H;
-  const ctx = canvas.getContext('2d')!;
-  drawFrame(ctx, v, plan, assets, 0);
-  const video = canvas.captureStream(CLIP_FPS);
-  // The music bed goes straight into the file: you hear it when you play the clip, not while it records.
-  let ac: AudioContext | null = null, stopMusic = () => {};
-  const tracks = [...video.getVideoTracks()];
-  if (music) {
-    ac = new Ctx!();
-    await ac.resume().catch(() => {});
-    const dest = ac.createMediaStreamDestination();
-    stopMusic = playMusic(ac, musicPlan(v.id, v.temperature, plan.duration, [plan.meter?.start, plan.art?.start].filter((x): x is number => x != null)), dest);
-    tracks.push(...dest.stream.getAudioTracks());
-  }
-  const stream = new MediaStream(tracks);
-  const rec = new MediaRecorder(stream, { mimeType: format.mime, videoBitsPerSecond: 2_500_000 });
-  const chunks: Blob[] = [];
-  rec.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
-  const done = new Promise<Blob>((resolve, reject) => {
-    rec.onstop = () => resolve(new Blob(chunks, { type: format.mime.split(';')[0] }));
-    rec.onerror = () => reject(new Error('Recording failed. Try again.'));
-  });
-  rec.start(500);
-  const t0 = performance.now();
-  await new Promise<void>((resolve, reject) => {
-    const tick = () => {
-      if (opts.signal?.aborted) { rec.stop(); stopMusic(); void ac?.close(); reject(new Error('Stopped.')); return; }
-      const t = (performance.now() - t0) / 1000;
-      drawFrame(ctx, v, plan, assets, Math.min(t, plan.duration - 0.001));
-      opts.onProgress?.(Math.min(t, plan.duration), plan.duration);
-      if (t >= plan.duration) { resolve(); return; }
+  const photoUrls = Object.values(assets.hosts).map(h => h.photo?.src).filter((u): u is string => !!u?.startsWith('blob:'));
+  let ac: AudioContext | null = null, stopMusic = () => {}, stream: MediaStream | null = null, rec: MediaRecorder | null = null;
+  const cleanUp = () => {
+    if (rec && rec.state !== 'inactive') rec.stop();
+    stopMusic(); stopMusic = () => {};
+    stream?.getTracks().forEach(tr => tr.stop());
+    if (ac && ac.state !== 'closed') void ac.close();
+    photoUrls.forEach(u => URL.revokeObjectURL(u));
+  };
+  try {
+    if (opts.signal?.aborted) throw new Error('Stopped.');
+    canvas.width = CLIP_W; canvas.height = CLIP_H;
+    const ctx = canvas.getContext('2d')!;
+    drawFrame(ctx, v, plan, assets, 0);
+    const tracks = [...canvas.captureStream(CLIP_FPS).getVideoTracks()];
+    // The music bed goes straight into the file: you hear it when you play the clip, not while it records.
+    if (music) {
+      ac = new Ctx!();
+      await ac.resume().catch(() => {});
+      const dest = ac.createMediaStreamDestination();
+      stopMusic = playMusic(ac, musicPlan(v.id, v.temperature, plan.duration, [plan.meter?.start, plan.art?.start].filter((x): x is number => x != null)), dest);
+      tracks.push(...dest.stream.getAudioTracks());
+    }
+    stream = new MediaStream(tracks);
+    const recorder = rec = new MediaRecorder(stream, { mimeType: format.mime, videoBitsPerSecond: 2_500_000 });
+    const chunks: Blob[] = [];
+    recorder.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
+    const done = new Promise<Blob>((resolve, reject) => {
+      recorder.onstop = () => resolve(new Blob(chunks, { type: format.mime.split(';')[0] }));
+      recorder.onerror = () => reject(new Error('Recording failed. Try again.'));
+    });
+    recorder.start(500);
+    const t0 = performance.now();
+    // Real time, frame by frame. Stop ends it at once; so does hiding the tab, because browsers
+    // pause drawing in hidden tabs and the clip would jump.
+    await new Promise<void>((resolve, reject) => {
+      let finished = false;
+      const end = (err?: Error) => {
+        if (finished) return;
+        finished = true;
+        opts.signal?.removeEventListener('abort', onAbort);
+        document.removeEventListener('visibilitychange', onHide);
+        if (err) reject(err); else resolve();
+      };
+      const onAbort = () => end(new Error('Stopped.'));
+      const onHide = () => { if (document.hidden) end(new Error('Recording stopped because the tab was hidden. Keep CrossTalk in front while it records, then try again.')); };
+      opts.signal?.addEventListener('abort', onAbort);
+      document.addEventListener('visibilitychange', onHide);
+      const tick = () => {
+        if (finished) return;
+        try {
+          const t = (performance.now() - t0) / 1000;
+          drawFrame(ctx, v, plan, assets, Math.min(t, plan.duration - 0.001));
+          opts.onProgress?.(Math.min(t, plan.duration), plan.duration);
+          if (t >= plan.duration) { end(); return; }
+          requestAnimationFrame(tick);
+        } catch (e) { end(e instanceof Error ? e : new Error('Recording failed. Try again.')); }
+      };
       requestAnimationFrame(tick);
-    };
-    requestAnimationFrame(tick);
-  });
-  rec.stop();
-  stopMusic();
-  stream.getTracks().forEach(tr => tr.stop());
-  void ac?.close();
-  for (const h of Object.values(assets.hosts)) if (h.photo?.src.startsWith('blob:')) URL.revokeObjectURL(h.photo.src);
-  // Browsers save WebM without its length, so players can't show a timeline; write it in.
-  const blob = await done;
-  return { blob: format.ext === 'webm' ? await fixWebmDuration(blob, plan.duration * 1000, { logger: false }).catch(() => blob) : blob, ext: format.ext };
+    });
+    recorder.stop();
+    const blob = await done;
+    // Browsers save WebM without its length, so players can't show a timeline; write it in.
+    return { blob: format.ext === 'webm' ? await fixWebmDuration(blob, plan.duration * 1000, { logger: false }).catch(() => blob) : blob, ext: format.ext };
+  } finally {
+    cleanUp();
+  }
 }

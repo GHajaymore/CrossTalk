@@ -65,16 +65,18 @@ function ClipTile({ c, toast, photos }: { c: ConversationView; toast: (m: string
   const stop = useRef<AbortController | null>(null);
   useEffect(() => () => { stop.current?.abort(); if (video) URL.revokeObjectURL(video.url); }, [video]);
   const stamp = `${c.artist?.version}|${c.artist?.artStyle}|${c.title}|${c.turns.length}`;
-  useEffect(() => { setVideo(null); setState('idle'); }, [stamp]);
+  // A new drawing or a rename makes the clip out of date; a recording in progress is stopped first.
+  useEffect(() => { stop.current?.abort(); setVideo(null); setState('idle'); }, [stamp]);
   const make = async () => {
     setState('recording');
-    stop.current = new AbortController();
+    const ctl = stop.current = new AbortController();
     try {
       const { recordClip, clipName } = await import('../lib/clip');
-      const { blob, ext } = await recordClip(c, canvas.current!, { photos, music, signal: stop.current.signal, onProgress: (sec, total) => setProgress({ sec, total }) });
+      const { blob, ext } = await recordClip(c, canvas.current!, { photos, music, signal: ctl.signal, onProgress: (sec, total) => { if (!ctl.signal.aborted) setProgress({ sec, total }); } });
+      if (ctl.signal.aborted) return; // left the page, or a newer recording took over
       setVideo({ url: URL.createObjectURL(blob), file: new File([blob], `${clipName(c)}.${ext}`, { type: blob.type }) });
       setState('done');
-    } catch (e) { toast((e as Error).message); setState('idle'); }
+    } catch (e) { if (!ctl.signal.aborted || (e as Error).message !== 'Stopped.') toast((e as Error).message); if (stop.current === ctl) setState('idle'); }
   };
   const canShare = !!video && typeof navigator.canShare === 'function' && navigator.canShare({ files: [video.file] });
   return (

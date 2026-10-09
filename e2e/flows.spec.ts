@@ -444,6 +444,12 @@ test('social clip: recorded on this device while you watch, then a real video to
   const id = await finishedEpisode(page.request);
   await page.goto(`/#/studio/${id}/read`);
   const tile = page.locator('.clip-tile');
+  // Stop part way: back to the start, cleanly.
+  await tile.getByRole('button', { name: 'Make clip' }).click();
+  await expect(tile.getByRole('status')).toContainText(/Recording \d+ of \d+ seconds/);
+  await tile.getByRole('button', { name: 'Stop' }).click();
+  await expect(tile.getByRole('button', { name: 'Make clip' })).toBeVisible();
+  await expect(tile.locator('video.clip-video')).toHaveCount(0);
   await tile.getByRole('button', { name: 'Make clip' }).click();
   await expect(tile.getByRole('status')).toContainText(/Recording \d+ of \d+ seconds/);
   await expect(tile.locator('canvas.clip-canvas')).toBeVisible();
