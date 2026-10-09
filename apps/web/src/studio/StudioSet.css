@@ -105,13 +105,13 @@
 
 /* Photo portraits: over the drawn one, fading in once loaded. Life comes from the same random loop. */
 .set-room{position:absolute;inset:-6px;opacity:.9;filter:blur(3px)}
-/* Eight rooms, dark enough for the name bar: bookshelf, brick, plants, foam, wood booth, study, city dusk, café. */
+/* Eight rooms, dark enough for the name bar: bookshelf, brick, plants, foam, wood booth, lamplit study, city dusk, café. */
 .set-room.r0{background:repeating-linear-gradient(90deg,#3a2a1c 0 14px,#2c2016 14px 18px,#4a3220 18px 30px,#2c2016 30px 34px) 0 30%/100% 40% no-repeat,linear-gradient(180deg,#2a2018,#15110d)}
 .set-room.r1{background:repeating-linear-gradient(0deg,#3b2219 0 10px,#24150f 10px 12px),linear-gradient(180deg,#3b2219,#1a0f0b);background-blend-mode:multiply}
 .set-room.r2{background:radial-gradient(circle at 80% 25%,#e9e3c0 0,#a8b48a 18%,transparent 45%),radial-gradient(ellipse at 10% 70%,#2f5a35 0,transparent 40%),linear-gradient(180deg,#46503f,#1d231b)}
 .set-room.r3{background:radial-gradient(circle at 85% 20%,#3b5fa8 0,transparent 40%),repeating-linear-gradient(45deg,#24272c 0 8px,#1b1d21 8px 16px)}
 .set-room.r4{background:repeating-linear-gradient(90deg,#5a3a1f 0 22px,#4b2f18 22px 24px),linear-gradient(180deg,#5a3a1f,#22160c);background-blend-mode:multiply}
-.set-room.r5{background:linear-gradient(90deg,transparent 60%,#7a5a8a 60% 78%,transparent 78%) 0 18%/100% 34% no-repeat,radial-gradient(circle at 15% 30%,#d8b67a 0,transparent 30%),linear-gradient(180deg,#2c2a30,#141317)}
+.set-room.r5{background:radial-gradient(circle at 15% 30%,#d8b67a 0,transparent 32%),radial-gradient(ellipse 30% 22% at 78% 22%,rgba(185,164,230,.12),transparent 70%),linear-gradient(180deg,#2c2a30,#141317)}
 .set-room.r6{background:radial-gradient(circle at 70% 30%,#f2b25a 0 2px,transparent 3px) 0 0/28px 22px,radial-gradient(circle at 30% 60%,#8ab4f8 0 1.5px,transparent 3px) 0 0/36px 30px,linear-gradient(180deg,#243055,#120f22)}
 .set-room.r7{background:repeating-linear-gradient(90deg,#6b4a2e 0 12px,transparent 12px 26px) 0 22%/100% 28% no-repeat,radial-gradient(circle at 75% 25%,#c7965a 0,transparent 40%),linear-gradient(180deg,#3d2c20,#1a130e)}
 .set-photo{position:absolute;inset:0;opacity:0;transition:opacity .6s ease;overflow:hidden}

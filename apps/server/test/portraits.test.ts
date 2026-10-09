@@ -117,6 +117,15 @@ describe('photo portraits of the invented hosts', () => {
     } finally { await app.close(); }
   });
 
+  it('photos still being made count toward the daily cap', () => {
+    const hang = (() => new Promise(() => {})) as unknown as typeof fetch;
+    const p = new Portraits(new Repo(openDb(':memory:')), hang);
+    const codes = Array.from({ length: PORTRAITS_PER_DAY + 5 }, (_, i) => lookCode(hostTraits({ name: `Host ${i}`, role: 'Teacher', seat: 'A' })));
+    const answers = [...new Set(codes)].map(c => p.check(c));
+    expect(answers.filter(a => a === 'pending')).toHaveLength(PORTRAITS_PER_DAY);
+    expect(answers.filter(a => a === null).length).toBeGreaterThan(0);
+  });
+
   it('asks the free service for one photo at a time, and tries once more when it is busy', async () => {
     let open = 0, most = 0, calls = 0;
     const f = (async () => {

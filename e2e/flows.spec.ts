@@ -60,6 +60,27 @@ test('language: a host from Mexico puts Spanish first; the episode greets in Spa
   await page.getByRole('group', { name: 'Length' }).getByRole('button', { name: /Normal/ }).click();
 });
 
+test('host photos: "still being made" is waited for, then the photo shows and moves', async ({ page }) => {
+  // A real photo can't be fetched here, so the server's answers are played back: two 202s, then a picture.
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
+  const asked = new Map<string, number>();
+  await page.route('**/api/portraits/*', route => {
+    const n = (asked.get(route.request().url()) ?? 0) + 1;
+    asked.set(route.request().url(), n);
+    return n <= 2 ? route.fulfill({ status: 202, contentType: 'application/json', body: '{"pending":true}' })
+      : route.fulfill({ status: 200, contentType: 'image/png', body: png });
+  });
+  await page.goto('/#/create');
+  await expect(page.locator('.set-photo.ok img')).toHaveCount(2, { timeout: 20_000 });
+  // Typing a name doesn't ask for a photo per keystroke.
+  const before = asked.size;
+  await page.getByRole('region', { name: 'Speaker A' }).getByLabel('Name').pressSequentially('Priyanka', { delay: 40 });
+  await expect.poll(() => asked.size, { timeout: 5000 }).toBe(before + 1);
+  // The photo moves (its tilt and turn change over time).
+  const motion = () => page.locator('.set-photo').first().evaluate(el => getComputedStyle(el).getPropertyValue('--tilt'));
+  await expect.poll(motion, { timeout: 8000 }).not.toBe('');
+});
+
 test('create → run → stop → refresh keeps every finished turn', async ({ page }) => {
   await page.goto('/#/create');
   await page.getByRole('button', { name: /Start recording/ }).click();

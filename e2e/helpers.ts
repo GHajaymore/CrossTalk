@@ -28,3 +28,13 @@ export async function finishedEpisode(request: APIRequestContext, topic = TOPIC)
 }
 
 export const noHorizontalScroll = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth);
+
+/**
+ * A screen has loaded and settled. Not "no network at all": host photos that are still being made are
+ * asked for again every few seconds, so a page can be finished while it waits for one.
+ */
+export async function settled(page: Page) {
+  await page.waitForLoadState('load');
+  await page.locator('#root > *').first().waitFor();
+  await page.waitForTimeout(1200);
+}
