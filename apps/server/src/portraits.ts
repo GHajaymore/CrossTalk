@@ -38,7 +38,8 @@ export class Portraits {
     if (saved) return saved;
     if (this.inFlight.has(code)) return 'pending';
     if (this.now().getTime() - (this.failed.get(code) ?? -Infinity) < FAILED_WAIT_MS) return null;
-    if (this.repo.portraitsMadeOn(this.now().toISOString().slice(0, 10)) >= PORTRAITS_PER_DAY) return null;
+    // Photos still being made count toward the day's cap too.
+    if (this.repo.portraitsMadeOn(this.now().toISOString().slice(0, 10)) + this.inFlight.size >= PORTRAITS_PER_DAY) return null;
     void this.get(code);
     return 'pending';
   }

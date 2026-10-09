@@ -87,7 +87,7 @@ const between = (a: number, b: number) => a + Math.random() * (b - a);
  * toward the speaker and nod along. Heated talk frowns more, calm talk smiles more. Off for
  * reduced motion.
  */
-function useLife(ref: React.RefObject<Element | null>, seat: Seat, mood: Mood) {
+function useLife(ref: React.RefObject<Element | null>, seat: Seat, mood: Mood, restart = '') {
   const moodRef = useRef(mood);
   moodRef.current = mood;
   useEffect(() => {
@@ -124,7 +124,7 @@ function useLife(ref: React.RefObject<Element | null>, seat: Seat, mood: Mood) {
     // Each host starts at their own moment, so the two never move in step.
     timer = window.setTimeout(step, between(0, 1600));
     return () => window.clearTimeout(timer);
-  }, [ref, seat]);
+  }, [ref, seat, restart]);
 }
 
 /** A host's living portrait. Decorative: the name and job are on the name bar beside it. */
@@ -197,7 +197,8 @@ export function HostPortrait(props: PortraitProps & { photo?: boolean }) {
   const [state, setState] = useState<'loading' | 'ok' | 'failed'>('loading');
   const [src, setSrc] = useState<string | null>(null);
   const wrap = useRef<HTMLDivElement>(null);
-  useLife(wrap, props.seat, props.mood ?? 'lively');
+  // The photo's wrapper comes and goes (photos on or off, a failed photo), so its motion restarts with it.
+  useLife(wrap, props.seat, props.mood ?? 'lively', `${!!props.photo}:${state === 'failed'}:${code}`);
   // The server answers at once: the photo, "still being made" (202, ask again in a few seconds), or none.
   useEffect(() => {
     setState('loading'); setSrc(null);
@@ -208,12 +209,20 @@ export function HostPortrait(props: PortraitProps & { photo?: boolean }) {
       try {
         const r = await fetch(`/api/portraits/${code}.jpg`);
         if (stop) return;
-        if (r.ok) { url = URL.createObjectURL(await r.blob()); if (!stop) setSrc(url); return; }
-        if (r.status === 202 && tries.left-- > 0) { timer = window.setTimeout(ask, 4000); return; }
+        // 202 is "ok" too, so it's checked first: the photo is still being made.
+        if (r.status === 202) { if (tries.left-- > 0) { timer = window.setTimeout(ask, 4000); return; } }
+        else if (r.ok && (r.headers.get('content-type') ?? '').startsWith('image/')) {
+          const blob = await r.blob();
+          if (stop) return;
+          url = URL.createObjectURL(blob);
+          setSrc(url);
+          return;
+        }
       } catch { /* offline: the drawn portrait stays */ }
       if (!stop) setState('failed');
     };
-    void ask();
+    // A short pause first, so typing a host's name or job on Create doesn't ask for a photo per keystroke.
+    timer = window.setTimeout(ask, 700);
     return () => { stop = true; window.clearTimeout(timer); if (url) URL.revokeObjectURL(url); };
   }, [code, props.photo]);
   return (

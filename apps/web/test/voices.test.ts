@@ -36,6 +36,9 @@ describe('a voice that fits each host', () => {
     expect(voiceLook(natural('Neerja', 'en-IN'))).toBe('w');
     expect(voiceLook(voice('Daniel', 'en-GB'))).toBe('m');
     expect(voiceLook(voice('Google US English'))).toBeNull();
+    // Accented names count too.
+    expect(voiceLook(voice('Microsoft Álvaro Online (Natural) - Spanish (Spain)', 'es-ES'))).toBe('m');
+    expect(voiceLook(voice('Mónica', 'es-ES'))).toBe('w');
   });
 
   it("gives a woman a woman's voice and a man a man's, from their home when there is one; your pick always wins", () => {

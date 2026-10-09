@@ -1,13 +1,13 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
-import { finishedEpisode } from './helpers';
+import { finishedEpisode, settled } from './helpers';
 
 // No serious or critical WCAG A/AA problems on any screen.
 test('accessibility: every screen passes axe (serious and critical)', async ({ page, request }) => {
   const id = await finishedEpisode(request);
   for (const path of ['/#/create', `/#/studio/${id}/watch`, `/#/studio/${id}/listen`, `/#/studio/${id}/read`, '/#/episodes', '/#/iris', '/#/settings', '/#/control']) {
     await page.goto(path);
-    await page.waitForLoadState('networkidle');
+    await settled(page);
     const { violations } = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
     const bad = violations.filter(v => v.impact === 'serious' || v.impact === 'critical')
       .map(v => `${v.id} (${v.impact}): ${v.nodes.length}× e.g. ${v.nodes[0]?.target.join(' ')}`);

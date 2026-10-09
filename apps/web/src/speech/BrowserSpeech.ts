@@ -70,7 +70,8 @@ const WOMAN_VOICE = /\b(female|woman|samantha|karen|moira|tessa|serena|victoria|
 const MAN_VOICE = /\b(male|man|daniel|alex|fred|aaron|arthur|oliver|thomas|rishi|ravi|guy|ryan|christopher|eric|davis|tony|brian|jorge|diego|juan|carlos|alvaro|[áa]lvaro|raul|pablo|antonio|henri|paul|stefan|conrad|killian|luca|cosimo|keita|ichiro|otoya|injoon|yunxi|yunyang|kangkang|hamed|naayf|prabhat|madhur|hemant|ardi|william|james|liam|george|andrew|roger|steffan|gordon|reed|rocko|eddy|grandpa|ralph|junior|albert|jacques|thierry|giorgio|reinhard|jan|mark|david)\b/i;
 /** 'w' or 'm' when a voice's name says so, else null. */
 export function voiceLook(v: SpeechSynthesisVoice): 'w' | 'm' | null {
-  const n = v.name.replace(/microsoft|google|online|natural|apple|enhanced|premium/gi, ' ');
+  // Accents are taken off first ("Álvaro" → "Alvaro"), so word edges work in every language.
+  const n = v.name.normalize('NFD').replace(/\p{M}/gu, '').replace(/microsoft|google|online|natural|apple|enhanced|premium/gi, ' ');
   // "Female" and "Male" both contain "male"; check the woman's list first.
   return WOMAN_VOICE.test(n) ? 'w' : MAN_VOICE.test(n) ? 'm' : null;
 }
