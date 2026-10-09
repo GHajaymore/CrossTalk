@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ARTIST, artSeed, episodeLabel, PAINT_STYLE_INFO, paintSvg, type Artwork, type GalleryEpisode } from '@crosstalk/shared';
 import { musicPlan, playMusic } from '../lib/clipMusic';
 import { sketchSrc } from './ArtistCard';
+import { IrisPicture } from './IrisPicture';
 
 const SLIDE_S = 8;
 
@@ -19,7 +20,7 @@ export function slidesOf(gallery: GalleryEpisode[]): Slide[] {
  * Iris's gallery as an exhibition: one piece at a time, slowly drifting closer, with her title and
  * the moment it came from, to a soft score composed on the device. Esc closes; arrows step; space pauses.
  */
-export function Slideshow({ gallery, onClose }: { gallery: GalleryEpisode[]; onClose: () => void }) {
+export function Slideshow({ gallery, onClose, pictures = false }: { gallery: GalleryEpisode[]; onClose: () => void; pictures?: boolean }) {
   const slides = slidesOf(gallery);
   const [i, setI] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -64,10 +65,14 @@ export function Slideshow({ gallery, onClose }: { gallery: GalleryEpisode[]; onC
   return (
     <div className="slideshow" role="dialog" aria-modal="true" aria-label={`${ARTIST.name}'s gallery, piece ${i + 1} of ${n}`} ref={box}>
       <div className="ss-stage">
-        {slides.map((x, k) => (
-          <img key={x.a.id} src={x.src} alt={k === i ? `${ARTIST.name}'s ${PAINT_STYLE_INFO[x.a.style].name.toLowerCase()}: ${x.a.title}` : ''}
-            className={`ss-art${k === i ? ' on' : ''}${paused ? ' still' : ''}`} aria-hidden={k !== i} />
-        ))}
+        {slides.map((x, k) => {
+          const cls = `ss-art${k === i ? ' on' : ''}${paused ? ' still' : ''}`;
+          const alt = k === i ? `${ARTIST.name}'s ${PAINT_STYLE_INFO[x.a.style].name.toLowerCase()}: ${x.a.title}` : '';
+          // Her full painting where there is one (fetched only once its slide is near).
+          return x.a.style === 'picture' && pictures && Math.abs(k - i) <= 1
+            ? <span key={x.a.id} className={cls} aria-hidden={k !== i}><IrisPicture conversationId={x.g.conversationId} version={x.a.version} fallback={x.src} alt={alt} /></span>
+            : <img key={x.a.id} src={x.src} alt={alt} className={cls} aria-hidden={k !== i} />;
+        })}
       </div>
       <div className="ss-caption" aria-live="polite">
         <span className="tag">{episodeLabel(s.g.episode)}{s.g.round > 1 ? ` · round ${s.g.round}` : ''} · {PAINT_STYLE_INFO[s.a.style].name}</span>

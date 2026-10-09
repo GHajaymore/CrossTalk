@@ -53,7 +53,7 @@ describe('Iris, the Artist', () => {
     await iris.listen(id);
     await iris.listen(id); // a second call does nothing: once per completed run
     const a = repo.view(id)!.artist!;
-    expect(a).toMatchObject({ state: 'done', modelId: 'mock/iris-v1', artTitle: 'The Empty Friday', artStyle: 'dreamscape', version: 1, error: null });
+    expect(a).toMatchObject({ state: 'done', modelId: 'mock/iris-v1', artTitle: 'The Empty Friday', artStyle: 'picture', version: 1, error: null });
     expect(a.sketchSvg).toMatch(/^<svg /);
     expect(a.caption.split(/\s+/).length).toBeLessThanOrEqual(21);
     expect(repo.listTurns(id).find(t => t.seq === a.momentSeq)).toBeTruthy();

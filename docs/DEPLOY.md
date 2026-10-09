@@ -121,3 +121,5 @@ The hosts' photo-real faces are made by Pollinations, a free image service with 
 Each face is made once, saved with your episodes and reused, so only a few are ever requested. To
 keep everything on your server and use the drawn portraits instead, add `PORTRAITS` = `off` in
 Render's **Environment** tab.
+
+Iris's full paintings come from the same free service. To keep her to line art, add `IRIS_PICTURES` = `off`.

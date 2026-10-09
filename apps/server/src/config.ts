@@ -74,6 +74,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
     scoutFeeds: str(env.SCOUT_RSS_FEEDS).split(',').map(x => x.trim()).filter(x => /^https?:\/\//.test(x)),
     // Photo portraits of the hosts (a free image service). PORTRAITS=off keeps the drawn ones only.
     portraits: str(env.PORTRAITS).toLowerCase() !== 'off',
+    irisPictures: str(env.IRIS_PICTURES).toLowerCase() !== 'off',
     problems,
   };
 }

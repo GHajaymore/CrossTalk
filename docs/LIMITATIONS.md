@@ -71,6 +71,10 @@ CrossTalk is a prototype for one person. These are the honest gaps.
   sample script. The topic stays as you typed it. Host roles stay in English (each face's age and clothes are read
   from the job title). The voice is your device's voice for that language; if it has none, the turns
   still show as text and the Voices panel says where to get one free.
+- **Iris's Picture comes from a free image service** that sometimes ignores parts of her brief, can
+  take up to a minute, and may be busy; her line art shows meanwhile and stays if it fails. Real
+  pictures can't be checked from the build environment (no outside network), so the tests use a
+  stand-in. At most 30 new paintings a day.
 - **Iris's home styles are broad traditions drawn around her own lines** (ink wash, folk colour, tile
   pattern, miniature, woven border), not reproductions of any artist or specific artwork, and only for
   hosts from those regions. Europe, North America and Oceania use her usual styles.

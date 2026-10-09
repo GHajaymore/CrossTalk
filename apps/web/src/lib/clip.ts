@@ -11,6 +11,7 @@ import {
   type ConversationView, type SpeakerId,
 } from '@crosstalk/shared';
 import { Portrait } from '../studio/Portrait';
+import { readyPicture } from './usePolledImage';
 import fixWebmDuration from 'fix-webm-duration';
 import { musicPlan, playMusic, type MusicPlan } from './clipMusic';
 import { C, loadImage, SAY, TAG, UI, wrap } from './poster';
@@ -102,8 +103,14 @@ export async function loadClipAssets(v: ConversationView, photos: boolean): Prom
     return { photo, ...drawn };
   };
   const svg = artworkSvg(v.artist);
-  const [A, B, art] = await Promise.all([host('A'), host('B'), svg ? loadImage(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`).catch(() => null) : Promise.resolve(null)]);
-  return { hosts: { A, B }, art };
+  // Her full painting when it's ready; her line art otherwise.
+  const art = async () => {
+    const pic = await readyPicture(v);
+    if (pic) return loadImage(URL.createObjectURL(pic)).catch(() => null);
+    return svg ? loadImage(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`).catch(() => null) : null;
+  };
+  const [A, B, artImg] = await Promise.all([host('A'), host('B'), art()]);
+  return { hosts: { A, B }, art: artImg };
 }
 
 const ease = (x: number) => (x <= 0 ? 0 : x >= 1 ? 1 : 1 - (1 - x) ** 3);
@@ -407,7 +414,7 @@ export async function recordFrames(r: FrameRecording) {
 }
 
 /** Blob URLs of host photos, to let go of once a recording ends. */
-export const assetUrls = (a: ClipAssets) => Object.values(a.hosts).map(h => h.photo?.src).filter((u): u is string => !!u?.startsWith('blob:'));
+export const assetUrls = (a: ClipAssets) => [...Object.values(a.hosts).map(h => h.photo?.src), a.art?.src].filter((u): u is string => !!u?.startsWith('blob:'));
 
 /** Records one episode's clip. Resolves with the video. Keep the tab in front while it records. */
 export async function recordClip(v: ConversationView, canvas: HTMLCanvasElement, opts: { photos: boolean; music?: boolean; onProgress?: (sec: number, total: number) => void; signal?: AbortSignal }) {

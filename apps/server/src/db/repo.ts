@@ -309,6 +309,23 @@ export class Repo {
   savePortrait(code: string, mime: string, data: Buffer, at: string) {
     this.db.prepare('INSERT OR REPLACE INTO portraits (code, mime, data, created_at) VALUES (?, ?, ?, ?)').run(code, mime, data, at);
   }
+  /** What Iris wrote for one drawing version: her painting brief, title and quote (null if there's no such drawing). */
+  artworkBrief(conversationId: string, version: number): { imagePrompt: string; title: string; caption: string } | null {
+    const r = this.db.prepare(`SELECT image_prompt, art_title, caption FROM artworks WHERE conversation_id = ? AND version = ? ORDER BY id LIMIT 1`).get(conversationId, version) as { image_prompt: string; art_title: string; caption: string } | undefined;
+    if (r) return { imagePrompt: r.image_prompt, title: r.art_title, caption: r.caption };
+    const a = this.getArtist(conversationId);
+    return a && a.state === 'done' && a.version === version ? { imagePrompt: a.imagePrompt, title: a.artTitle, caption: a.caption } : null;
+  }
+  getPicture(conversationId: string, version: number): { mime: string; data: Buffer } | null {
+    return (this.db.prepare('SELECT mime, data FROM iris_pictures WHERE conversation_id = ? AND version = ?').get(conversationId, version) as { mime: string; data: Buffer } | undefined) ?? null;
+  }
+  savePicture(conversationId: string, version: number, mime: string, data: Buffer, at: string) {
+    this.db.prepare('INSERT OR REPLACE INTO iris_pictures (conversation_id, version, mime, data, created_at) VALUES (?, ?, ?, ?, ?)').run(conversationId, version, mime, data, at);
+  }
+  picturesMadeOn(day: string): number {
+    return (this.db.prepare("SELECT COUNT(*) AS n FROM iris_pictures WHERE substr(created_at, 1, 10) = ?").get(day) as { n: number }).n;
+  }
+
   portraitsMadeOn(day: string): number {
     return (this.db.prepare("SELECT COUNT(*) AS n FROM portraits WHERE substr(created_at, 1, 10) = ?").get(day) as { n: number }).n;
   }
@@ -325,8 +342,8 @@ export class Repo {
   /** Saves a finished drawing (in its current style) to the gallery, once per version and style. */
   private keepArtwork(a: ArtistNotes, at: string) {
     if (a.state !== 'done' || !a.sketchSvg) return;
-    this.db.prepare(`INSERT OR IGNORE INTO artworks (conversation_id, version, art_style, art_title, caption, moment_seq, sketch_svg, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).run(a.conversationId, a.version, a.artStyle, a.artTitle, a.caption, a.momentSeq, a.sketchSvg, at);
+    this.db.prepare(`INSERT OR IGNORE INTO artworks (conversation_id, version, art_style, art_title, caption, moment_seq, sketch_svg, image_prompt, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(a.conversationId, a.version, a.artStyle, a.artTitle, a.caption, a.momentSeq, a.sketchSvg, a.imagePrompt ?? '', at);
   }
 
   /** Iris's gallery: every episode she has drawn, newest work first, with all its versions and styles. */

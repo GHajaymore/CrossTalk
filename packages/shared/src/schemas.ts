@@ -370,6 +370,8 @@ export type AppConfig = {
   storage: 'local' | 'backed-up' | 'forgets';
   /** Whether hosts get photo portraits (otherwise the drawn ones). */
   portraits: boolean;
+  /** Iris paints full pictures with the free image service (IRIS_PICTURES=off keeps her to line art). */
+  irisPictures: boolean;
 };
 
 export const MockSettings = z.object({

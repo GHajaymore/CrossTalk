@@ -6,7 +6,7 @@ import { ART_STYLES, cleanStyles, episodeStyles, sentencesOf, wordsIn, defaultPa
 import type { Repo } from '../db/repo';
 import { buildIrisPrompt } from './prompt';
 import { MOCK_LANGS } from '../providers/mockScriptsLocal';
-import { mockSketch } from './mockSketches';
+import { mockSketch, SCENE_BRIEFS, sceneFor } from './mockSketches';
 import { safeSvg } from './svgSafety';
 
 /** Whatever answers Iris's request: a model, or the scripted mock. Returns the raw reply text. */
@@ -52,6 +52,8 @@ export type IrisOptions = {
   /** Real mode: settings and free-model check for her model. Returns why she can't draw, or null. */
   preflight?: () => Promise<string | null>;
   onChange: (conversationId: string) => void;
+  /** Whether she may paint full pictures (the free image service is on). */
+  pictures?: boolean;
 };
 
 export class Iris {
@@ -102,7 +104,8 @@ export class Iris {
     const feedback = this.repo.listFeedback(10);
     // Only the styles the listener has ticked on the Iris page, plus a style from a host's home when one
     // fits and those are on; within them, their taste, then her own feel.
-    const allowed = episodeStyles(cleanStyles(this.repo.getSetting<PaintStyle[]>('iris_styles')), view.speakers, this.repo.getSetting<boolean>('iris_home_styles') !== false);
+    const allowed = episodeStyles(cleanStyles(this.repo.getSetting<PaintStyle[]>('iris_styles')), view.speakers, this.repo.getSetting<boolean>('iris_home_styles') !== false)
+      .filter(s => s !== 'picture' || this.opts.pictures !== false);
     const learned = favouriteStyle(this.repo.listenerStyles());
     const taste = learned && allowed.includes(learned) ? learned : null;
     let raw: string;
@@ -137,7 +140,7 @@ export class Iris {
   }
 }
 
-const PAINT_STYLE_NAME: Record<PaintStyle, string> = { sketch: 'sketches', painting: 'paintings', dreamscape: 'dreamscapes', inkwash: 'ink washes', folk: 'folk-colour pieces', tiles: 'tile patterns', miniature: 'miniatures', woven: 'woven borders' };
+const PAINT_STYLE_NAME: Record<PaintStyle, string> = { picture: 'full paintings', sketch: 'sketches', painting: 'paintings', dreamscape: 'dreamscapes', inkwash: 'ink washes', folk: 'folk-colour pieces', tiles: 'tile patterns', miniature: 'miniatures', woven: 'woven borders' };
 
 /** Mock Iris: no model call. Picks a moment, writes a perspective, draws a scene, and shows she read your notes. */
 export const mockArtist: ArtistBackend = {
@@ -172,6 +175,7 @@ export const mockArtist: ArtistBackend = {
       L?.question ?? `My question for you: what would it take to change your mind?`,
     ].filter(Boolean).join(' ');
     sketch.title = L?.titles[sketch.title] ?? sketch.title;
-    return JSON.stringify({ perspective, momentSeq: pick.seq, caption: firstSentence(pick.text), artTitle: sketch.title, sketchSvg: sketch.svg, imagePrompt: `A painted scene of: ${firstSentence(pick.text)}` });
+    const briefs = SCENE_BRIEFS[sceneFor(c.topic)];
+    return JSON.stringify({ perspective, momentSeq: pick.seq, caption: firstSentence(pick.text), artTitle: sketch.title, sketchSvg: sketch.svg, imagePrompt: briefs[(version - 1) % briefs.length] });
   },
 };

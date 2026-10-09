@@ -3,6 +3,7 @@ import { ARTIST, artSeed, episodeLabel, HOME_STYLES, PAINT_STYLE_INFO, PAINT_STY
 import { api } from '../api/client';
 import { sketchSrc } from '../studio/ArtistCard';
 import { Footer } from './Footer';
+import { IrisPicture } from '../studio/IrisPicture';
 import { Slideshow } from '../studio/Slideshow';
 
 // A tiny scene to show each home style: two figures at a table under a lamp.
@@ -59,9 +60,9 @@ export function IrisPage({ config }: { config: AppConfig | null }) {
       <section className="sec"><div className="sec-head"><h2>Gallery</h2>
         {!!gallery?.length && <button className="btn sm" onClick={() => setShow(true)}>▶ Play the gallery</button>}</div>
         <p className="hint">Everything she has made: each drawing, each time you asked her again, and each style you chose. Play it as a slow exhibition, with music, on any screen.</p>
-        {show && gallery && <Slideshow gallery={gallery} onClose={() => setShow(false)} />}
+        {show && gallery && <Slideshow gallery={gallery} pictures={!!config?.irisPictures} onClose={() => setShow(false)} />}
         {!gallery ? <p className="hint">Loading…</p> : !gallery.length ? <p className="hint">No drawings yet. Finish an episode and Iris paints it.</p> : (
-          <ul className="gallery">{gallery.map(g => <GalleryCard key={g.conversationId} g={g} />)}</ul>
+          <ul className="gallery">{gallery.map(g => <GalleryCard key={g.conversationId} g={g} pictures={!!config?.irisPictures} />)}</ul>
         )}
       </section>
 
@@ -70,18 +71,17 @@ export function IrisPage({ config }: { config: AppConfig | null }) {
         <div role="group" aria-label="Styles Iris may use"><ul className="iris-styles">
           {PAINT_STYLES.map(s => {
             const on = !!styles?.includes(s);
+            const off = s === 'picture' && config?.irisPictures === false;
             return (
               <li key={s} className={on ? 'on' : undefined}>
-                <button className="style-pick" aria-pressed={on} disabled={!styles} onClick={() => toggle(s)}>
+                <button className="style-pick" aria-pressed={on && !off} disabled={!styles || off} onClick={() => toggle(s)}>
                   <span className="tick" aria-hidden="true">{on ? '✓' : ''}</span>
                   <b>{PAINT_STYLE_INFO[s].name}</b>
-                  <span className="hint">{PAINT_STYLE_INFO[s].what}</span>
+                  <span className="hint">{off ? 'Switched off on this server (IRIS_PICTURES=off).' : PAINT_STYLE_INFO[s].what}{s === 'picture' && !off ? '. Made by a free image service; her line art shows until it’s ready.' : ''}</span>
                 </button>
               </li>
             );
           })}
-          <li><div className="style-pick off"><span className="tick" aria-hidden="true" /><b>Picture <span className="soon">Soon</span></b>
-            <span className="hint">A full illustration from her saved picture prompt. Needs an image model, and none is free yet.</span></div></li>
         </ul></div>
         <div className={`home-styles${homeOn ? ' on' : ''}`}>
           <button className="style-pick" aria-pressed={!!homeOn} disabled={homeOn === null}
@@ -95,7 +95,7 @@ export function IrisPage({ config }: { config: AppConfig | null }) {
           </ul>
         </div>
         {styleMsg && <p className="hint" role="status">{styleMsg}</p>}
-        <p className="hint">She paints in your browser from her own lines: no image model, nothing sent anywhere, always free.</p>
+        <p className="hint">Her Picture is painted by a free image service (no key, no cost) from her own art brief; only the brief is sent, never names. Every other style is drawn in your browser from her own lines.</p>
       </section>
 
       <section className="sec"><h2>What Iris has learned</h2>
@@ -117,14 +117,16 @@ export function IrisPage({ config }: { config: AppConfig | null }) {
 }
 
 /** One episode on the wall: what's showing now, with every other version one tap away. */
-function GalleryCard({ g }: { g: GalleryEpisode }) {
+function GalleryCard({ g, pictures }: { g: GalleryEpisode; pictures: boolean }) {
   const now = g.artworks.find(a => g.current && a.version === g.current.version && a.style === g.current.style) ?? g.artworks[0];
   const [shown, setShown] = useState<Artwork>(now);
   const label = (a: Artwork) => `${PAINT_STYLE_INFO[a.style].name}${g.artworks.some(x => x.version !== a.version) ? ` · v${a.version}` : ''}`;
   return (
     <li className="g-card">
       <a className="g-link" href={`#/studio/${g.conversationId}/read`}>
-        <img src={art(g, shown)} alt={`Iris's ${PAINT_STYLE_INFO[shown.style].name.toLowerCase()}: ${shown.title}`} />
+        {shown.style === 'picture' && pictures
+          ? <IrisPicture key={shown.id} conversationId={g.conversationId} version={shown.version} fallback={art(g, shown)} alt={`Iris's picture: ${shown.title}`} />
+          : <img src={art(g, shown)} alt={`Iris's ${PAINT_STYLE_INFO[shown.style].name.toLowerCase()}: ${shown.title}`} />}
         <span className="g-title">“{shown.title}”</span>
         <span className="g-quote">“{shown.caption}”</span>
         <span className="tag">{episodeLabel(g.episode)}{g.round > 1 ? ` · round ${g.round}` : ''} · turn {shown.momentSeq} · {label(shown)}</span>

@@ -290,4 +290,16 @@ export const MIGRATIONS: string[] = [
   );
   CREATE INDEX reactions_by_conversation ON reactions (conversation_id, seq);
   `,
+  `
+  -- Iris's real paintings: one per drawing version, made by a free image service from her own brief.
+  ALTER TABLE artworks ADD COLUMN image_prompt TEXT NOT NULL DEFAULT '';
+  CREATE TABLE iris_pictures (
+    conversation_id  TEXT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+    version          INTEGER NOT NULL,
+    mime             TEXT NOT NULL,
+    data             BLOB NOT NULL,
+    created_at       TEXT NOT NULL,
+    PRIMARY KEY (conversation_id, version)
+  );
+  `,
 ];
