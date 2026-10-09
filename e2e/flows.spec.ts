@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { fastMock, finishedEpisode } from './helpers';
+import { draft, fastMock, finishedEpisode } from './helpers';
 
 test.beforeEach(async ({ request }) => { await fastMock(request); });
 
@@ -382,6 +382,27 @@ test('episodes: rename, then delete with confirmation', async ({ page, request }
   await renamed.getByRole('button', { name: 'Delete for good' }).click();
   await expect(page.getByRole('link', { name: 'Car-free downtowns' })).toHaveCount(0);
   expect((await request.get(`/api/conversations/${id}`)).status()).toBe(404);
+});
+
+test('episodes: unfinished ones are hidden until asked for, and can be cleared in one go', async ({ page, request }) => {
+  const done = await finishedEpisode(request, 'Should cities ban cars from downtown?');
+  await fastMock(request);
+  const stopped = (await (await request.post('/api/conversations', { data: draft('A topic we stopped early') })).json()).id as string;
+  await request.post(`/api/conversations/${stopped}/start`);
+  await request.post(`/api/conversations/${stopped}/stop`);
+  await expect.poll(async () => (await (await request.get(`/api/conversations/${stopped}`)).json()).run?.state).toBe('cancelled');
+  await page.goto('/#/episodes');
+  await expect(page.locator(`a[href="#/studio/${done}/read"]`).first()).toBeVisible();
+  await expect(page.locator(`a[href="#/studio/${stopped}/read"]`)).toHaveCount(0);
+  const show = page.getByLabel(/Show unfinished \(\d+\)/);
+  await show.check();
+  await expect(page.locator(`a[href="#/studio/${stopped}/read"]`).first()).toBeVisible();
+  await page.getByRole('button', { name: 'Delete all unfinished' }).click();
+  await expect(page.getByRole('alertdialog', { name: 'Delete unfinished episodes?' })).toContainText("can't be undone");
+  await page.getByRole('button', { name: 'Delete them' }).click();
+  await expect(page.locator(`a[href="#/studio/${stopped}/read"]`)).toHaveCount(0);
+  expect((await request.get(`/api/conversations/${stopped}`)).status()).toBe(404);
+  expect((await request.get(`/api/conversations/${done}`)).status()).toBe(200);
 });
 
 test('keyboard only: the turn menu and the branch dialog', async ({ page, request }) => {

@@ -386,6 +386,8 @@ label.fld{display:grid;gap:6px}
 .lib-title:hover{text-decoration:underline}
 .thumb-empty{width:132px;aspect-ratio:5/3;display:grid;place-items:center;background:var(--set-bg);color:var(--cue);font-size:20px}
 .thumb-empty small{font-size:11px;color:var(--muted);text-align:center;padding:0 8px;line-height:1.3}
+.lib-unfinished{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin:4px 0 10px}
+.lib-unfinished .lib-confirm{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .lib-why{margin:6px 0 0;font-size:13px;color:var(--muted)}
 .lib-why b{color:var(--text)}
 .lib-actions{justify-content:flex-end}

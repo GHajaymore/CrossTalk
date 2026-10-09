@@ -7,12 +7,18 @@ import { Footer } from './Footer';
 import { RecapPanel } from './Recap';
 
 const STATUS: Record<string, string> = { idle: 'ready', generating: 'recording', paused: 'paused', completed: 'finished', cancelled: 'stopped', failed: 'failed' };
+/** Stopped, failed or paused before the end. Hidden by default; still there to retry. */
+const unfinished = (c: ConversationSummary) => c.run?.state !== 'completed' && c.run?.state !== 'generating';
+const SHOW_KEY = 'ct_show_unfinished';
 const when = (iso: string) => new Date(iso).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 
 /** Every saved episode, each with its branches nested underneath. Open, rename, export or delete. */
 export function Episodes({ config, toast }: { config: AppConfig | null; toast: (m: string) => void }) {
   const [items, setItems] = useState<ConversationSummary[] | null>(null);
   const [q, setQ] = useState('');
+  const [showAll, setShowAll] = useState(() => { try { return localStorage.getItem(SHOW_KEY) === '1'; } catch { return false; } });
+  const [sweep, setSweep] = useState<'idle' | 'ask' | 'busy'>('idle');
+  const toggleAll = (on: boolean) => { setShowAll(on); try { localStorage.setItem(SHOW_KEY, on ? '1' : '0'); } catch { /* private window */ } };
   const load = () => api.list().then(setItems).catch(() => setItems([]));
   useEffect(() => { void load(); }, []);
 
@@ -23,12 +29,26 @@ export function Episodes({ config, toast }: { config: AppConfig | null; toast: (
   const childrenOf = (id: string) => kids.get(id) ?? [];
   // Show a branch under its original; a match anywhere in a family shows the whole family.
   const family = (c: ConversationSummary): boolean => match(c) || childrenOf(c.id).some(family);
-  const roots = all.filter(c => !c.parentId || !all.some(p => p.id === c.parentId)).filter(family);
+  // Unfinished episodes stay out of the way unless asked for; one with a finished branch still shows.
+  const keep = (c: ConversationSummary): boolean => showAll || !unfinished(c) || childrenOf(c.id).some(keep);
+  const roots = all.filter(c => !c.parentId || !all.some(p => p.id === c.parentId)).filter(keep).filter(family);
+  const shownChildren = (id: string) => childrenOf(id).filter(keep);
+  const hidden = all.filter(c => unfinished(c));
+  // Clean-up only removes unfinished episodes with no branches, so nothing finished goes with them.
+  const removable = hidden.filter(c => !childrenOf(c.id).length);
+  const sweepAll = async () => {
+    setSweep('busy');
+    let gone = 0;
+    for (const c of removable) { try { await api.remove(c.id); gone++; } catch { /* e.g. still running; leave it */ } }
+    setSweep('idle');
+    toast(`Deleted ${gone} unfinished episode${gone === 1 ? '' : 's'}`);
+    void load();
+  };
 
   const row = (c: ConversationSummary, depth: number): JSX.Element => (
     <li key={c.id}>
       <EpisodeRow c={c} depth={depth} onChanged={load} toast={toast} />
-      {childrenOf(c.id).length > 0 && <ul className="lib-list nested">{childrenOf(c.id).map(b => row(b, depth + 1))}</ul>}
+      {shownChildren(c.id).length > 0 && <ul className="lib-list nested">{shownChildren(c.id).map(b => row(b, depth + 1))}</ul>}
     </li>
   );
 
@@ -37,6 +57,19 @@ export function Episodes({ config, toast }: { config: AppConfig | null; toast: (
       <StorageBanner config={config} />
       <div><h1>Episodes</h1><p className="hint">Every episode you've made, with its branches underneath. Iris's art is also in her gallery on the <a href="#/iris">Iris</a> page.</p></div>
       {items && <RecapPanel items={items} photos={!!config?.portraits} toast={toast} />}
+      {items && hidden.length > 0 && (
+        <div className="lib-unfinished">
+          <label className="toggle"><input type="checkbox" checked={showAll} onChange={e => toggleAll(e.target.checked)} /> Show unfinished ({hidden.length})</label>
+          <span className="hint">Episodes that stopped or failed before the end. Open one to retry it once the daily limit resets.</span>
+          {removable.length > 0 && (sweep === 'ask' ? (
+            <span className="lib-confirm" role="alertdialog" aria-label="Delete unfinished episodes?">
+              <span>Delete {removable.length} unfinished episode{removable.length === 1 ? '' : 's'} and their lines? This can't be undone.</span>
+              <button className="btn sm danger" autoFocus onClick={sweepAll}>Delete them</button>
+              <button className="btn sm ghost" onClick={() => setSweep('idle')}>Keep them</button>
+            </span>
+          ) : <button className="btn sm" disabled={sweep === 'busy'} onClick={() => setSweep('ask')}>{sweep === 'busy' ? 'Deleting…' : 'Delete all unfinished'}</button>)}
+        </div>
+      )}
       {items && items.length > 3 && (
         <label className="fld lib-search"><span className="sr-only">Search episodes</span>
           <input type="text" value={q} onChange={e => setQ(e.target.value)} placeholder="Search titles, topics and branch directions" />
@@ -51,6 +84,7 @@ export function Episodes({ config, toast }: { config: AppConfig | null; toast: (
             <a className="btn primary" href="#/create">● Make your first episode</a>
           </div>
         )
+        : !roots.length && !q.trim() ? <p className="hint">No finished episodes yet. {hidden.length ? 'Unfinished ones are hidden; switch them on below to retry them.' : ''}</p>
         : !roots.length ? <p className="hint">Nothing matches “{q}”.</p>
         : <ul className="lib-list">{roots.map(c => row(c, 0))}</ul>}
       <Footer config={config} />
