@@ -79,7 +79,7 @@ function EpisodeRow({ c, depth, onChanged, toast }: { c: ConversationSummary; de
       <div className="lib-row">
         {c.artist?.sketchSvg
           ? <img className="thumb" src={sketchSrc(artworkSvg(c.artist)!)} alt="" />
-          : <span className="thumb thumb-empty" aria-hidden="true">{depth ? '✂' : ''}</span>}
+          : <span className="thumb thumb-empty" aria-hidden="true">{depth ? '✂' : <small>{st === 'failed' ? 'No art: it didn\'t finish' : c.artist?.state === 'listening' ? 'Iris is drawing…' : c.artist?.state === 'failed' ? 'Iris couldn\'t draw this one' : st === 'completed' ? 'No art yet' : 'Art comes at the end'}</small>}</span>}
         <div style={{ minWidth: 0 }}>
           {mode === 'rename' ? (
             <form className="dock-row" onSubmit={rename}>
@@ -102,6 +102,9 @@ function EpisodeRow({ c, depth, onChanged, toast }: { c: ConversationSummary; de
             <span>{when(c.createdAt)}</span>
             {c.artist?.state === 'done' && <span>“{c.artist.artTitle}”</span>}
           </div>
+          {st === 'failed' && c.run?.stopReason && c.run.stopReason !== 'interrupted' && (
+            <p className="lib-why"><b>Why it stopped:</b> {c.run.stopReason} <a href={`#/studio/${c.id}/read`}>Open it to retry</a></p>
+          )}
         </div>
       </div>
       {mode === 'delete' ? (
