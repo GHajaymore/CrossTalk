@@ -28,7 +28,7 @@ cue and branch without calling any model.
    blocked, and the reason is shown.
 
 The key is read only by the local server. It never reaches the browser, the logs or an export.
-The app stops at 40 model requests a day (`MAX_REQUESTS_PER_DAY`); a full real episode uses about 18 (16 turns, writing the host roles, and Iris).
+The app stops at 40 model requests a day (`MAX_REQUESTS_PER_DAY`); a full real episode uses about 18 (16 turns, writing the host roles, and Iris). For more free requests a day, use Groq instead (`PROVIDER_MODE=groq`, see docs/MODELS.md).
 
 ## Topic Scout
 

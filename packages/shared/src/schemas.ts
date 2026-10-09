@@ -347,7 +347,9 @@ export type StreamEvent =
 export type ModelVerdict = { modelId: string; ok: boolean; reason: string };
 
 export type AppConfig = {
-  providerMode: 'mock' | 'openrouter';
+  providerMode: 'mock' | 'openrouter' | 'groq';
+  /** Where the server reads the key from (OPENROUTER_API_KEY or GROQ_API_KEY). Never the key itself. */
+  keyName: string;
   models: { A: string; B: string };
   artistModel: string | null;
   dailyLimit: number;

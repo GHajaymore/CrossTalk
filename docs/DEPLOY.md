@@ -115,6 +115,13 @@ In Render, open **Environment** and add these, one by one. The key goes only int
 Save, and Render redeploys. The free-model guard still blocks anything that isn't $0, and the
 app's limit of 40 requests a day still applies.
 
+**Running out of requests?** OpenRouter's free models stop at 50 a day per account. Two ways up,
+both free:
+- Raise `MAX_REQUESTS_PER_DAY` to `48`. That's the most OpenRouter allows without buying credits.
+- Switch to Groq (much higher free limits, counted per model): set `PROVIDER_MODE` = `groq`,
+  `GROQ_API_KEY`, `GROQ_PLAN` = `free` (only if your Groq account has no card) and three Groq model
+  IDs, then raise `MAX_REQUESTS_PER_DAY` (e.g. `300`). docs/MODELS.md has the steps.
+
 ## Host photos
 
 The hosts' photo-real faces are made by Pollinations, a free image service with no key or account.

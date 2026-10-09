@@ -10,7 +10,9 @@ import { Footer } from './Footer';
 
 export function Settings({ config, refreshConfig }: { config: AppConfig | null; refreshConfig: () => void }) {
   const [checking, setChecking] = useState(false);
-  const real = config?.providerMode === 'openrouter';
+  const real = !!config && config.providerMode !== 'mock';
+  const groq = config?.providerMode === 'groq';
+  const service = groq ? 'Groq' : 'OpenRouter';
   const set = async (patch: Partial<MockSettings>) => {
     if (!config) return;
     await api.setMock({ ...config.mock, ...patch });
@@ -43,12 +45,14 @@ export function Settings({ config, refreshConfig }: { config: AppConfig | null; 
           {modelRow('SPEAKER_A_MODEL', config?.models.A ?? null)}
           {modelRow('SPEAKER_B_MODEL', config?.models.B ?? null)}
           {real && modelRow('ARTIST_MODEL', config?.artistModel ?? null)}
-          <dt>ALLOW_PAID_MODELS</dt><dd>{String(config?.allowPaidModels ?? false)}{config?.allowPaidModels ? ' · paid models are NOT blocked' : ' · only $0 models can run'}</dd>
+          {groq
+            ? <><dt>GROQ_PLAN</dt><dd>{config?.problems.some(p => p.includes('GROQ_PLAN')) ? 'not confirmed · nothing runs until it says free' : 'free · your Groq account has no card, so nothing can be charged'}</dd></>
+            : <><dt>ALLOW_PAID_MODELS</dt><dd>{String(config?.allowPaidModels ?? false)}{config?.allowPaidModels ? ' · paid models are NOT blocked' : ' · only $0 models can run'}</dd></>}
           <dt>MAX_OUTPUT_TOKENS</dt><dd>{config?.maxOutputTokens}</dd>
         </dl>
         {real && <div className="dock-row">
           <button className="btn sm" disabled={checking} onClick={recheck}>{checking ? 'Checking…' : 'Check models again'}</button>
-          <span className="hint">{config?.guard.checkedAt ? `Last checked ${new Date(config.guard.checkedAt).toLocaleTimeString()}. ` : ''}Each model must show $0 on OpenRouter's own price list, or runs are blocked. A ":free" name alone doesn't count.</span>
+          <span className="hint">{config?.guard.checkedAt ? `Last checked ${new Date(config.guard.checkedAt).toLocaleTimeString()}. ` : ''}{groq ? "Each model must be on Groq's own list for your key, or runs are blocked." : 'Each model must show $0 on OpenRouter\'s own price list, or runs are blocked. A ":free" name alone doesn\'t count.'}</span>
         </div>}
       </section>
       <section className="sec"><h2>Usage today</h2>
@@ -60,8 +64,8 @@ export function Settings({ config, refreshConfig }: { config: AppConfig | null; 
         <p className="hint">The daily limit is a local safety limit set by the app. It is not a billing guarantee from any provider.</p>
       </section>
       <section className="sec"><h2>API key</h2>
-        <p className="hint">The OpenRouter key lives only in the server's settings, read by the local server. The browser never receives it.</p>
-        <dl className="kv"><dt>OPENROUTER_API_KEY</dt><dd>{!real ? 'not needed in mock mode' : config?.apiKeySet ? 'set' : 'not set'}</dd></dl>
+        <p className="hint">The {service} key lives only in the server's settings, read by the local server. The browser never receives it.</p>
+        <dl className="kv"><dt>{config?.keyName ?? 'OPENROUTER_API_KEY'}</dt><dd>{!real ? 'not needed in mock mode' : config?.apiKeySet ? 'set' : 'not set'}</dd></dl>
       </section>
       {!real && <section className="sec"><h2>Prototype controls</h2>
         <label className="toggle"><input type="checkbox" checked={!!config?.mock.failOnce} onChange={e => set({ failOnce: e.target.checked })} /> Simulate a provider failure on turn 5 (once per conversation)</label>

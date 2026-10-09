@@ -40,3 +40,30 @@ Open **Settings** in the app. Each model shows **✓ Free** or **✕** with the 
 - Many free models "think" silently before replying, and that thinking counts toward `MAX_OUTPUT_TOKENS_PER_TURN`. The app asks for short, hidden thinking and allows 1000 tokens a turn by default. If replies still come back empty or cut off, raise it; free models cost nothing either way.
 - Popular free models are often briefly busy ("rate limited"). The app waits 5 seconds and retries once; if it still fails, try again a few minutes later or pick a less busy model.
 - Source: https://openrouter.ai/docs/limits
+
+## Or use Groq: many more free requests a day
+
+OpenRouter's free models stop at 50 requests a day, which is about two and a half episodes. Groq is
+another free service with the same kind of API and much higher free limits: around 1,000 requests a
+day for its larger models and more for small ones, counted **per model**, so two hosts on two
+different models get two separate allowances (checked Oct 2026; your own numbers are on
+console.groq.com → Settings → Limits).
+
+1. Sign up at **console.groq.com**. Stay on the **Free plan: don't add a card.** With no card on
+   the account, Groq can't charge anything.
+2. Create a key under **API Keys**.
+3. Pick three different chat models from **console.groq.com/docs/models** (two hosts and Iris).
+   Copy each ID exactly. Prefer models from different makers so the hosts sound different.
+4. In the settings (Render's **Environment** tab, or `.env`):
+
+| Setting | What goes in it |
+| --- | --- |
+| `PROVIDER_MODE` | `groq` |
+| `GROQ_API_KEY` | Your Groq key. Never paste it into chat, code or an issue. |
+| `GROQ_PLAN` | `free`: you confirm the account has no card. Without it, nothing runs. |
+| `SPEAKER_A_MODEL`, `SPEAKER_B_MODEL`, `ARTIST_MODEL` | Three different Groq model IDs |
+| `MAX_REQUESTS_PER_DAY` | Raise it to fit, e.g. `300`. It's the app's own safety stop. |
+
+Groq has no price list to check, so the app's guard there checks that each model is one Groq really
+serves to your key, and relies on the Free plan for cost. Some models think out loud in
+`<think>…</think>`; the app drops that before anything is saved or spoken.

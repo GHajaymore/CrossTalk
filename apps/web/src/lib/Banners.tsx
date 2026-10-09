@@ -12,7 +12,7 @@ export function BudgetBanner({ config }: { config: AppConfig | null }) {
 
 /** Real-mode settings or models that block every run, each with what to change. */
 export function SetupBanner({ config, onSettings = false }: { config: AppConfig | null; onSettings?: boolean }) {
-  if (!config || config.providerMode !== 'openrouter') return null;
+  if (!config || config.providerMode === 'mock') return null;
   const blocked = config.guard.verdicts.filter(v => !v.ok);
   if (!config.problems.length && !blocked.length) return null;
   return (
@@ -30,4 +30,4 @@ export function SetupBanner({ config, onSettings = false }: { config: AppConfig 
 
 /** Real mode can't start until settings are complete and both models are known to be free. */
 export const realBlocked = (c: AppConfig | null) =>
-  !!c && c.providerMode === 'openrouter' && (c.problems.length > 0 || c.guard.verdicts.some(v => !v.ok));
+  !!c && c.providerMode !== 'mock' && (c.problems.length > 0 || c.guard.verdicts.some(v => !v.ok));
