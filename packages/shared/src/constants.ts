@@ -45,6 +45,8 @@ export const LANGUAGES = {
   it: { label: 'Italian', native: 'Italiano', hello: 'Ciao e benvenuti a CrossTalk!', invite: "C'è qualcuno con la mano alzata. Prego, sei in onda.", later: 'Nessun problema, magari più tardi. Dove eravamo?' },
   id: { label: 'Indonesian', native: 'Bahasa Indonesia', hello: 'Halo, selamat datang di CrossTalk!', invite: 'Ada pendengar yang mengangkat tangan. Silakan, Anda sedang mengudara.', later: 'Tidak apa-apa, mungkin nanti. Sampai mana kita tadi?' },
 } as const satisfies Record<string, { label: string; native: string; hello: string; invite: string; later: string; rtl?: boolean }>;
+/** Languages with a whole sample episode in mock mode; the others greet in theirs, then play the English one. */
+export const MOCK_FULL_LANGUAGES = ['es', 'hi'] as const;
 export const isRtl = (lang: string) => !!(LANGUAGES as Record<string, { rtl?: boolean }>)[lang]?.rtl;
 
 /** Which of Normal's 16 turns each short turn plays. Odd stays odd, so each host keeps their seat. */

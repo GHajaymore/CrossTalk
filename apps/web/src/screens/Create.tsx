@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ARTIST, AUDIENCES, HOME_CODES, LANGUAGES, languagesFor, HOMES, homeOf, SCOUT_COUNTRIES, SCOUT_REGIONS, TALK_STYLES, blockedHit, DEFAULT_RULES, episodeLabel, FORMATS, hostSubtitle, isSensitive, LENGTHS, LENS_MAX, MODES, NAME_MAX, PERSONAS, PRESETS, resolveSpeakers, ROLE_MAX,
+  ARTIST, AUDIENCES, HOME_CODES, LANGUAGES, languagesFor, MOCK_FULL_LANGUAGES, HOMES, homeOf, SCOUT_COUNTRIES, SCOUT_REGIONS, TALK_STYLES, blockedHit, DEFAULT_RULES, episodeLabel, FORMATS, hostSubtitle, isSensitive, LENGTHS, LENS_MAX, MODES, NAME_MAX, PERSONAS, PRESETS, resolveSpeakers, ROLE_MAX,
   TEMPERATURE_ORDER, TEMPERATURES, TOPIC_MAX,
   type AppConfig, type Audience, type CreateConversation, type Format, type HomeCode, type Language, type Length, type Mode, type PersonaKey, type ScoutTopic, type SpeakerDraft, type SpeakerId, type Temperature,
 } from '@crosstalk/shared';
@@ -216,7 +216,7 @@ export function Create({ config, go, refreshConfig, toast }: Props) {
         </select>
         <p className="mode-help">{language === 'en'
           ? 'The hosts and Iris speak English. Give a host a home to see their languages first.'
-          : `The hosts and Iris speak ${LANGUAGES[language].label}, read aloud by your device's ${LANGUAGES[language].label} voice. ${real ? '' : `Mock mode greets you in ${LANGUAGES[language].label}, then plays its sample script in English; real AI hosts speak it throughout.`}`}</p>
+          : `The hosts and Iris speak ${LANGUAGES[language].label}, read aloud by your device's ${LANGUAGES[language].label} voice. ${real ? '' : (MOCK_FULL_LANGUAGES as readonly string[]).includes(language) ? `Mock mode plays a whole sample episode in ${LANGUAGES[language].label}, Iris included.` : `Mock mode greets you in ${LANGUAGES[language].label}, then plays its sample script in English; real AI hosts speak it throughout.`}`}</p>
       </div>
 
       <div className="dials">

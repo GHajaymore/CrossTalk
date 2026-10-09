@@ -1,5 +1,6 @@
 import { homeOf, LANGUAGES, normalSeqFor, type MockSettings } from '@crosstalk/shared';
-import { mockBranchText, mockCueLead, mockLongText, mockRoundOpening, mockStance, mockTurnText } from './mockScripts';
+import { mockBranchText, mockCueLead, mockLongText, mockRoundOpening, mockStance, mockTurnText, openQuote, PUSH_BACK_TURNS } from './mockScripts';
+import { MOCK_LANGS } from './mockScriptsLocal';
 import { AbortedError, ProviderError, type Provider, type TurnOptions, type TurnRequest } from './types';
 
 export type MockTiming = {
@@ -39,21 +40,26 @@ export class MockProvider implements Provider {
     await wait(this.timing.thinkMs(fast), signal);
 
     const normalSeq = normalSeqFor(seq, c.length);
-    const base = c.branchSeq && seq > c.branchSeq ? mockBranchText(objective, c.branchDirection ?? '')
-      : normalSeq ? mockTurnText(c.topic, normalSeq, speaker.id, c.temperature) : mockLongText(objective);
-    const leads = cues.filter(x => x.status === 'queued' && x.appliesBeforeSeq <= seq)
-      .map(x => mockCueLead(x.kind, x.text, x.targetSeq, x.toTemp === 'heated' || (x.toTemp === 'lively' && x.fromTemp === 'calm')));
+    // Spanish and Hindi have a whole sample episode; other languages greet in theirs, then play the English one.
+    const L = MOCK_LANGS[c.language ?? 'en'];
+    const base = c.branchSeq && seq > c.branchSeq ? (L ? L.branch(objective, (c.branchDirection ?? '').trim().replace(/[.?!।]*$/, '')) : mockBranchText(objective, c.branchDirection ?? ''))
+      : normalSeq ? (L ? (PUSH_BACK_TURNS.has(normalSeq) ? L.heat[c.temperature] : '') + L.script(c.topic.trim())[normalSeq - 1] : mockTurnText(c.topic, normalSeq, speaker.id, c.temperature))
+      : (L?.long[objective] ?? mockLongText(objective));
+    const leads = cues.filter(x => x.status === 'queued' && x.appliesBeforeSeq <= seq).map(x => {
+      const up = x.toTemp === 'heated' || (x.toTemp === 'lively' && x.fromTemp === 'calm');
+      return L ? L.cue(x.kind, (x.text ?? '').trim(), x.targetSeq, up) : mockCueLead(x.kind, x.text, x.targetSeq, up);
+    });
     // Hot seat: the hosts name their roles on their first lines.
-    const seat = c.mode === 'hotseat' && seq === 1 ? "I'm in the hot seat today, arguing the side most people reject. "
-      : c.mode === 'hotseat' && seq === 2 ? 'And my job is to talk you out of it, fairly. ' : '';
+    const seat = c.mode === 'hotseat' && seq === 1 ? L?.hotseat[0] ?? "I'm in the hot seat today, arguing the side most people reject. "
+      : c.mode === 'hotseat' && seq === 2 ? L?.hotseat[1] ?? 'And my job is to talk you out of it, fairly. ' : '';
     // A host with a home says where they're joining from on their first line.
     const from = homeOf(speaker.home);
-    // Another language: mock hosts greet in it (so you can hear its voice); the sample script stays in English.
     const greet = seq === 1 && !lastRound && c.language && c.language !== 'en' ? `${LANGUAGES[c.language].hello} ` : '';
-    const hi = from && !lastRound && (objective === 'Hello' || objective === 'First take') ? `Coming to you from ${from.country} today. ` : '';
+    const hi = from && !lastRound && (objective === 'Hello' || objective === 'First take') ? (L ? L.from(from.country) : `Coming to you from ${from.country} today. `) : '';
     const open = lastRound?.lines.find(l => l.job === 'Still unsure')?.text ?? null;
-    const roundOpening = lastRound ? mockRoundOpening(lastRound.round, seq, open) : null;
-    const words = (greet + hi + seat + leads.join('') + (roundOpening ?? base) + mockStance(c.topic, speaker.id, objective, lastRound?.stances[speaker.id].end ?? null)).split(' ');
+    const roundOpening = lastRound ? (L ? L.round(lastRound.round, seq, openQuote(open) ?? null) : mockRoundOpening(lastRound.round, seq, open)) : null;
+    const stance = mockStance(c.topic, speaker.id, objective, lastRound?.stances[speaker.id].end ?? null, L?.stance);
+    const words = (greet + hi + seat + leads.join('') + (roundOpening ?? base) + stance).split(' ');
     const failAt = failOnce && seq === MOCK_FAIL_SEQ && !this.failedOnce.has(c.id) ? Math.floor(words.length / 2) : -1;
 
     let text = '';
