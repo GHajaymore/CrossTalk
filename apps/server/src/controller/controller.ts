@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import { sentencesOf, wordsIn,
-  assertTransition, blockedHit, BRANCH_TURNS, DEFAULT_RULES, extractStance, HAND_RAISED, mindChange, STANCE_END_JOBS, STANCE_START_JOBS, jobIn, resolveSpeakers, turnTotal, speakerFor, stepTemperature, TransitionError,
+  assertTransition, blockedHit, BRANCH_TURNS, DEFAULT_RULES, extractTags, HAND_RAISED, mindChange, STANCE_END_JOBS, STANCE_START_JOBS, jobIn, resolveSpeakers, turnTotal, speakerFor, stepTemperature, TransitionError,
   type BranchInput, type Conversation, type ConversationView, type CreateConversation, type CueInput, type Intervention,
   type LiveTurn, type Rules, type Run, type RunState, type StreamEvent,
 } from '@crosstalk/shared';
@@ -474,7 +474,7 @@ export class ConversationController {
   private async generateWithRetry(
     conversationId: string, runId: string, conv: Conversation, seq: number,
     speaker: Conversation['speakers']['A'], objective: string, cues: Intervention[], signal: AbortSignal,
-  ): Promise<{ text: string; stance: number | null } | null> {
+  ): Promise<{ text: string; stance: number | null; funny: boolean } | null> {
     const sleep = this.opts.sleep ?? abortableSleep;
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
       const run = this.repo.latestRun(conversationId)!;
@@ -498,12 +498,12 @@ export class ConversationController {
           { signal, onToken: t => { live.text += t; this.emit(conversationId, { type: 'token', seq, text: t }); } },
         );
         log('ok', res.usage, null);
-        // The Mind-change meter's tag is data, not speech: it comes out before the line is saved or read aloud.
-        const { text, stance } = extractStance(res.text);
+        // The Mind-change meter's and the joke's tags are data, not speech: they come out before the line is saved or read aloud.
+        const { text, stance, funny } = extractTags(res.text);
         const spoken = fitToLength(text, conv.audience === 'kids' ? MAX_SPOKEN_WORDS.kids : MAX_SPOKEN_WORDS.other);
         // Keep the number only if the line still says it aloud after trimming.
         const said = spoken === text || /\d\s*(%|percent)|percent/i.test(spoken);
-        return { text: spoken, stance: said ? stance : null };
+        return { text: spoken, stance: said ? stance : null, funny };
       } catch (e) {
         if (e instanceof AbortedError || signal.aborted) { log('error', null, 'stopped'); return null; }
         const err = e instanceof ProviderError ? e : new ProviderError(e instanceof Error ? e.message : 'The provider failed.');
@@ -569,7 +569,7 @@ export class ConversationController {
       const objective = jobIn(conv, seq);
       const out = await this.generateWithRetry(conversationId, runId, conv, seq, speaker, objective, cues, signal);
       if (!out || signal.aborted) return;
-      const { text, stance } = out;
+      const { text, stance, funny } = out;
 
       const at = this.now().toISOString();
       // The turn, the cues it answered and any new mood are saved together, or not at all.
@@ -578,6 +578,7 @@ export class ConversationController {
           id: randomUUID(), conversationId, seq, speakerId: speaker.id, modelId: speaker.modelId,
           objective, text, status: 'completed', createdAt: at,
           stance: (STANCE_START_JOBS as readonly string[]).includes(objective) || (STANCE_END_JOBS as readonly string[]).includes(objective) ? stance : null,
+          funny,
         });
         for (const c of landing) this.repo.setCueStatus(c.id, 'applied');
         if (temp) this.repo.setTemperature(conversationId, temp);

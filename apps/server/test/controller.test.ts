@@ -26,7 +26,7 @@ describe('conversation controller', () => {
   it('saves a turn only once for the same conversation and seq', () => {
     const { controller, repo } = setup();
     const c = controller.create(draft());
-    const turn = { id: 't1', conversationId: c.id, seq: 1, speakerId: 'A' as const, modelId: 'm', objective: 'Frame', text: 'first', status: 'completed' as const, createdAt: new Date().toISOString(), stance: null };
+    const turn = { id: 't1', conversationId: c.id, seq: 1, speakerId: 'A' as const, modelId: 'm', objective: 'Frame', text: 'first', status: 'completed' as const, createdAt: new Date().toISOString(), stance: null, funny: false };
     expect(repo.saveTurn(turn)).toBe(true);
     expect(repo.saveTurn({ ...turn, id: 't2', text: 'second' })).toBe(false);
     const turns = repo.listTurns(c.id);

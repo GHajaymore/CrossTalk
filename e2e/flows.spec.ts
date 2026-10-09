@@ -111,6 +111,9 @@ test('react while you listen: emoji float up, and each line keeps its count', as
   await bar.getByRole('button', { name: /Applause/ }).click();
   await page.getByRole('link', { name: /Read/ }).first().click();
   await expect(page.getByLabel('Your reactions: Applause 1, Funny 2')).toBeVisible();
+  // The hosts' own joke: the line the co-host laughed at says so.
+  await expect(page.locator('#turn-5')).toContainText(/😄 .+ laughed/);
+  await expect(page.locator('#turn-4')).not.toContainText('laughed');
 });
 
 test('Iris gallery as an exhibition: play, step with the keys, pause, close with Esc', async ({ page }) => {

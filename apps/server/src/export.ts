@@ -25,6 +25,7 @@ export function exportJson(c: ConversationView, usage: UsageRow[]) {
       // In a branch, turns before the cut are read from the original episode.
       fromOriginal: t.conversationId !== c.id,
       stance: t.stance ?? null,
+      funny: !!t.funny,
     })),
     interventions: c.interventions.map(x => ({
       kind: x.kind, text: x.text, targetSeq: x.targetSeq, fromTemperature: x.fromTemp, toTemperature: x.toTemp,

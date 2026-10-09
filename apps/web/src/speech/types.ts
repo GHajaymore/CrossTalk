@@ -1,7 +1,7 @@
 import type { SpeakerId } from '@crosstalk/shared';
 
 /** One thing to say: a turn, voiced as its speaker. */
-export type SpeechItem = { key: string; speakerId: SpeakerId; text: string };
+export type SpeechItem = { key: string; speakerId: SpeakerId; text: string; /** Meant as a joke: the other host laughs after it. */ funny?: boolean };
 
 export type SpeechHandlers = {
   /** A new piece of text started (for captions). */

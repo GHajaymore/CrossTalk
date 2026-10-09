@@ -26,6 +26,8 @@ export type TurnCardProps = {
   splices?: { id: string; direction: string }[];
   /** Your reactions to this line. */
   reactions?: Partial<Record<ReactionKind, number>>;
+  /** The co-host who laughed at this line, when it was a joke. */
+  laughedBy?: string;
 };
 
 /** One spoken turn, landing from its speaker's side of the table. */
@@ -61,6 +63,7 @@ export function TurnCard(p: TurnCardProps) {
         <div className="card-foot">
           <span>{p.modelId}</span>
           <ReactionChips counts={p.reactions} />
+          {p.laughedBy && <span className="laughed"><span aria-hidden="true">😄</span> {p.laughedBy} laughed</span>}
           <span>{p.state === 'streaming' ? 'streaming…' : p.state === 'failed' ? 'not saved' : p.inherited ? 'from the original' : 'saved'}</span>
         </div>
         {p.splices?.map(b => (

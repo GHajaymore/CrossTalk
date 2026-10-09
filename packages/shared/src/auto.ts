@@ -3,7 +3,7 @@
 import { BRANCH_JOBS, BRANCH_TURNS, JOBS, LENGTHS, LONG_JOBS, PERSONAS, SHORT_PLAN, STANCE_END_JOBS, STANCE_START_JOBS } from './constants';
 import { homeName, homeOf } from './homes';
 import type { VoiceStyle } from './schemas';
-import type { Audience, Length, PersonaKey, SpeakerDraft, SpeakerId, Speakers, Temperature } from './schemas';
+import type { Audience, Language, Length, PersonaKey, SpeakerDraft, SpeakerId, Speakers, Temperature } from './schemas';
 
 type Pair = [PersonaKey, PersonaKey];
 
@@ -176,9 +176,29 @@ export function extractStance(text: string): { text: string; stance: number | nu
   const clean = text.replace(STANCE_TAG, (_, n: string) => { stance = Math.min(100, Number(n)); return ''; }).replace(/[ \t]+$/gm, '').trim();
   return { text: clean, stance };
 }
-/** While a line streams in, hide a stance tag that's still being written. */
+/** The hidden tag a host adds after a line meant to make people laugh: "[funny]". */
+const FUNNY_TAG = /\[\s*funny\s*\]/gi;
+/** Takes every hidden tag out of a line: the words to keep, the stance (if any), and whether it was a joke. */
+export function extractTags(text: string): { text: string; stance: number | null; funny: boolean } {
+  const funny = FUNNY_TAG.test(text);
+  FUNNY_TAG.lastIndex = 0;
+  const { text: clean, stance } = extractStance(text.replace(FUNNY_TAG, ''));
+  return { text: clean, stance, funny };
+}
+/** While a line streams in, hide a tag that's still being written. */
 export const hideStanceTag = (live: string) =>
-  extractStance(live).text.replace(/\[(\s*s(t(a(n(c(e[\s:]*\d{0,3}%?\s*)?)?)?)?)?)?$/i, '').trimEnd();
+  extractTags(live).text.replace(/\[(\s*s(t(a(n(c(e[\s:]*\d{0,3}%?\s*)?)?)?)?)?)?$/i, '').replace(/\[\s*f(u(n(n(y\s*)?)?)?)?$/i, '').trimEnd();
+
+/** How a host starts laughing in each language ("Ha, …"). German "Ja" means yes, so it isn't a laugh there. */
+const LAUGH_START: Partial<Record<Language, RegExp>> = {
+  es: /^[¡]?(?:ja(?:ja)*|je(?:je)+)(?=[\s,.!—…])/i,
+  hi: /^(?:हा(?:हा)*|हे(?:हे)+)(?=[\s,।!—…])/u,
+  de: /^(?:ha(?:ha)+|hehe)(?=[\s,.!—…])/i,
+  pt: /^(?:ha(?:ha)*|ha+|kk+|rs)(?=[\s,.!—…])/i,
+};
+const LAUGH_DEFAULT = /^(?:ha(?:ha)*|heh(?:eh)*|hah)(?=[\s,.!—…])/i;
+/** True when a line opens with a laugh. */
+export const startsLaughing = (text: string, lang: Language = 'en') => (LAUGH_START[lang] ?? LAUGH_DEFAULT).test(text.trim());
 
 /** Where each host started and ended on the Mind-change meter, from their stance lines. */
 export function mindChange(turns: { seq: number; speakerId: SpeakerId; objective: string; stance?: number | null }[]) {

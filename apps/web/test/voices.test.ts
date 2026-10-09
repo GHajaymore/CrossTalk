@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { BACKCHANNELS, BrowserSpeech, englishVoices, planSpeech, voiceLook, voiceQuality, voicesFor, voicesIn } from '../src/speech/BrowserSpeech';
+import { BACKCHANNELS, BrowserSpeech, englishVoices, LAUGHS, planSpeech, voiceLook, voiceQuality, voicesFor, voicesIn } from '../src/speech/BrowserSpeech';
 
 const voice = (name: string, lang = 'en-US') => ({ name, lang, default: false, localService: true, voiceURI: name }) as SpeechSynthesisVoice;
 const withVoices = (list: SpeechSynthesisVoice[]) => { (globalThis as { window?: unknown }).window = { speechSynthesis: { getVoices: () => list } }; };
@@ -138,5 +138,29 @@ describe('speaking like people, not a reader', () => {
   it('stays quiet with no murmurs for the language, or when chance says no', () => {
     expect(planSpeech(items, { backchannels: null, rand: () => 0.1 }).some(p => p.kind === 'murmur')).toBe(false);
     expect(planSpeech(items, { backchannels: BACKCHANNELS.en!, rand: () => 0.9 }).some(p => p.kind === 'murmur')).toBe(false);
+  });
+});
+
+describe('laughing together', () => {
+  const joke = { key: '1', speakerId: 'A' as const, text: 'Picture a bike shop run by a chatbot that only speaks in riddles.', funny: true };
+  it('after a joke the other host laughs out loud, then the show goes on', () => {
+    const parts = planSpeech([joke, { key: '2', speakerId: 'B', text: 'Okay, but seriously.' }], { backchannels: null, laughs: LAUGHS.en!, rand: () => 0.5 });
+    const at = parts.findIndex(p => p.kind === 'laugh');
+    expect(at).toBe(1);
+    expect(parts[at]).toMatchObject({ kind: 'laugh', speakerId: 'B', joker: 'A' });
+    expect(LAUGHS.en).toContain((parts[at] as { text: string }).text);
+    expect(parts[at + 1]).toMatchObject({ kind: 'line', speakerId: 'B' });
+  });
+
+  it("laughs only on their face when their next line already opens with a laugh, or there's no second voice", () => {
+    const opens = planSpeech([joke, { key: '2', speakerId: 'B', text: 'Ha, I would visit that shop.' }], { backchannels: null, laughs: LAUGHS.en!, rand: () => 0.5 });
+    expect(opens.find(p => p.kind === 'laugh')).toMatchObject({ text: null });
+    expect(opens.find(p => p.kind === 'line' && p.speakerId === 'B')).toMatchObject({ laughing: true });
+    const oneVoice = planSpeech([joke], { backchannels: null, laughs: null, rand: () => 0.5 });
+    expect(oneVoice.find(p => p.kind === 'laugh')).toMatchObject({ text: null });
+  });
+
+  it('no joke, no laugh', () => {
+    expect(planSpeech([{ ...joke, funny: false }], { backchannels: null, laughs: LAUGHS.en!, rand: () => 0.5 }).some(p => p.kind === 'laugh')).toBe(false);
   });
 });

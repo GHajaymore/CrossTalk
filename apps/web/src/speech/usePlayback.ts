@@ -73,7 +73,7 @@ export function usePlayback(turns: Turn[], prefs: VoicePrefs, hosts: Hosts = {},
   const reset = () => { setState('idle'); setSeq(null); setSpeakerId(null); setCaption(''); };
 
   const playFrom = useCallback((from: number) => {
-    const items = turns.filter(t => t.seq >= from).map(t => ({ key: String(t.seq), speakerId: t.speakerId, text: t.text }));
+    const items = turns.filter(t => t.seq >= from).map(t => ({ key: String(t.seq), speakerId: t.speakerId, text: t.text, funny: t.funny }));
     if (!items.length) return;
     setState('speaking');
     // Only a play-through that actually spoke counts as finished: a device whose voices all fail

@@ -1,5 +1,5 @@
-import { homeOf, LANGUAGES, normalSeqFor, type MockSettings } from '@crosstalk/shared';
-import { mockBranchText, mockCueLead, mockLongText, mockRoundOpening, mockStance, mockTurnText, openQuote, PUSH_BACK_TURNS } from './mockScripts';
+import { homeOf, LANGUAGES, normalSeqFor, startsLaughing, turnTotal, type MockSettings } from '@crosstalk/shared';
+import { mockBranchText, mockCueLead, mockLongText, mockRoundOpening, mockStance, mockTurnText, openQuote, PUSH_BACK_TURNS, scriptFor } from './mockScripts';
 import { MOCK_LANGS } from './mockScriptsLocal';
 import { AbortedError, ProviderError, type Provider, type TurnOptions, type TurnRequest } from './types';
 
@@ -59,7 +59,11 @@ export class MockProvider implements Provider {
     const open = lastRound?.lines.find(l => l.job === 'Still unsure')?.text ?? null;
     const roundOpening = lastRound ? (L ? L.round(lastRound.round, seq, openQuote(open) ?? null) : mockRoundOpening(lastRound.round, seq, open)) : null;
     const stance = mockStance(c.topic, speaker.id, objective, lastRound?.stances[speaker.id].end ?? null, L?.stance);
-    const words = (greet + hi + seat + leads.join('') + (roundOpening ?? base) + stance).split(' ');
+    // The sample episodes have a few jokes: the line the other host answers with a laugh is tagged.
+    const nextSeq = seq < turnTotal(c) ? normalSeqFor(seq + 1, c.length) : null;
+    const nextLine = normalSeq && nextSeq && !c.branchSeq && !roundOpening ? (L ? L.script(c.topic.trim()) : scriptFor(c.topic))[nextSeq - 1] : undefined;
+    const funny = nextLine && startsLaughing(nextLine, c.language ?? 'en') ? ' [funny]' : '';
+    const words = (greet + hi + seat + leads.join('') + (roundOpening ?? base) + stance + funny).split(' ');
     const failAt = failOnce && seq === MOCK_FAIL_SEQ && !this.failedOnce.has(c.id) ? Math.floor(words.length / 2) : -1;
 
     let text = '';

@@ -10,7 +10,7 @@ const conv: Conversation = {
   },
   parentId: null, branchTurnId: null, branchSeq: null, branchDirection: null, scoutTopicId: null, publish: null, verdict: null, youStart: null, youEnd: null, roundOf: null, round: 1, length: 'normal', language: 'en', createdAt: '', updatedAt: '',
 };
-const turn = (seq: number): Turn => ({ id: `t${seq}`, conversationId: 'c1', seq, speakerId: seq % 2 ? 'A' : 'B', modelId: 'm', objective: 'x', text: `Opening words of line ${seq} go here and on. Second sentence.`, status: 'completed', createdAt: '', stance: null });
+const turn = (seq: number): Turn => ({ id: `t${seq}`, conversationId: 'c1', seq, speakerId: seq % 2 ? 'A' : 'B', modelId: 'm', objective: 'x', text: `Opening words of line ${seq} go here and on. Second sentence.`, status: 'completed', createdAt: '', stance: null, funny: false });
 
 describe('prompt builder', () => {
   it('delimits listener text and strips anything that could close a tag', () => {

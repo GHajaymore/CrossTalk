@@ -98,6 +98,7 @@
 .set-portrait .p-smile{opacity:var(--smile,0);transition:opacity var(--dur,.6s) ease-in-out}
 .set-portrait .p-rest{opacity:calc(1 - var(--smile,0));transition:opacity var(--dur,.6s) ease-in-out}
 /* The mouth opens with the voice level the set writes on the tile (--lvl), closed when not speaking. */
+.set-portrait .p-laugh{opacity:var(--laugh,0);transition:opacity .18s ease-out}
 .set-portrait .p-mouth{transform-box:fill-box;transform-origin:50% 30%;transform:scale(calc(.75 + var(--lvl,0) * .35),calc(var(--lvl,0) * 1.5))}
 @keyframes p-breathe{0%,100%{transform:translateY(0)}50%{transform:translateY(1.4px)}}
 @keyframes p-blink{0%,93%,100%{transform:scaleY(0)}95.5%{transform:scaleY(1)}}

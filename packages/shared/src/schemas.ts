@@ -168,6 +168,8 @@ export const Turn = z.object({
   createdAt: z.string(),
   /** Mind-change meter: how sure the host said they were, 0 (firmly no) to 100 (firmly yes). Only on their first and last lines. */
   stance: z.number().int().min(0).max(100).nullable().default(null),
+  /** The host meant this line as a joke: their co-host laughs along. */
+  funny: z.boolean().default(false),
 });
 export type Turn = z.infer<typeof Turn>;
 
