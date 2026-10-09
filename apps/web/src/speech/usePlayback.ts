@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { sentencesOf, type Language, type SpeakerId, type Turn } from '@crosstalk/shared';
-import { BrowserSpeech, loadPrefs, voicesIn, savePrefs, type Accents, type VoicePrefs } from './BrowserSpeech';
+import { BrowserSpeech, loadPrefs, voicesIn, savePrefs, type Hosts, type VoicePrefs } from './BrowserSpeech';
 import type { PlaybackState } from './types';
 
 /** The sentence being spoken, so captions stay short and follow the voice. */
@@ -52,14 +52,14 @@ export function useVoices(lang: Language = 'en') {
 }
 
 /** Plays a conversation's saved turns aloud. Separate from generation: either can run without the other. */
-export function usePlayback(turns: Turn[], prefs: VoicePrefs, accents: Accents = {}, lang: Language = 'en'): Playback {
+export function usePlayback(turns: Turn[], prefs: VoicePrefs, hosts: Hosts = {}, lang: Language = 'en'): Playback {
   const prefsRef = useRef(prefs);
   prefsRef.current = prefs;
-  const accentsRef = useRef(accents);
-  accentsRef.current = accents;
+  const hostsRef = useRef(hosts);
+  hostsRef.current = hosts;
   const langRef = useRef(lang);
   langRef.current = lang;
-  const speech = useMemo(() => new BrowserSpeech(() => prefsRef.current, () => accentsRef.current, () => langRef.current), []);
+  const speech = useMemo(() => new BrowserSpeech(() => prefsRef.current, () => hostsRef.current, () => langRef.current), []);
   const [state, setState] = useState<PlaybackState>('idle');
   const [seq, setSeq] = useState<number | null>(null);
   const [speakerId, setSpeakerId] = useState<SpeakerId | null>(null);

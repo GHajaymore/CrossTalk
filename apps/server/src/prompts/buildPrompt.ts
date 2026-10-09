@@ -1,7 +1,7 @@
 // Builds the system + user message for one turn (docs/PLAN.md, Conversation engine).
 // Style: two friends chatting on a podcast, in 16 short turns (decided Oct 8, 2026).
 // Listener text (topic, custom personality) is delimited and marked as content, never instructions.
-import { homeOf, LANGUAGES, MODES, sentencesOf, STANCE_END_JOBS, STYLE_STRENGTH, TALK_STYLES, STANCE_START_JOBS, turnTotal, type Audience, type Intervention, type Language, type Temperature, type Turn } from '@crosstalk/shared';
+import { homeOf, LANGUAGES, VOICE_STYLES, voiceStyleOf, MODES, sentencesOf, STANCE_END_JOBS, STYLE_STRENGTH, TALK_STYLES, STANCE_START_JOBS, turnTotal, type Audience, type Intervention, type Language, type Temperature, type Turn } from '@crosstalk/shared';
 import type { TurnRequest } from '../providers/types';
 
 const OBJECTIVES: Record<string, string> = {
@@ -112,6 +112,7 @@ export function buildPrompt({ conversation: c, seq, speaker, objective, history,
       : `Your personality: ${speaker.lens}.`,
     homeLines(speaker, other, c.temperature, c.language),
     languageRule(c.language),
+    `Your voice on air is ${VOICE_STYLES[voiceStyleOf(speaker)].speak}. Let it show in how you phrase things, not in stage directions.`,
     stanceFor(c.mode, speaker.id),
     'Sound like a real person talking, not writing:',
     `- Say 1 to 4 sentences, ${kids ? 'at most 50' : 'at most 70'} words${UNSPACED_LANGS.includes(c.language) ? ` (about ${kids ? 100 : 140} characters)` : ''}. Vary it: sometimes one quick line, sometimes a little more.`,

@@ -22,6 +22,8 @@ test('hosts from somewhere: the name bar, the style hint, and their first lines'
   await page.getByRole('region', { name: 'Speaker A' }).getByLabel('Home').selectOption('KE');
   await page.getByRole('region', { name: 'Speaker B' }).getByLabel('Home').selectOption('IN');
   await expect(page.getByRole('region', { name: 'Speaker A' })).toContainText('Warm and spirited: clearly there at Lively.');
+  await page.getByRole('region', { name: 'Speaker A' }).getByLabel('Voice').selectOption('energetic');
+  await expect(page.getByRole('region', { name: 'Speaker A' })).toContainText('Quicker and brighter.');
   await expect(page.locator('.set-l3').first()).toContainText('Kenya');
   await expect(page.locator('.set-l3').nth(1)).toContainText('India');
   await page.getByRole('region', { name: 'Speaker B' }).getByLabel('Home').selectOption('');

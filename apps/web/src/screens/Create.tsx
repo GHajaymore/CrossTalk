@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ARTIST, AUDIENCES, HOME_CODES, LANGUAGES, languagesFor, MOCK_FULL_LANGUAGES, HOMES, homeOf, SCOUT_COUNTRIES, SCOUT_REGIONS, TALK_STYLES, blockedHit, DEFAULT_RULES, episodeLabel, FORMATS, hostSubtitle, isSensitive, LENGTHS, LENS_MAX, MODES, NAME_MAX, PERSONAS, PRESETS, resolveSpeakers, ROLE_MAX,
+  ARTIST, AUDIENCES, HOME_CODES, LANGUAGES, languagesFor, MOCK_FULL_LANGUAGES, nameLook, VOICE_STYLES, voiceStyleOf, HOMES, homeOf, SCOUT_COUNTRIES, SCOUT_REGIONS, TALK_STYLES, blockedHit, DEFAULT_RULES, episodeLabel, FORMATS, hostSubtitle, isSensitive, LENGTHS, LENS_MAX, MODES, NAME_MAX, PERSONAS, PRESETS, resolveSpeakers, ROLE_MAX,
   TEMPERATURE_ORDER, TEMPERATURES, TOPIC_MAX,
-  type AppConfig, type Audience, type CreateConversation, type Format, type HomeCode, type Language, type Length, type Mode, type PersonaKey, type ScoutTopic, type SpeakerDraft, type SpeakerId, type Temperature,
+  type AppConfig, type Audience, type CreateConversation, type Format, type HomeCode, type Language, type Length, type Mode, type PersonaKey, type ScoutTopic, type SpeakerDraft, type SpeakerId, type Temperature, type VoiceStyle,
 } from '@crosstalk/shared';
 import { api } from '../api/client';
 import { BudgetBanner, realBlocked, SetupBanner } from '../lib/Banners';
@@ -132,6 +132,14 @@ export function Create({ config, go, refreshConfig, toast }: Props) {
           </select>
         </label>
         {d.autoPersona && <p className="hint" style={{ margin: '-4px 0 0' }}>Picked for this topic and audience.</p>}
+        <label className="fld">
+          <span className="tag">Voice</span>
+          <select value={d.voice ?? 'auto'} onChange={e => edit(k, { voice: e.target.value as SpeakerDraft['voice'] })}>
+            <option value="auto">Auto · {VOICE_STYLES[voiceStyleOf(s)].label}</option>
+            {(Object.keys(VOICE_STYLES) as VoiceStyle[]).map(v => <option key={v} value={v}>{VOICE_STYLES[v].label}</option>)}
+          </select>
+        </label>
+        <p className="hint" style={{ margin: '-4px 0 0' }}>{VOICE_STYLES[voiceStyleOf(s)].help} {nameLook(s.name) ? `A ${nameLook(s.name) === 'w' ? "woman's" : "man's"} voice when your device has one.` : ''}</p>
         {s.persona === 'custom'
           ? <input type="text" maxLength={LENS_MAX} value={d.lens} placeholder="Describe them in a few words, e.g. a retired chef who hates waste" onChange={e => edit(k, { lens: e.target.value })} />
           : <p className="lens">{s.lens}</p>}

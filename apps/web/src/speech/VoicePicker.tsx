@@ -1,16 +1,16 @@
-import type { Accents, VoicePrefs } from './BrowserSpeech';
-import { LANGUAGES, type Language } from '@crosstalk/shared';
+import type { Hosts, VoicePrefs } from './BrowserSpeech';
+import { LANGUAGES, VOICE_STYLES, type Language } from '@crosstalk/shared';
 import { betterVoicesTip, missingVoiceTip, voiceQuality, voicesFor } from './BrowserSpeech';
 
 const QUALITY_LABEL = { natural: '✦ Natural', good: 'Good', basic: 'Basic' } as const;
 
-type Props = { names: { A: string; B: string }; voices: SpeechSynthesisVoice[]; prefs: VoicePrefs; update: (p: Partial<VoicePrefs>) => void; preview: (id: 'A' | 'B') => void; accents?: Accents; lang?: Language };
+type Props = { names: { A: string; B: string }; voices: SpeechSynthesisVoice[]; prefs: VoicePrefs; update: (p: Partial<VoicePrefs>) => void; preview: (id: 'A' | 'B') => void; hosts?: Hosts; lang?: Language };
 
 /** Voice per host, with preview, plus speed. Choices are remembered on this device only. */
-export function VoicePicker({ names, voices, prefs, update, preview, accents, lang = 'en' }: Props) {
+export function VoicePicker({ names, voices, prefs, update, preview, hosts, lang = 'en' }: Props) {
   if (!('speechSynthesis' in window)) return <p className="hint">This browser can't speak aloud. You can still read every turn.</p>;
   if (!voices.length) return <p className="hint">{lang === 'en' ? 'Loading voices… Some browsers list them a moment after the page opens.' : `${missingVoiceTip(lang)} You can still read every turn.`}</p>;
-  const chosen = voicesFor(prefs, accents, lang);
+  const chosen = voicesFor(prefs, hosts, lang);
   const row = (id: 'A' | 'B') => (
     <div className="voice-row" key={id}>
       <h3><span><span className={`dot ${id}`} /> {names[id]}</span></h3>
@@ -19,6 +19,7 @@ export function VoicePicker({ names, voices, prefs, update, preview, accents, la
       </select>
       <button className="btn sm ghost" onClick={() => preview(id)}>Preview</button>
       {chosen[id] && <span className={`tag vq ${voiceQuality(chosen[id]!)}`}>{QUALITY_LABEL[voiceQuality(chosen[id]!)]}</span>}
+      {hosts?.[id]?.style && <span className="tag">{VOICE_STYLES[hosts[id]!.style!].label}</span>}
     </div>
   );
   return (
