@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { REACTIONS, type ConversationView, type ReactionKind } from '@crosstalk/shared';
 import { api } from '../api/client';
+import { REACT_EVENT } from './Portrait';
 
 type Float = { id: number; emoji: string; x: number };
 
@@ -18,6 +19,7 @@ export function ReactionBar({ view, seq, setView, toast }: { view: ConversationV
     const id = next.current++;
     setFloats(f => [...f.slice(-11), { id, emoji: REACTIONS[kind].emoji, x: 10 + Math.random() * 80 }]);
     window.setTimeout(() => setFloats(f => f.filter(x => x.id !== id)), 2200);
+    window.dispatchEvent(new CustomEvent(REACT_EVENT, { detail: { kind } }));
     try {
       const r = await api.react(view.id, target, kind);
       setView({ ...view, reactions: r.reactions });

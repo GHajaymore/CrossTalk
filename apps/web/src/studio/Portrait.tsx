@@ -87,6 +87,9 @@ const between = (a: number, b: number) => a + Math.random() * (b - a);
  * toward the speaker and nod along. Heated talk frowns more, calm talk smiles more. Off for
  * reduced motion.
  */
+/** Fired on the window when the listener taps a reaction; the hosts respond. */
+export const REACT_EVENT = 'crosstalk:react';
+
 function useLife(ref: React.RefObject<Element | null>, seat: Seat, mood: Mood, restart = '') {
   const moodRef = useRef(mood);
   moodRef.current = mood;
@@ -123,7 +126,19 @@ function useLife(ref: React.RefObject<Element | null>, seat: Seat, mood: Mood, r
     };
     // Each host starts at their own moment, so the two never move in step.
     timer = window.setTimeout(step, between(0, 1600));
-    return () => window.clearTimeout(timer);
+    // When you react, the hosts react back: a smile, raised brows, a nod or a thoughtful tilt.
+    const onReact = (e: Event) => {
+      const kind = (e as CustomEvent<{ kind: string }>).detail?.kind;
+      window.clearTimeout(timer);
+      set('--dur', 0.35, 's');
+      if (kind === 'funny' || kind === 'love') { set('--smile', 1); set('--brow', -1.5, 'px'); }
+      else if (kind === 'wow') { set('--brow', -3.5, 'px'); set('--smile', 0); }
+      else if (kind === 'clap') { set('--nod', 3.5, 'px'); set('--smile', 0.7); }
+      else if (kind === 'hmm') { set('--tilt', seat === 'A' ? 5 : -5, 'deg'); set('--furrow', 6, 'deg'); }
+      timer = window.setTimeout(step, 1400 + Math.random() * 600);
+    };
+    window.addEventListener(REACT_EVENT, onReact);
+    return () => { window.clearTimeout(timer); window.removeEventListener(REACT_EVENT, onReact); };
   }, [ref, seat, restart]);
 }
 

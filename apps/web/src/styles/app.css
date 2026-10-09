@@ -609,3 +609,9 @@ img.living{object-fit:cover}
 .react-chips{display:inline-flex;gap:6px}
 .react-chip{font-size:12px;padding:1px 6px;border:1px solid var(--line);border-radius:10px}
 @media (prefers-reduced-motion:reduce){.react-floats span{animation:none;opacity:0}}
+/* What's new: a short card on Create, once per edition. */
+.whats-new{border:1px solid var(--cue);border-radius:10px;padding:12px 14px;margin:0 0 16px;background:linear-gradient(180deg,rgba(233,211,106,.06),transparent)}
+.whats-new .wn-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.whats-new ul{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.whats-new li{display:grid;grid-template-columns:28px 1fr;gap:8px;font-size:14px}
+.wn-icon{font-size:20px}
