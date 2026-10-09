@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { ago } from '../lib/Banners';
 import { ARTIST, artSeed, episodeLabel, HOME_STYLES, PAINT_STYLE_INFO, PAINT_STYLES, paintSvg, type AppConfig, type Artwork, type GalleryEpisode, type IrisFeedback, type PaintStyle } from '@crosstalk/shared';
 import { api } from '../api/client';
 import { sketchSrc } from '../studio/ArtistCard';
@@ -53,7 +54,9 @@ export function IrisPage({ config }: { config: AppConfig | null }) {
             <span><b>{notes ? notes.length : '…'}</b> notes from you</span>
             <span><b>{notes ? liked : '…'}</b> she got right</span>
           </div>
-          {config?.storage === 'backed-up' && <p className="hint">☁ Her drawings and notes are backed up, so they stay when the server restarts.</p>}
+          {config?.storage === 'backed-up' && config.backup.state === 'ok' && <p className="hint">☁ Her drawings and notes are backed up (last copy {config.backup.lastAt ? ago(config.backup.lastAt) : 'just now'}), so they stay when the server restarts.</p>}
+          {config?.storage === 'backed-up' && config.backup.state === 'checking' && <p className="hint">☁ Backup is set up; checking that copies reach the bucket…</p>}
+          {config?.storage === 'backed-up' && config.backup.state === 'failing' && <p className="hint">⚠ The backup isn't reaching the bucket, so new drawings could be lost at the next restart. See Settings → Backup.</p>}
           {config?.storage === 'forgets' && <p className="hint">⚠ Online without a backup, her drawings are forgotten when the server restarts or updates. docs/DEPLOY.md → Keep episodes for good.</p>}
         </div>
       </header>

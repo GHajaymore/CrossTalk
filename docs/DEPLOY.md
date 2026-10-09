@@ -94,6 +94,11 @@ Deploy → Restart service**. When the app comes back, the episode and its sketc
 In Render's **Logs** you'll see `restoring snapshot` at start-up and `wal segment written` as you
 make episodes.
 
+**Settings → Backup** asks the bucket itself and shows when its newest copy landed, or what
+Litestream says is wrong (it re-checks every 30 minutes; **Check backup now** asks at once). It also
+says whether this start brought episodes back or found the bucket empty. If copies aren't arriving,
+a warning shows on Create and Episodes too.
+
 Good to know:
 
 - If one of the five settings is missing, the app starts without a backup and says so in the logs.

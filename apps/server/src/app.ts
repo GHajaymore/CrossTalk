@@ -10,6 +10,7 @@ import { FreeModelGuard } from './guard/freeModelGuard';
 import { MockProvider, type MockTiming } from './providers/mock';
 import { OpenRouterProvider, SERVICES } from './providers/openrouter';
 import { GroqModelGuard } from './guard/groqModelGuard';
+import { BackupWatch, litestreamList } from './backup';
 import type { Provider } from './providers/types';
 import type { ServerConfig } from './config';
 import { registerAccess, registerAdmin, registerWeb } from './access';
@@ -33,6 +34,8 @@ export type AppOptions = {
   /** Replaces the Scout's sources in tests. */
   scoutSources?: TopicSource[];
   now?: () => Date;
+  /** Replaces `litestream generations` in tests. */
+  backupList?: () => Promise<string>;
 };
 
 export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
@@ -40,6 +43,11 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
   const real = cfg.providerMode !== 'mock';
   let mock: MockSettings = { failOnce: false, fast: false };
   const f = opts.fetch ?? fetch;
+  // Whether the backup really reaches the bucket, not just whether it's set up.
+  const backup = new BackupWatch({
+    on: cfg.backup, restore: cfg.backupRestore, list: opts.backupList ?? litestreamList(cfg.dbPath),
+    secrets: [process.env.BACKUP_KEY_ID ?? '', process.env.BACKUP_SECRET ?? ''],
+  });
 
   const provider: Provider = real
     ? new OpenRouterProvider({ apiKey: cfg.apiKey, maxOutputTokens: cfg.maxOutputTokens, timeoutMs: cfg.requestTimeoutMs, fetch: f, service: SERVICES[cfg.providerMode === 'groq' ? 'groq' : 'openrouter'] })
@@ -186,11 +194,19 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
     rules: rules(),
     admin: admin.state(cookie),
     storage: !cfg.hosted ? 'local' : cfg.backup ? 'backed-up' : 'forgets',
+    backup: backup.status,
     portraits: cfg.portraits,
     irisPictures: cfg.irisPictures,
   });
 
   app.get('/api/config', async req => config(req.headers.cookie));
+
+  // Ask the bucket now. At most once a minute, so nobody can run up the bucket's free call allowance.
+  app.post('/api/backup/check', async req => {
+    const last = backup.status.checkedAt ? Date.parse(backup.status.checkedAt) : 0;
+    if (Date.now() - last > 60_000) await backup.check();
+    return config(req.headers.cookie);
+  });
 
   app.post('/api/guard/check', async req => {
     if (real && !cfg.problems.length) await checkModels();
@@ -545,5 +561,6 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
   });
 
   if (opts.scheduler) { scout.start(); app.addHook('onClose', async () => scout.stop()); }
+  if (opts.scheduler) { backup.start(); app.addHook('onClose', async () => backup.stop()); }
   return { app, controller, repo, guard, iris, scout, setMock: (m: MockSettings) => { mock = m; } };
 }

@@ -372,6 +372,8 @@ export type AppConfig = {
   admin: { required: boolean; ok: boolean; configured: boolean };
   /** Where episodes and Iris's sketches are kept: this computer's disk, a disk with a cloud backup, or a disk the host wipes. */
   storage: 'local' | 'backed-up' | 'forgets';
+  /** Whether copies really reach the backup bucket, and when the last one landed. */
+  backup: { state: 'off' | 'checking' | 'ok' | 'failing'; lastAt: string | null; detail: string | null; restore: 'restored' | 'empty' | null; checkedAt: string | null };
   /** Whether hosts get photo portraits (otherwise the drawn ones). */
   portraits: boolean;
   /** Iris paints full pictures with the free image service (IRIS_PICTURES=off keeps her to line art). */

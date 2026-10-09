@@ -5,7 +5,7 @@ import {
   type AppConfig, type Audience, type CreateConversation, type Format, type HomeCode, type Language, type Length, type Mode, type PersonaKey, type ScoutTopic, type SpeakerDraft, type SpeakerId, type Temperature, type VoiceStyle,
 } from '@crosstalk/shared';
 import { api } from '../api/client';
-import { BudgetBanner, realBlocked, SetupBanner } from '../lib/Banners';
+import { BudgetBanner, realBlocked, SetupBanner, StorageBanner } from '../lib/Banners';
 import { HeatMeter } from '../lib/HeatMeter';
 import { BriefBox } from '../scout/BriefBox';
 import { TodayTray } from '../scout/TodayTray';
@@ -276,6 +276,7 @@ export function Create({ config, go, refreshConfig, toast }: Props) {
       </div>
 
       <SetupBanner config={config} />
+      <StorageBanner config={config} />
       <BudgetBanner config={config} />
       <div className="start-row" ref={startRow}>
         <button className="btn primary" disabled={!canStart} onClick={start}>● Start recording</button>

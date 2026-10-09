@@ -1,5 +1,37 @@
 import type { AppConfig } from '@crosstalk/shared';
 
+/** "3 min ago", for the backup's last copy. */
+export function ago(iso: string, now = Date.now()) {
+  const s = Math.max(0, Math.round((now - Date.parse(iso)) / 1000));
+  if (s < 90) return 'just now';
+  if (s < 90 * 60) return `${Math.round(s / 60)} min ago`;
+  if (s < 36 * 3600) return `${Math.round(s / 3600)} h ago`;
+  return `${Math.round(s / 86400)} days ago`;
+}
+
+/**
+ * Online, episodes only last if they're backed up. Says so plainly when there's no backup, or when
+ * copies aren't reaching the bucket, so it's never a surprise after a restart.
+ */
+export function StorageBanner({ config }: { config: AppConfig | null }) {
+  if (!config || config.storage === 'local') return null;
+  if (config.storage === 'forgets') {
+    return (
+      <div className="banner" role="alert">
+        <span><b>Not backed up.</b> Online, the server forgets every episode and drawing when it restarts, sleeps or updates. Add the free backup: docs/DEPLOY.md → Keep episodes for good.</span>
+      </div>
+    );
+  }
+  if (config.backup.state !== 'failing') return null;
+  return (
+    <div className="banner" role="alert">
+      <span><b>The backup isn't reaching your bucket.</b> New episodes will be lost at the next restart until it's fixed.
+        {config.backup.detail && <> What Litestream says: <code>{config.backup.detail}</code></>} Check the five BACKUP_ settings in Render.</span>
+      <a className="btn sm" href="#/settings">Open Settings</a>
+    </div>
+  );
+}
+
 /** Shown when the app's own daily request limit is used up. */
 export function BudgetBanner({ config }: { config: AppConfig | null }) {
   if (!config || config.requestsToday < config.dailyLimit) return null;

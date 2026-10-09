@@ -14,6 +14,8 @@ if [ -n "${BACKUP_BUCKET:-}" ]; then
   mkdir -p "$(dirname "$DB_PATH")"
   if [ ! -f "$DB_PATH" ]; then
     bin/litestream restore -config litestream.yml -if-replica-exists "$DB_PATH"
+    # Tell the app how it started, so Settings can say "brought back" or "the bucket was empty".
+    if [ -f "$DB_PATH" ]; then export CROSSTALK_RESTORE=restored; echo "Backup: brought the saved episodes back."; else export CROSSTALK_RESTORE=empty; echo "Backup: the bucket had nothing to bring back, starting empty." >&2; fi
   fi
   export CROSSTALK_BACKUP=on
   # The server runs directly (not through npm) so a stop signal reaches it and the backup waits for it to close.
