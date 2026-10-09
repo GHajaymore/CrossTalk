@@ -5,6 +5,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { hostTraits, lookCode, type HairStyle, type OutfitKind } from '@crosstalk/shared';
 import { usePolledImage } from '../lib/usePolledImage';
+import { MURMUR_EVENT } from '../speech/BrowserSpeech';
 
 type Seat = 'A' | 'B';
 type Mood = 'calm' | 'lively' | 'heated';
@@ -138,8 +139,19 @@ function useLife(ref: React.RefObject<Element | null>, seat: Seat, mood: Mood, r
       else if (kind === 'hmm') { set('--tilt', seat === 'A' ? 5 : -5, 'deg'); set('--furrow', 6, 'deg'); }
       timer = window.setTimeout(step, 1400 + Math.random() * 600);
     };
+    // A murmur ("mm-hm", "right") comes with a small nod and a half smile from the host who said it.
+    const onMurmur = (e: Event) => {
+      if ((e as CustomEvent<{ seat: string }>).detail?.seat !== seat) return;
+      window.clearTimeout(timer);
+      set('--dur', 0.3, 's');
+      set('--nod', between(2.5, 4), 'px');
+      set('--smile', between(0.3, 0.6));
+      set('--brow', -between(0.5, 1.5), 'px');
+      timer = window.setTimeout(step, 700 + Math.random() * 500);
+    };
     window.addEventListener(REACT_EVENT, onReact);
-    return () => { window.clearTimeout(timer); window.removeEventListener(REACT_EVENT, onReact); };
+    window.addEventListener(MURMUR_EVENT, onMurmur);
+    return () => { window.clearTimeout(timer); window.removeEventListener(REACT_EVENT, onReact); window.removeEventListener(MURMUR_EVENT, onMurmur); };
   }, [ref, seat, restart]);
 }
 

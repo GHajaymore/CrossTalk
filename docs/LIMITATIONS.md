@@ -23,6 +23,10 @@ CrossTalk is a prototype for one person. These are the honest gaps.
 
 - **Browser voices depend on the device.** They sound different everywhere and can sound robotic.
   Headless browsers have none, so voice playback isn't covered by the automated tests.
+- **The listening host's "mm-hm"** plays only when the device gives the two hosts different voices
+  in the episode's language (en, es, hi, pt, fr, de, it for now), and it's a separate short line, so
+  on some devices it lands a beat late. Pauses between hosts are timers in the browser, not real
+  breaths. The odd "I mean…" or self-correction is asked of real AI hosts only; mock lines are fixed.
 - **Recorded voices** (`tools/voice`) are rendered on your machine, one episode at a time, and aren't
   part of the hosted version yet. There are no emotion or laughter cues yet.
 - **Iris paints from her own lines.** Painting and Dreamscape are her sketch with brushwork, light and

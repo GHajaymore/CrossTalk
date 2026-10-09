@@ -81,6 +81,26 @@ test('host photos: "still being made" is waited for, then the photo shows and mo
   await expect.poll(motion, { timeout: 8000 }).not.toBe('');
 });
 
+test('the director: while a host speaks, the camera favours them', async ({ page }) => {
+  // No real voices in the test browser: a stand-in takes a moment over each line.
+  await page.addInitScript(() => {
+    const fake = {
+      speaking: false, paused: false, pending: false,
+      speak(u: SpeechSynthesisUtterance) { setTimeout(() => { u.onstart?.(new Event('start') as SpeechSynthesisEvent); setTimeout(() => u.onend?.(new Event('end') as SpeechSynthesisEvent), 600); }, 5); },
+      cancel() {}, pause() {}, resume() {}, getVoices: () => [], addEventListener() {}, removeEventListener() {},
+    };
+    Object.defineProperty(window, 'speechSynthesis', { value: fake, configurable: true });
+  });
+  const id = await finishedEpisode(page.request);
+  await page.goto(`/#/studio/${id}/watch`);
+  await expect(page.locator('.set-tiles')).not.toHaveClass(/dir-/);
+  await page.getByRole('button', { name: /Play/ }).first().click();
+  await expect(page.locator('.set-tiles')).toHaveClass(/dir-(A|B)/);
+  const first = (await page.locator('.set-tiles').getAttribute('class'))!.match(/dir-(A|B)/)![1];
+  // When the other host takes over, the camera follows.
+  await expect(page.locator('.set-tiles')).toHaveClass(new RegExp(`dir-${first === 'A' ? 'B' : 'A'}`), { timeout: 15_000 });
+});
+
 test('react while you listen: emoji float up, and each line keeps its count', async ({ page }) => {
   const id = await finishedEpisode(page.request);
   await page.goto(`/#/studio/${id}/watch`);

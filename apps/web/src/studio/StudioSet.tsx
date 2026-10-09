@@ -151,7 +151,8 @@ export function StudioSet(p: StudioSetProps) {
         <span className="tag">{p.tags} <HeatMeter temperature={p.temperature} /></span>
         <h2>{p.topic}</h2>
       </div>
-      <div className="set-tiles">
+      {/* The director: the camera favours whoever is speaking, and goes back to the two-shot between lines. */}
+      <div className={`set-tiles${!p.guest && (p.speaking === 'A' || p.speaking === 'B') ? ` dir-${p.speaking}` : ''}`}>
         {tile('A', p.hosts.A)}
         {p.guest && tile('G', p.guest)}
         {tile('B', p.hosts.B)}

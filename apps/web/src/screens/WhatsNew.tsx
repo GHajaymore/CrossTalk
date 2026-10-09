@@ -2,12 +2,13 @@ import { useState } from 'react';
 
 const KEY = 'ct_seen_new';
 // Bump when there's something new to show; each listener sees it once until they close it.
-const EDITION = '2026-10-09';
+const EDITION = '2026-10-09b';
 
 const ITEMS = [
   { icon: '🎬', title: 'Social clip', text: 'Any finished episode becomes a vertical video with live captions, the mind-change meter, Iris’s art and music composed for it. Read → Episode kit.' },
   { icon: '🖼', title: 'Iris print', text: 'Her painting as a print-ready A4 page, with listing text that says it’s AI-made. Read → Episode kit.' },
   { icon: '👏', title: 'React while you listen', text: 'Tap 👏 🤔 😂 😮 ❤️ on Watch or Listen. The hosts react back, and Iris draws the line you loved.' },
+  { icon: '🎙', title: 'Hosts that sound human', text: 'A beat before the other host answers, a soft “mm-hm” while they listen, and the camera follows whoever is talking.' },
 ];
 
 /** A short "what's new" card, once per edition, closed for good with one tap. */
