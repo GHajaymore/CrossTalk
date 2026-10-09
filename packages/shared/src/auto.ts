@@ -2,6 +2,7 @@
 // Pure keyword rules, no model call, so the server and the Create screen always agree.
 import { BRANCH_JOBS, BRANCH_TURNS, JOBS, LENGTHS, LONG_JOBS, PERSONAS, SHORT_PLAN, STANCE_END_JOBS, STANCE_START_JOBS } from './constants';
 import { homeName, homeOf } from './homes';
+import type { VoiceStyle } from './schemas';
 import type { Audience, Length, PersonaKey, SpeakerDraft, SpeakerId, Speakers, Temperature } from './schemas';
 
 type Pair = [PersonaKey, PersonaKey];
@@ -57,6 +58,15 @@ export function autoNames(topic: string, audience: Audience, region: Region = 'n
 
 export const SPEAKER_IDS: SpeakerId[] = ['A', 'B'];
 
+const PERSONA_VOICE: Record<PersonaKey, VoiceStyle> = {
+  optimist: 'energetic', comedian: 'energetic', contrarian: 'energetic',
+  storyteller: 'warm', pragmatist: 'warm', custom: 'warm',
+  skeptic: 'calm', professor: 'calm', philosopher: 'calm',
+};
+/** A host's voice style: the one picked for them, or the one that fits their personality. */
+export const voiceStyleOf = (s: { voice?: string; persona: PersonaKey }): VoiceStyle =>
+  s.voice && s.voice !== 'auto' ? (s.voice as VoiceStyle) : PERSONA_VOICE[s.persona];
+
 /** Fill in Auto names and personalities. Seats the listener set by hand are left alone. */
 export function resolveSpeakers(
   topic: string,
@@ -84,7 +94,7 @@ export function resolveSpeakers(
     const autoRole = d.autoRole ?? true;
     // Teens shows: the right seat is a young host, unless you wrote their role yourself.
     const role = autoRole || !d.role?.trim() ? (audience === 'teens' && id === 'B' ? youthRole(topic) : fitted[i]) : d.role.trim();
-    return { id, name, autoName: d.autoName, persona, autoPersona: d.autoPersona, lens, role, autoRole, home: from ? from.code : '' as const, modelId: models[id] };
+    return { id, name, autoName: d.autoName, persona, autoPersona: d.autoPersona, lens, role, autoRole, home: from ? from.code : '' as const, voice: d.voice ?? 'auto', modelId: models[id] };
   };
   return { A: one('A', 0), B: one('B', 1) };
 }

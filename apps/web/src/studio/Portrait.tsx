@@ -195,9 +195,27 @@ export function HostPortrait(props: PortraitProps & { photo?: boolean }) {
   // Each face breathes at its own pace, so the two hosts never move together.
   const breathe = { animationDuration: `${4.2 + (L.h % 19) / 10}s`, animationDelay: `-${(L.h >>> 5) % 40 / 10}s` };
   const [state, setState] = useState<'loading' | 'ok' | 'failed'>('loading');
+  const [src, setSrc] = useState<string | null>(null);
   const wrap = useRef<HTMLDivElement>(null);
   useLife(wrap, props.seat, props.mood ?? 'lively');
-  useEffect(() => setState('loading'), [code]);
+  // The server answers at once: the photo, "still being made" (202, ask again in a few seconds), or none.
+  useEffect(() => {
+    setState('loading'); setSrc(null);
+    if (!props.photo) return;
+    let stop = false, timer = 0, url = '';
+    const tries = { left: 30 };
+    const ask = async () => {
+      try {
+        const r = await fetch(`/api/portraits/${code}.jpg`);
+        if (stop) return;
+        if (r.ok) { url = URL.createObjectURL(await r.blob()); if (!stop) setSrc(url); return; }
+        if (r.status === 202 && tries.left-- > 0) { timer = window.setTimeout(ask, 4000); return; }
+      } catch { /* offline: the drawn portrait stays */ }
+      if (!stop) setState('failed');
+    };
+    void ask();
+    return () => { stop = true; window.clearTimeout(timer); if (url) URL.revokeObjectURL(url); };
+  }, [code, props.photo]);
   return (
     <>
       {/* Their own room behind the drawn portrait, matching the room in their photo. */}
@@ -205,7 +223,7 @@ export function HostPortrait(props: PortraitProps & { photo?: boolean }) {
       <Portrait {...props} />
       {props.photo && state !== 'failed' && (
         <div ref={wrap} className={`set-photo${state === 'ok' ? ' ok' : ''}`} aria-hidden="true">
-          <img src={`/api/portraits/${code}.jpg`} alt="" style={breathe} onLoad={() => setState('ok')} onError={() => setState('failed')} />
+          {src && <img src={src} alt="" style={breathe} onLoad={() => setState('ok')} onError={() => setState('failed')} />}
         </div>
       )}
     </>

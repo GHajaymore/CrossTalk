@@ -74,6 +74,10 @@ CrossTalk is a prototype for one person. These are the honest gaps.
 - **Young hosts are shown as adults.** On a Teens show the right seat is a Gen Z student; roles like
   student, intern or creator look about nineteen to their twenties. CrossTalk never makes a
   photo-real face of anyone under eighteen.
+- **Voice styles (Warm, Energetic, Calm) are a change of pace and pitch** plus a note in the host's
+  prompt; device voices can't act. A host named as a woman or a man gets a matching voice when the
+  device's voice names make it clear (most do, e.g. "Jenny", "Guy", "UK English Female"); a voice you
+  pick in Voices always wins.
 - **Voices come from the listener's device.** CrossTalk picks the most natural ones and suggests free
   better voices when a device only has basic ones; quality still varies by device.
 - **Listening times are estimates** (about 18 seconds a turn at a normal pace). Real hosts vary their

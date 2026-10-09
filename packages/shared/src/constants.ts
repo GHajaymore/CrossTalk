@@ -112,6 +112,16 @@ export const TEMPERATURES = {
 
 export const TEMPERATURE_ORDER = ['calm', 'lively', 'heated'] as const;
 
+/**
+ * How a host sounds. Device voices can't really act, so each style is a small change of pace and
+ * pitch, plus a line in the host's prompt about how they speak. Auto follows their personality.
+ */
+export const VOICE_STYLES = {
+  warm: { label: 'Warm', help: 'Unhurried and friendly, a little lower.', rate: 0.96, pitch: 0.94, speak: 'warm and unhurried: friendly, generous phrasing' },
+  energetic: { label: 'Energetic', help: 'Quicker and brighter.', rate: 1.08, pitch: 1.06, speak: 'energetic and quick: short punchy sentences' },
+  calm: { label: 'Calm', help: 'Slower and steady.', rate: 0.9, pitch: 0.98, speak: 'calm and measured: steady, considered phrasing' },
+} as const;
+
 export const PERSONAS = {
   optimist: { label: 'The Optimist', lens: 'Imaginative, practical, looks for opportunities' },
   skeptic: { label: 'The Skeptic', lens: 'Analytical, skeptical, watches for constraints' },

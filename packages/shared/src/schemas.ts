@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { AUDIENCES, CUE_TEXT_MAX, LANGUAGES, SCOUT_CATS, SCOUT_COUNTRIES, SCOUT_INTERESTS_MAX, SCOUT_MAX_FEEDS, SCOUT_REGIONS, SCOUT_SOURCES, TITLE_MAX, FORMATS, LENGTHS, LENS_MAX, MODES, NAME_MAX, PERSONAS, ROLE_MAX, TEMPERATURES, TOPIC_MAX } from './constants';
+import { AUDIENCES, CUE_TEXT_MAX, LANGUAGES, VOICE_STYLES, SCOUT_CATS, SCOUT_COUNTRIES, SCOUT_INTERESTS_MAX, SCOUT_MAX_FEEDS, SCOUT_REGIONS, SCOUT_SOURCES, TITLE_MAX, FORMATS, LENGTHS, LENS_MAX, MODES, NAME_MAX, PERSONAS, ROLE_MAX, TEMPERATURES, TOPIC_MAX } from './constants';
 
 const keys = <T extends Record<string, unknown>>(o: T) => Object.keys(o) as [keyof T & string, ...(keyof T & string)[]];
 
@@ -35,8 +35,11 @@ export const SpeakerDraft = z.object({
   autoRole: z.boolean().default(true),
   /** Where the host is from (a country code), or '' for anywhere. Shapes how they talk, their name and face. */
   home: z.union([z.literal(''), z.enum(keys(SCOUT_COUNTRIES))]).optional(),
+  /** How they sound: a voice style, or 'auto' to follow their personality. */
+  voice: z.union([z.literal('auto'), z.enum(keys(VOICE_STYLES))]).optional(),
 });
 export type SpeakerDraft = z.infer<typeof SpeakerDraft>;
+export type VoiceStyle = keyof typeof VOICE_STYLES;
 
 /** The speaker snapshot stored on a conversation, so later config changes never rewrite history. */
 export const Speaker = SpeakerDraft.extend({

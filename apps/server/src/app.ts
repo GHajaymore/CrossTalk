@@ -277,9 +277,12 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
 
   // Photo portraits of the invented hosts: fetched once per look, then served from the database.
   const portraits = new Portraits(repo, f);
+  // Never waits on the image service: 202 while a photo is being made (ask again shortly), 404 when
+  // there won't be one. A held-open request would tie up the browser's few connections to the app.
   app.get<{ Params: { code: string } }>('/api/portraits/:code', async (req, reply) => {
     const code = req.params.code.replace(/\.(jpg|png|webp)$/, '');
-    const found = cfg.portraits ? await portraits.get(code) : null;
+    const found = cfg.portraits ? portraits.check(code) : null;
+    if (found === 'pending') return reply.status(202).header('Retry-After', '4').header('Cache-Control', 'no-store').send({ pending: true });
     if (!found) return reply.status(404).send({ error: 'No photo for this host; the drawn portrait is used.' });
     return reply.header('Cache-Control', 'public, max-age=31536000, immutable').type(found.mime).send(found.data);
   });

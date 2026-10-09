@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  artworkSvg, AUDIENCES, CUE_LIMIT, HAND_RAISED, LENGTHS, episodeLabel, hideStanceTag, homeOf, hostSubtitle, jobIn, MODES, paintStyleOf, speakerFor, TEMPERATURES, turnTotal,
-  type AppConfig, type ConversationView, type Intervention,
+  artworkSvg, AUDIENCES, CUE_LIMIT, HAND_RAISED, LENGTHS, episodeLabel, hideStanceTag, homeOf, hostSubtitle, nameLook, voiceStyleOf, jobIn, MODES, paintStyleOf, speakerFor, TEMPERATURES, turnTotal,
+  type AppConfig, type ConversationView, type Intervention, type Speaker,
 } from '@crosstalk/shared';
 import { api } from '../api/client';
 import { useConversation } from '../api/useConversation';
@@ -57,9 +57,13 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
   const { voices, prefs, update } = useVoices(language);
   // Each host speaks with a voice from their home when this device has one: an Indian English voice,
   // or in a Spanish episode a Mexican Spanish one for a host from Mexico.
-  const accentOf = (home?: string) => { const h = homeOf(home); return !h ? null : language === 'en' ? h.voice : `${language}-${h.code}`; };
-  const accents = { A: accentOf(view?.speakers.A.home), B: accentOf(view?.speakers.B.home) };
-  const browserPlay = usePlayback(view?.turns ?? [], prefs, accents, language);
+  // A voice that matches whether they're a woman or a man, at the pace of their voice style.
+  const hostVoice = (s?: Speaker) => {
+    const h = homeOf(s?.home);
+    return s ? { accent: !h ? null : language === 'en' ? h.voice : `${language}-${h.code}`, look: nameLook(s.name), style: voiceStyleOf(s) } : {};
+  };
+  const hosts = { A: hostVoice(view?.speakers.A), B: hostVoice(view?.speakers.B) };
+  const browserPlay = usePlayback(view?.turns ?? [], prefs, hosts, language);
   const recording = useRecording(view?.turns ?? [], view?.audio);
   // A rendered recording (natural voices) wins over the device's built-in voices.
   const play = recording ?? browserPlay;
@@ -353,8 +357,8 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
       <SidePanel open={panelOpen} onClose={() => setPanelOpen(false)}
         cue={<CuePanel view={view} live={live} setView={setView} toast={toast} limit={cueLimit} allowHeated={config?.rules.allowHeated ?? true} />}
         branches={<BranchList view={view} />}
-        voices={<VoicePicker names={{ A: sp.A.name, B: sp.B.name }} voices={voices} prefs={prefs} update={update} accents={accents} lang={language}
-          preview={k => new BrowserSpeech(() => prefs, () => accents, () => language).speak([{ key: 'p', speakerId: k, text: `Hi, I'm ${sp[k].name}. This is how I'll sound on the show.` }], {})} />} />
+        voices={<VoicePicker names={{ A: sp.A.name, B: sp.B.name }} voices={voices} prefs={prefs} update={update} hosts={hosts} lang={language}
+          preview={k => new BrowserSpeech(() => prefs, () => hosts, () => language).speak([{ key: 'p', speakerId: k, text: `Hi, I'm ${sp[k].name}. This is how I'll sound on the show.` }], {})} />} />
     </div>
   );
 }

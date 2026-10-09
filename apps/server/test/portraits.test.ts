@@ -11,6 +11,15 @@ function fakeImages(reply: () => Response = () => new Response(jpeg, { headers: 
   const f = (async (url: string) => { asked.push(String(url)); return reply(); }) as unknown as typeof fetch;
   return { f, asked };
 }
+/** Asks like the page does: again every moment while the photo is still being made (202). */
+async function settle(app: { inject: (o: { url: string }) => Promise<{ statusCode: number }> }, url: string) {
+  for (let i = 0; i < 200; i++) {
+    const r = await app.inject({ url });
+    if (r.statusCode !== 202) return r;
+    await new Promise(res => setTimeout(res, 2));
+  }
+  throw new Error('still pending');
+}
 const code = lookCode(hostTraits({ name: 'Nora', role: 'Researcher who studies how people work', seat: 'B' }));
 
 describe('photo portraits of the invented hosts', () => {
@@ -41,7 +50,11 @@ describe('photo portraits of the invented hosts', () => {
     const net = fakeImages();
     const { app } = buildApp(mockConfig({ dbPath: ':memory:' }), { fetch: net.f });
     try {
-      const first = await app.inject({ url: `/api/portraits/${code}.jpg` });
+      // The first ask never waits on the service: "being made, ask again".
+      const pending = await app.inject({ url: `/api/portraits/${code}.jpg` });
+      expect(pending.statusCode).toBe(202);
+      expect(pending.headers['retry-after']).toBe('4');
+      const first = await settle(app, `/api/portraits/${code}.jpg`) as Awaited<ReturnType<typeof app.inject>>;
       expect(first.statusCode).toBe(200);
       expect(first.headers['content-type']).toBe('image/jpeg');
       expect(first.rawPayload).toEqual(jpeg);
@@ -63,7 +76,11 @@ describe('photo portraits of the invented hosts', () => {
       () => { throw new Error('offline'); },
     ]) {
       const { app } = buildApp(mockConfig({ dbPath: ':memory:' }), { fetch: fakeImages(reply).f });
-      try { expect((await app.inject({ url: `/api/portraits/${code}.jpg` })).statusCode).toBe(404); } finally { await app.close(); }
+      try {
+        expect((await settle(app, `/api/portraits/${code}.jpg`)).statusCode).toBe(404);
+        // A failed look isn't asked for again straight away.
+        expect((await app.inject({ url: `/api/portraits/${code}.jpg` })).statusCode).toBe(404);
+      } finally { await app.close(); }
     }
   });
 
@@ -88,6 +105,16 @@ describe('photo portraits of the invented hosts', () => {
       expect(b % 2).toBe(1);
     }
     expect(portraitPrompt(parseLookCode('A-1-short-1-1-blazer-a4-b1')!)).toMatch(/exposed brick wall/);
+  });
+
+  it('never holds a request open while the service is slow, so the page keeps its connections', async () => {
+    const hang = (() => new Promise(() => {})) as unknown as typeof fetch;
+    const { app } = buildApp(mockConfig({ dbPath: ':memory:' }), { fetch: hang });
+    try {
+      const started = Date.now();
+      for (let i = 0; i < 8; i++) expect((await app.inject({ url: `/api/portraits/${code}.jpg` })).statusCode).toBe(202);
+      expect(Date.now() - started).toBeLessThan(1000);
+    } finally { await app.close(); }
   });
 
   it('asks the free service for one photo at a time, and tries once more when it is busy', async () => {
