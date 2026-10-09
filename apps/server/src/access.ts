@@ -111,6 +111,7 @@ export function registerAdmin(app: FastifyInstance, cfg: ServerConfig) {
 const TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml',
   '.png': 'image/png', '.webmanifest': 'application/manifest+json', '.json': 'application/json', '.woff2': 'font/woff2', '.ico': 'image/x-icon',
+  '.wasm': 'application/wasm', '.md': 'text/markdown; charset=utf-8',
 };
 
 /** Serves the built web app (apps/web/dist) so a host only has to run this one server. */
@@ -127,9 +128,17 @@ export function registerWeb(app: FastifyInstance, cfg: ServerConfig) {
     // A missing file is a 404; any other path is the app itself (it routes with #/…).
     if (!found && extname(path)) return reply.status(404).send({ error: 'Not found.' });
     const target = found ? file : join(root, 'index.html');
-    // Hashed build files never change; the page itself is always checked again.
-    reply.header('Cache-Control', target.includes(`${sep}assets${sep}`) ? 'public, max-age=31536000, immutable' : 'no-cache');
-    return reply.type(TYPES[extname(target)] ?? 'application/octet-stream').send(createReadStream(target));
+    // Hashed build files never change; the face map (big, changes only with a new version) is kept a
+    // week; the page itself is always checked again.
+    const big = target.includes(`${sep}mediapipe${sep}`) || target.includes(`${sep}models${sep}`);
+    reply.header('Cache-Control', target.includes(`${sep}assets${sep}`) ? 'public, max-age=31536000, immutable' : big ? 'public, max-age=604800' : 'no-cache');
+    reply.type(TYPES[extname(target)] ?? 'application/octet-stream');
+    // A ready-made gzip copy, when there is one and the browser takes it (the face map's 11 MB runtime goes down to about a third).
+    if (existsSync(`${target}.gz`) && /\bgzip\b/.test(String(req.headers['accept-encoding'] ?? ''))) {
+      reply.header('Content-Encoding', 'gzip').header('Vary', 'Accept-Encoding');
+      return reply.send(createReadStream(`${target}.gz`));
+    }
+    return reply.send(createReadStream(target));
   });
   return true;
 }

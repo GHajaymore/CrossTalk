@@ -5,9 +5,10 @@ export type PolledImage = { src: string | null; state: 'loading' | 'ok' | 'faile
 /**
  * A picture the server may still be making: it answers at once with the image, 202 ("ask again
  * shortly") or 404. Asks again every few seconds while it's being made. Only real images are used.
- * `delayMs` waits before the first ask (so typing doesn't ask per keystroke).
+ * `delayMs` waits before the first ask (so typing doesn't ask per keystroke). With `retryMs`, a picture
+ * that isn't there is asked for again after that long, for as long as it's on screen.
  */
-export function usePolledImage(url: string | null, delayMs = 0, tries = 30): PolledImage {
+export function usePolledImage(url: string | null, delayMs = 0, tries = 30, retryMs = 0): PolledImage {
   const [img, setImg] = useState<PolledImage>({ src: null, state: 'loading' });
   useEffect(() => {
     setImg({ src: null, state: 'loading' });
@@ -28,7 +29,10 @@ export function usePolledImage(url: string | null, delayMs = 0, tries = 30): Pol
           return;
         }
       } catch { /* offline */ }
-      if (!stop) setImg({ src: null, state: 'failed' });
+      if (stop) return;
+      // Some pictures are worth waiting for: ask again later instead of giving up.
+      if (retryMs > 0) { left = tries; timer = window.setTimeout(ask, retryMs); setImg(i => (i.state === 'loading' ? i : { src: null, state: 'loading' })); return; }
+      setImg({ src: null, state: 'failed' });
     };
     timer = window.setTimeout(ask, delayMs);
     return () => { stop = true; window.clearTimeout(timer); if (blobUrl) URL.revokeObjectURL(blobUrl); };

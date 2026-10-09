@@ -158,7 +158,7 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
     ? { who: live.speakerId, text: tail(hideStanceTag(live.text)) || '…' }
     : guestWaiting && !listening ? { who: 'G' as const, text: guestWaiting.text ?? '' }
     : listening ? { who: play.speakerId, text: play.caption }
-    : st === 'failed' ? { who: null, text: 'The connection dropped on this turn. Everything before it is saved.' }
+    : st === 'failed' ? { who: null, text: `This turn didn't come through${reason ? `: ${reason}` : '.'} Everything before it is saved; press Retry below.` }
     : lastTurn && st !== 'idle' && st !== 'generating' ? { who: lastTurn.speakerId, text: lastSentence(lastTurn.text) }
     : null;
 
