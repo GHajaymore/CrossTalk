@@ -3,6 +3,7 @@ import { ARTIST, artSeed, episodeLabel, HOME_STYLES, PAINT_STYLE_INFO, PAINT_STY
 import { api } from '../api/client';
 import { sketchSrc } from '../studio/ArtistCard';
 import { Footer } from './Footer';
+import { Slideshow } from '../studio/Slideshow';
 
 // A tiny scene to show each home style: two figures at a table under a lamp.
 const SAMPLE = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 360"><g fill="none" stroke-width="3" stroke-linecap="round"><path d="M120 290 L480 290" stroke="#ECE8E1"/><circle cx="220" cy="170" r="22" stroke="#E8A55A"/><path d="M220 192 Q205 240 215 288 M220 210 Q250 225 270 240" stroke="#E8A55A"/><circle cx="380" cy="170" r="22" stroke="#5FB8B0"/><path d="M380 192 Q395 240 385 288 M380 210 Q350 225 330 240" stroke="#5FB8B0"/><path d="M300 60 L300 110 M275 130 Q300 100 325 130 Z" stroke="#E9D36A"/><path d="M260 250 L340 250" stroke="#B9A4E6"/></g></svg>';
@@ -16,6 +17,7 @@ export function IrisPage({ config }: { config: AppConfig | null }) {
   const [styles, setStyles] = useState<PaintStyle[] | null>(null);
   const [styleMsg, setStyleMsg] = useState('');
   const [homeOn, setHomeOn] = useState<boolean | null>(null);
+  const [show, setShow] = useState(false);
   useEffect(() => {
     api.irisGallery().then(setGallery).catch(() => setGallery([]));
     api.irisFeedback().then(setNotes).catch(() => setNotes([]));
@@ -54,8 +56,10 @@ export function IrisPage({ config }: { config: AppConfig | null }) {
         </div>
       </header>
 
-      <section className="sec"><h2>Gallery</h2>
-        <p className="hint">Everything she has made: each drawing, each time you asked her again, and each style you chose.</p>
+      <section className="sec"><div className="sec-head"><h2>Gallery</h2>
+        {!!gallery?.length && <button className="btn sm" onClick={() => setShow(true)}>▶ Play the gallery</button>}</div>
+        <p className="hint">Everything she has made: each drawing, each time you asked her again, and each style you chose. Play it as a slow exhibition, with music, on any screen.</p>
+        {show && gallery && <Slideshow gallery={gallery} onClose={() => setShow(false)} />}
         {!gallery ? <p className="hint">Loading…</p> : !gallery.length ? <p className="hint">No drawings yet. Finish an episode and Iris paints it.</p> : (
           <ul className="gallery">{gallery.map(g => <GalleryCard key={g.conversationId} g={g} />)}</ul>
         )}

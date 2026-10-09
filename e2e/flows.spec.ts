@@ -93,6 +93,22 @@ test('react while you listen: emoji float up, and each line keeps its count', as
   await expect(page.getByLabel('Your reactions: Applause 1, Funny 2')).toBeVisible();
 });
 
+test('Iris gallery as an exhibition: play, step with the keys, pause, close with Esc', async ({ page }) => {
+  await finishedEpisode(page.request);
+  await finishedEpisode(page.request, 'Should cities ban cars from their centres?');
+  await page.goto('/#/iris');
+  await page.getByRole('button', { name: '▶ Play the gallery' }).click();
+  const show = page.getByRole('dialog', { name: /gallery, piece 1 of \d+/ });
+  await expect(show).toBeVisible();
+  await expect(show.getByRole('button', { name: 'Close' })).toBeFocused();
+  await page.keyboard.press('ArrowRight');
+  await expect(page.getByRole('dialog', { name: /piece 2 of/ })).toBeVisible();
+  await page.getByRole('button', { name: '❚❚ Pause' }).click();
+  await expect(page.getByRole('button', { name: '▶ Play', exact: true })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+});
+
 test('create → run → stop → refresh keeps every finished turn', async ({ page }) => {
   await page.goto('/#/create');
   await page.getByRole('button', { name: /Start recording/ }).click();
