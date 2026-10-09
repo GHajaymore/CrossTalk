@@ -57,6 +57,22 @@ describe('retry policy and request counting', () => {
     expect(repo.listTurns(c.id)).toHaveLength(0);
   });
 
+  it('waits through short per-minute rate limits instead of failing the episode', async () => {
+    const e429 = (s: number | null) => new ProviderError('Rate limited by Groq.', true, s === null ? null : s * 1000, 429);
+    const ok = setup([e429(6), e429(null), e429(4), 'Made it.']);
+    await ok.controller.start(ok.c.id);
+    await ok.controller.settled(ok.c.id);
+    expect(ok.repo.view(ok.c.id)!.run?.state).toBe('completed');
+    expect(ok.waits).toEqual([6000, 10_000, 4000]);
+    expect(ok.controller.requestsToday()).toBe(4);
+    // Three short waits, then the normal single retry, then it stops and says why.
+    const stuck = setup([e429(2), e429(2), e429(2), e429(2), e429(2), 'never reached']);
+    await stuck.controller.start(stuck.c.id);
+    await stuck.controller.settled(stuck.c.id);
+    expect(stuck.repo.view(stuck.c.id)!.run).toMatchObject({ state: 'failed', stopReason: expect.stringMatching(/Rate limited/) });
+    expect(stuck.attempts()).toBe(5);
+  });
+
   it('does not retry a request that was refused', async () => {
     const { repo, controller, c, attempts } = setup([new ProviderError('OpenRouter rejected the API key.', false, null, 401)]);
     await controller.start(c.id);
