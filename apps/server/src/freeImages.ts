@@ -56,11 +56,15 @@ export class FreeImages {
     const saved = this.o.saved(key);
     if (saved) return saved;
     if (this.inFlight.has(key)) return 'pending';
-    if (this.o.now().getTime() - (this.failed.get(key) ?? -Infinity) < FAILED_WAIT_MS) return null;
-    // Pictures still being made count toward the day's cap too.
-    if (this.o.madeOn(this.day()) + this.inFlight.size >= this.o.perDay) return null;
+    if (!this.mayStart(key)) return null;
     void this.get(key);
     return 'pending';
+  }
+
+  /** Not lately failed, and room left today (pictures still being made count too). */
+  private mayStart(key: string) {
+    if (this.o.now().getTime() - (this.failed.get(key) ?? -Infinity) < FAILED_WAIT_MS) return false;
+    return this.o.madeOn(this.day()) + this.inFlight.size < this.o.perDay;
   }
 
   /** The stored picture, or one made now (waiting for it); null when there won't be one. */
@@ -71,7 +75,7 @@ export class FreeImages {
     if (saved) return saved;
     const pending = this.inFlight.get(key);
     if (pending) return pending;
-    if (this.o.madeOn(this.day()) >= this.o.perDay) return null;
+    if (!this.mayStart(key)) return null;
     const p = this.o.queue.run(() => this.fetchOne(key, url))
       .then(got => { if (!got) this.failed.set(key, this.o.now().getTime()); return got; })
       .finally(() => this.inFlight.delete(key));

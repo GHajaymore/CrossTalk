@@ -9,10 +9,10 @@ import { IrisPicture } from './IrisPicture';
 /** Her sketch is shown as an image, never as live markup, so even a checked SVG can't run anything. */
 export const sketchSrc = (svg: string) => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 
-type Props = { notes: ArtistNotes; speakers: Speakers; conversationId: string; onAgain: () => void; onJump: (seq: number) => void; toast: (m: string) => void; setView: (v: ConversationView) => void; pictures?: boolean; lang?: Language };
+type Props = { notes: ArtistNotes; speakers: Speakers; conversationId: string; onAgain: () => void; onJump: (seq: number) => void; toast: (m: string) => void; setView: (v: ConversationView) => void; pictures?: boolean; lang?: Language; episodePlaying?: boolean };
 
 /** Iris, the Artist: her perspective as a listener and the titled sketch of the moment that stayed with her. */
-export function ArtistCard({ notes: a, speakers, conversationId, onAgain, onJump, toast, setView, pictures = false, lang = 'en' }: Props) {
+export function ArtistCard({ notes: a, speakers, conversationId, onAgain, onJump, toast, setView, pictures = false, lang = 'en', episodePlaying = false }: Props) {
   const [rating, setRating] = useState<'up' | 'down' | null>(null);
   const [note, setNote] = useState('');
   const [sent, setSent] = useState(false);
@@ -110,7 +110,8 @@ export function ArtistCard({ notes: a, speakers, conversationId, onAgain, onJump
           </div>
           <div className="persp-head">
             <span className="tag">As a listener</span>
-            <button className="btn sm ghost hear-iris" aria-pressed={hearing} onClick={hear}>{hearing ? '■ Stop' : `▶ Hear ${ARTIST.name}`}</button>
+            <button className="btn sm ghost hear-iris" aria-pressed={hearing} onClick={hear} disabled={episodePlaying && !hearing}
+              title={episodePlaying ? 'Pause the episode to hear Iris' : undefined}>{hearing ? '■ Stop' : `▶ Hear ${ARTIST.name}`}</button>
           </div>
           <p className={`persp${hearing ? ' speaking' : ''}`}>{a.perspective}</p>
           <blockquote className="moment">“{a.caption}”<cite>The moment she drew · {who}, turn {a.momentSeq}</cite></blockquote>

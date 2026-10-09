@@ -37,18 +37,23 @@ export function Slideshow({ gallery, onClose, pictures = false }: { gallery: Gal
     return () => window.clearTimeout(t);
   }, [i, paused, n]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Keys, and focus inside the dialog while it's open.
+  // Keys, and focus inside the dialog while it's open (once: callers pass a fresh onClose each render).
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+  const stepRef = useRef(go);
+  stepRef.current = go;
   useEffect(() => {
+    const before = document.activeElement as HTMLElement | null;
     closeBtn.current?.focus();
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-      else if (e.key === 'ArrowRight') go(1);
-      else if (e.key === 'ArrowLeft') go(-1);
+      if (e.key === 'Escape') onCloseRef.current();
+      else if (e.key === 'ArrowRight') stepRef.current(1);
+      else if (e.key === 'ArrowLeft') stepRef.current(-1);
       else if (e.key === ' ' && (e.target as HTMLElement)?.tagName !== 'BUTTON') { e.preventDefault(); setPaused(p => !p); }
     };
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]); // eslint-disable-line react-hooks/exhaustive-deps
+    return () => { window.removeEventListener('keydown', onKey); before?.focus?.(); };
+  }, []);
 
   // The score: calm, ten minutes, the same for the same gallery.
   useEffect(() => {

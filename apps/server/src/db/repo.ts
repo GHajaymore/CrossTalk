@@ -311,10 +311,18 @@ export class Repo {
   }
   /** What Iris wrote for one drawing version: her painting brief, title and quote (null if there's no such drawing). */
   artworkBrief(conversationId: string, version: number): { imagePrompt: string; title: string; caption: string } | null {
-    const r = this.db.prepare(`SELECT image_prompt, art_title, caption FROM artworks WHERE conversation_id = ? AND version = ? ORDER BY id LIMIT 1`).get(conversationId, version) as { image_prompt: string; art_title: string; caption: string } | undefined;
-    if (r) return { imagePrompt: r.image_prompt, title: r.art_title, caption: r.caption };
+    // A row with her brief first (rows saved before briefs were kept have an empty one).
+    const r = this.db.prepare(`SELECT image_prompt, art_title, caption FROM artworks WHERE conversation_id = ? AND version = ? ORDER BY image_prompt = '', id LIMIT 1`).get(conversationId, version) as { image_prompt: string; art_title: string; caption: string } | undefined;
     const a = this.getArtist(conversationId);
-    return a && a.state === 'done' && a.version === version ? { imagePrompt: a.imagePrompt, title: a.artTitle, caption: a.caption } : null;
+    const current = a && a.state === 'done' && a.version === version ? a : null;
+    if (r) return { imagePrompt: r.image_prompt || current?.imagePrompt || '', title: r.art_title, caption: r.caption };
+    return current ? { imagePrompt: current.imagePrompt, title: current.artTitle, caption: current.caption } : null;
+  }
+  /** Whether a drawing version is, or was, shown as a Picture (only those are painted). */
+  pictureWanted(conversationId: string, version: number): boolean {
+    if (this.db.prepare(`SELECT 1 FROM artworks WHERE conversation_id = ? AND version = ? AND art_style = 'picture'`).get(conversationId, version)) return true;
+    const a = this.getArtist(conversationId);
+    return !!a && a.state === 'done' && a.version === version && a.artStyle === 'picture';
   }
   getPicture(conversationId: string, version: number): { mime: string; data: Buffer } | null {
     return (this.db.prepare('SELECT mime, data FROM iris_pictures WHERE conversation_id = ? AND version = ?').get(conversationId, version) as { mime: string; data: Buffer } | undefined) ?? null;

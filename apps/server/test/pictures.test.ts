@@ -71,3 +71,37 @@ describe("Iris's real paintings", () => {
     } finally { await t.app.close(); }
   });
 });
+
+describe('painting guards from review', () => {
+  it('only paints drawings shown as a Picture, prefers a real brief, and never picks a style that isn\'t allowed', async () => {
+    const { defaultPaintStyle } = await import('@crosstalk/shared');
+    expect(defaultPaintStyle({ mode: 'explore', temperature: 'calm' }, [])).toBe('painting');
+    const asked: string[] = [];
+    const f = (async (url: string) => { asked.push(decodeURIComponent(String(url))); return new Response(jpeg, { headers: { 'content-type': 'image/jpeg' } }); }) as unknown as typeof fetch;
+    const t = buildApp(mockConfig({ dbPath: ':memory:', dailyLimit: 500 }), { timing: INSTANT, fetch: f });
+    try {
+      // A drawing she showed as a Sketch is never painted, even if someone asks for it.
+      await t.app.inject({ method: 'PUT', url: '/api/iris/styles', payload: { styles: ['sketch'] } });
+      const id = (await t.app.inject({ method: 'POST', url: '/api/conversations', payload: { ...draft(), length: 'short' } })).json().id;
+      await t.controller.start(id); await t.controller.settled(id); await t.iris.settled(id);
+      expect(t.repo.view(id)!.artist!.artStyle).toBe('sketch');
+      expect((await t.app.inject({ url: `/api/iris/picture/${id}/1.jpg` })).statusCode).toBe(404);
+      expect(asked.filter(u => u.includes('width=1024'))).toHaveLength(0);
+      // Switched to Picture: now it's painted, from her brief (an older empty row doesn't win).
+      t.repo.db.prepare("UPDATE artworks SET image_prompt = '' WHERE conversation_id = ?").run(id);
+      await t.app.inject({ method: 'PUT', url: `/api/conversations/${id}/artist/style`, payload: { style: 'picture' } });
+      expect((await settle(t.app, `/api/iris/picture/${id}/1.jpg`)).statusCode).toBe(200);
+      expect(asked.find(u => u.includes('width=1024'))).toContain(t.repo.view(id)!.artist!.imagePrompt.slice(0, 40));
+    } finally { await t.app.close(); }
+  });
+
+  it('Picture as the only tick, with paintings off: her line styles stand in', async () => {
+    const t = buildApp(mockConfig({ dbPath: ':memory:', dailyLimit: 500, irisPictures: false }), { timing: INSTANT });
+    try {
+      await t.app.inject({ method: 'PUT', url: '/api/iris/styles', payload: { styles: ['picture'] } });
+      const id = (await t.app.inject({ method: 'POST', url: '/api/conversations', payload: { ...draft(), length: 'short' } })).json().id;
+      await t.controller.start(id); await t.controller.settled(id); await t.iris.settled(id);
+      expect(['sketch', 'painting', 'dreamscape']).toContain(t.repo.view(id)!.artist!.artStyle);
+    } finally { await t.app.close(); }
+  });
+});

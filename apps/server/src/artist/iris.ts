@@ -104,8 +104,9 @@ export class Iris {
     const feedback = this.repo.listFeedback(10);
     // Only the styles the listener has ticked on the Iris page, plus a style from a host's home when one
     // fits and those are on; within them, their taste, then her own feel.
-    const allowed = episodeStyles(cleanStyles(this.repo.getSetting<PaintStyle[]>('iris_styles')), view.speakers, this.repo.getSetting<boolean>('iris_home_styles') !== false)
-      .filter(s => s !== 'picture' || this.opts.pictures !== false);
+    const ticked = cleanStyles(this.repo.getSetting<PaintStyle[]>('iris_styles')).filter(s => s !== 'picture' || this.opts.pictures !== false);
+    // Never empty: if Picture was the only tick and paintings are off, her line styles stand in.
+    const allowed = episodeStyles(ticked.length ? ticked : ['sketch', 'painting', 'dreamscape'], view.speakers, this.repo.getSetting<boolean>('iris_home_styles') !== false);
     const learned = favouriteStyle(this.repo.listenerStyles());
     const taste = learned && allowed.includes(learned) ? learned : null;
     // Her memory: her last few pieces for other episodes (not this one, its branches or its rounds).

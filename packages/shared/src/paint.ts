@@ -231,7 +231,7 @@ export function defaultPaintStyle(e: { mode: string; temperature: string }, allo
   // only in `allowed` when it fits this episode; then her own feel for the talk.
   const order: PaintStyle[] = ['picture', ...allowed.filter(isHomeStyle), ...(e.temperature === 'calm' ? ['sketch', 'painting', 'dreamscape'] as const
     : e.mode === 'explore' ? ['dreamscape', 'painting', 'sketch'] as const : ['painting', 'dreamscape', 'sketch'] as const)];
-  return order.find(s => allowed.includes(s)) ?? order[0];
+  return order.find(s => allowed.includes(s)) ?? allowed[0] ?? 'painting';
 }
 
 /** The listener's ticked styles, cleaned up: known styles only, in order, never empty. */

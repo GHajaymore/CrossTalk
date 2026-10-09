@@ -44,7 +44,8 @@ export class IrisPictures {
       url: key => {
         const k = parse(key);
         const c = k && repo.getConversation(k.id);
-        const brief = k && c && repo.artworkBrief(k.id, k.version);
+        // Only drawings that are (or were) shown as a Picture: nobody can spend the day's paintings on the rest.
+        const brief = k && c && repo.pictureWanted(k.id, k.version) && repo.artworkBrief(k.id, k.version);
         return brief ? pollinationsUrl(picturePrompt(brief, c!.topic, homeStylesFor(c!.speakers)), { width: 1024, height: 614, seedText: key }) : null;
       },
       saved: key => { const k = parse(key); return k ? repo.getPicture(k.id, k.version) : null; },

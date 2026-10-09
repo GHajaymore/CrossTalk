@@ -184,7 +184,9 @@ export function speakAsIris(text: string, lang: Language, onDone: () => void, av
     if (v) u.voice = v;
     u.lang = v?.lang ?? lang;
     u.rate = 0.94; u.pitch = 1.06;
-    u.onend = u.onerror = () => next();
+    u.onend = () => next();
+    // Cancelled (the episode started playing, or Stop): she stops, rather than reading on over it.
+    u.onerror = e => { if (e.error === 'canceled' || e.error === 'interrupted') { if (!stopped) { stopped = true; onDone(); } } else next(); };
     s.speak(u);
   };
   next();

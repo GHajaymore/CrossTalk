@@ -18,13 +18,16 @@ export type ViewedArt = {
 /** Iris's art, full size: the piece, its title and quote, her sketchbook note, and a download. Esc or a click outside closes it. */
 export function ArtViewer({ art, onClose }: { art: ViewedArt; onClose: () => void }) {
   const close = useRef<HTMLButtonElement>(null);
+  // Callers pass a fresh onClose each render; the latest is kept here so focus is only moved once.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
   useEffect(() => {
     const before = document.activeElement as HTMLElement | null;
     close.current?.focus();
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onCloseRef.current(); };
     window.addEventListener('keydown', onKey);
     return () => { window.removeEventListener('keydown', onKey); before?.focus?.(); };
-  }, [onClose]);
+  }, []);
   const alt = `${ARTIST.name}'s ${art.styleName.toLowerCase()}: ${art.title}`;
   const file = `iris-${art.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'art'}`;
   // Drawn at the top of the page, so nothing around the art it was opened from can shape it.
