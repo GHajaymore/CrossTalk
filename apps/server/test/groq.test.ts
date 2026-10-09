@@ -104,15 +104,17 @@ describe('Groq as the free AI service', () => {
     expect(e!.retryable).toBe(false);
   });
 
-  it('asks Groq\'s thinking models to think briefly, and only them', async () => {
+  it('asks Groq\'s gpt-oss models to think briefly, and no others', async () => {
     const net = fakeFetch({ replies: () => sse([delta('Fine.'), '[DONE]']) });
     const p = new OpenRouterProvider({ apiKey: KEY, maxOutputTokens: 200, timeoutMs: 5000, fetch: net.f, service: SERVICES.groq });
     const turn = (modelId: string) => p.generateTurn({ conversation: conv, seq: 1, speaker: { ...conv.speakers.A, modelId }, objective: 'Frame', history: [] }, { signal: new AbortController().signal, onToken: () => {} });
     await turn('openai/gpt-oss-120b');
     await turn('llama-3.3-70b-versatile');
-    const [oss, llama] = net.chatCalls();
+    await turn('qwen/qwen3.8-27b');
+    const [oss, llama, qwen] = net.chatCalls();
     expect(oss.body).toMatchObject({ reasoning_effort: 'low' });
     expect(llama.body).not.toHaveProperty('reasoning_effort');
+    expect(qwen.body).not.toHaveProperty('reasoning_effort');
     await p.complete('openai/gpt-oss-20b', 's', 'u', 100);
     expect(net.roleCalls().at(-1)!.body).toMatchObject({ reasoning_effort: 'low' });
   });

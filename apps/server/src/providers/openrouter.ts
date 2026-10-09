@@ -79,11 +79,12 @@ export class OpenRouterProvider implements Provider {
 
   /**
    * Service-specific request fields. OpenRouter: short hidden thinking, and the cost in the usage
-   * report. Groq: its thinking models (gpt-oss, qwen) are asked to think briefly so the thinking
-   * doesn't use up the turn's tokens; other Groq models refuse the field, so they never get it.
+   * report. Groq: its gpt-oss models are asked to think briefly so the thinking doesn't use up the
+   * turn's tokens. Other Groq models may refuse the field, so they never get it; any <think> text
+   * they write is dropped instead.
    */
   private extras(stream: boolean, modelId: string) {
-    if (this.svc.id === 'groq') return /(^|\/)(gpt-oss|qwen)/i.test(modelId) ? { reasoning_effort: 'low' } : {};
+    if (this.svc.id === 'groq') return /(^|\/)gpt-oss/i.test(modelId) ? { reasoning_effort: 'low' } : {};
     if (this.svc.id !== 'openrouter') return {};
     return stream ? { reasoning: { effort: 'low', exclude: true }, usage: { include: true } } : { reasoning: { effort: 'low', exclude: true } };
   }
