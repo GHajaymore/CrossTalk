@@ -109,6 +109,19 @@ test('Iris gallery as an exhibition: play, step with the keys, pause, close with
   await expect(page.getByRole('dialog')).toHaveCount(0);
 });
 
+test('this week on CrossTalk: a recap of the latest episodes, recorded on this device', async ({ page }) => {
+  test.setTimeout(180_000);
+  await finishedEpisode(page.request);
+  await finishedEpisode(page.request, 'Should cities ban cars from their centres?');
+  await page.goto('/#/episodes');
+  const recap = page.getByRole('region', { name: "This week's recap" });
+  await recap.getByRole('button', { name: /Make the recap/ }).click();
+  await expect(recap.getByRole('status')).toContainText(/Recording \d+ of \d+ seconds/);
+  await expect(recap.locator('video.clip-video')).toBeVisible({ timeout: 150_000 });
+  const [dl] = await Promise.all([page.waitForEvent('download'), recap.getByRole('link', { name: 'Download' }).click()]);
+  expect(dl.suggestedFilename()).toMatch(/^crosstalk-week-\d{4}-\d{2}-\d{2}\.(mp4|webm)$/);
+});
+
 test('create → run → stop → refresh keeps every finished turn', async ({ page }) => {
   await page.goto('/#/create');
   await page.getByRole('button', { name: /Start recording/ }).click();

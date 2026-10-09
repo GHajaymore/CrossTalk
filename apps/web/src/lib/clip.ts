@@ -12,7 +12,7 @@ import {
 } from '@crosstalk/shared';
 import { Portrait } from '../studio/Portrait';
 import fixWebmDuration from 'fix-webm-duration';
-import { musicPlan, playMusic } from './clipMusic';
+import { musicPlan, playMusic, type MusicPlan } from './clipMusic';
 import { C, loadImage, SAY, TAG, UI, wrap } from './poster';
 
 export const CLIP_W = 720, CLIP_H = 1280, CLIP_FPS = 30;
@@ -320,39 +320,42 @@ export function clipFormat(audio = false): { mime: string; ext: string } | null 
   return null;
 }
 
+export type FrameRecording = {
+  canvas: HTMLCanvasElement;
+  duration: number;
+  /** Paints the frame at `t` seconds. */
+  draw: (ctx: CanvasRenderingContext2D, t: number) => void;
+  /** The music bed, or null for a silent video. */
+  music: MusicPlan | null;
+  /** Object URLs to let go of when recording ends. */
+  urls?: string[];
+  onProgress?: (sec: number, total: number) => void;
+  signal?: AbortSignal;
+};
+
 /**
- * Records the clip in real time onto `canvas` (which can be on screen, as a live preview).
- * Resolves with the video. Keep the tab in front: browsers slow hidden tabs down.
+ * Plays frames in real time onto a canvas (which can be on screen as a live preview) and records
+ * them, with the music, into a video file. Stop, leaving the page or hiding the tab ends it at once
+ * (browsers pause drawing in hidden tabs, so the video would jump). Always cleans up after itself.
  */
-export async function recordClip(v: ConversationView, canvas: HTMLCanvasElement, opts: { photos: boolean; music?: boolean; onProgress?: (sec: number, total: number) => void; signal?: AbortSignal }) {
+export async function recordFrames(r: FrameRecording) {
   const Ctx = typeof window !== 'undefined' ? (window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext) : undefined;
-  const music = !!opts.music && !!Ctx && !!clipFormat(true);
-  const format = clipFormat(music);
-  if (!format || typeof canvas.captureStream !== 'function') throw new Error("This browser can't record video. Try Chrome, Edge or Safari on a computer or phone.");
-  await Promise.all([`600 52px ${SAY}`, `italic 30px ${SAY}`, `700 28px ${UI}`, `18px ${TAG}`].map(f => document.fonts?.load(f).catch(() => {})));
-  const plan = planClip(v);
-  const assets = await loadClipAssets(v, opts.photos);
-  const photoUrls = Object.values(assets.hosts).map(h => h.photo?.src).filter((u): u is string => !!u?.startsWith('blob:'));
+  const withMusic = !!r.music && !!Ctx && !!clipFormat(true);
+  const format = clipFormat(withMusic);
+  if (!format || typeof r.canvas.captureStream !== 'function') throw new Error("This browser can't record video. Try Chrome, Edge or Safari on a computer or phone.");
   let ac: AudioContext | null = null, stopMusic = () => {}, stream: MediaStream | null = null, rec: MediaRecorder | null = null;
-  const cleanUp = () => {
-    if (rec && rec.state !== 'inactive') rec.stop();
-    stopMusic(); stopMusic = () => {};
-    stream?.getTracks().forEach(tr => tr.stop());
-    if (ac && ac.state !== 'closed') void ac.close();
-    photoUrls.forEach(u => URL.revokeObjectURL(u));
-  };
   try {
-    if (opts.signal?.aborted) throw new Error('Stopped.');
-    canvas.width = CLIP_W; canvas.height = CLIP_H;
-    const ctx = canvas.getContext('2d')!;
-    drawFrame(ctx, v, plan, assets, 0);
-    const tracks = [...canvas.captureStream(CLIP_FPS).getVideoTracks()];
-    // The music bed goes straight into the file: you hear it when you play the clip, not while it records.
-    if (music) {
+    if (r.signal?.aborted) throw new Error('Stopped.');
+    r.canvas.width = CLIP_W; r.canvas.height = CLIP_H;
+    const ctx = r.canvas.getContext('2d')!;
+    r.draw(ctx, 0);
+    const tracks = [...r.canvas.captureStream(CLIP_FPS).getVideoTracks()];
+    // The music goes straight into the file: you hear it when you play the video, not while it records.
+    if (withMusic) {
       ac = new Ctx!();
       await ac.resume().catch(() => {});
       const dest = ac.createMediaStreamDestination();
-      stopMusic = playMusic(ac, musicPlan(v.id, v.temperature, plan.duration, [plan.meter?.start, plan.art?.start].filter((x): x is number => x != null)), dest);
+      stopMusic = playMusic(ac, r.music!, dest);
       tracks.push(...dest.stream.getAudioTracks());
     }
     stream = new MediaStream(tracks);
@@ -365,28 +368,26 @@ export async function recordClip(v: ConversationView, canvas: HTMLCanvasElement,
     });
     recorder.start(500);
     const t0 = performance.now();
-    // Real time, frame by frame. Stop ends it at once; so does hiding the tab, because browsers
-    // pause drawing in hidden tabs and the clip would jump.
     await new Promise<void>((resolve, reject) => {
       let finished = false;
       const end = (err?: Error) => {
         if (finished) return;
         finished = true;
-        opts.signal?.removeEventListener('abort', onAbort);
+        r.signal?.removeEventListener('abort', onAbort);
         document.removeEventListener('visibilitychange', onHide);
         if (err) reject(err); else resolve();
       };
       const onAbort = () => end(new Error('Stopped.'));
       const onHide = () => { if (document.hidden) end(new Error('Recording stopped because the tab was hidden. Keep CrossTalk in front while it records, then try again.')); };
-      opts.signal?.addEventListener('abort', onAbort);
+      r.signal?.addEventListener('abort', onAbort);
       document.addEventListener('visibilitychange', onHide);
       const tick = () => {
         if (finished) return;
         try {
           const t = (performance.now() - t0) / 1000;
-          drawFrame(ctx, v, plan, assets, Math.min(t, plan.duration - 0.001));
-          opts.onProgress?.(Math.min(t, plan.duration), plan.duration);
-          if (t >= plan.duration) { end(); return; }
+          r.draw(ctx, Math.min(t, r.duration - 0.001));
+          r.onProgress?.(Math.min(t, r.duration), r.duration);
+          if (t >= r.duration) { end(); return; }
           requestAnimationFrame(tick);
         } catch (e) { end(e instanceof Error ? e : new Error('Recording failed. Try again.')); }
       };
@@ -395,8 +396,30 @@ export async function recordClip(v: ConversationView, canvas: HTMLCanvasElement,
     recorder.stop();
     const blob = await done;
     // Browsers save WebM without its length, so players can't show a timeline; write it in.
-    return { blob: format.ext === 'webm' ? await fixWebmDuration(blob, plan.duration * 1000, { logger: false }).catch(() => blob) : blob, ext: format.ext };
+    return { blob: format.ext === 'webm' ? await fixWebmDuration(blob, r.duration * 1000, { logger: false }).catch(() => blob) : blob, ext: format.ext };
   } finally {
-    cleanUp();
+    if (rec && rec.state !== 'inactive') rec.stop();
+    stopMusic();
+    stream?.getTracks().forEach(tr => tr.stop());
+    if (ac && ac.state !== 'closed') void ac.close();
+    r.urls?.forEach(u => URL.revokeObjectURL(u));
   }
 }
+
+/** Blob URLs of host photos, to let go of once a recording ends. */
+export const assetUrls = (a: ClipAssets) => Object.values(a.hosts).map(h => h.photo?.src).filter((u): u is string => !!u?.startsWith('blob:'));
+
+/** Records one episode's clip. Resolves with the video. Keep the tab in front while it records. */
+export async function recordClip(v: ConversationView, canvas: HTMLCanvasElement, opts: { photos: boolean; music?: boolean; onProgress?: (sec: number, total: number) => void; signal?: AbortSignal }) {
+  if (!clipFormat()) throw new Error("This browser can't record video. Try Chrome, Edge or Safari on a computer or phone.");
+  await loadClipFonts();
+  const plan = planClip(v);
+  const assets = await loadClipAssets(v, opts.photos);
+  return recordFrames({
+    canvas, duration: plan.duration, draw: (ctx, t) => drawFrame(ctx, v, plan, assets, t),
+    music: opts.music ? musicPlan(v.id, v.temperature, plan.duration, [plan.meter?.start, plan.art?.start].filter((x): x is number => x != null)) : null,
+    urls: assetUrls(assets), onProgress: opts.onProgress, signal: opts.signal,
+  });
+}
+
+export const loadClipFonts = () => Promise.all([`600 52px ${SAY}`, `italic 30px ${SAY}`, `700 28px ${UI}`, `18px ${TAG}`].map(f => document.fonts?.load(f).catch(() => {})));

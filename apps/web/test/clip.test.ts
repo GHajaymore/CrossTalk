@@ -83,3 +83,18 @@ describe('clip fixes from review', () => {
     } finally { delete g.MediaRecorder; }
   });
 });
+
+describe('this week on CrossTalk', () => {
+  it('gives each finished episode with art its own act, in order, at most five, between a title and an end card', async () => {
+    const { planRecap, RECAP_MAX } = await import('../src/lib/recap');
+    const done = (id: string) => ({ ...episode(), id, run: { state: 'completed' } }) as unknown as ConversationView;
+    const r = planRecap([done('a'), { ...done('b'), artist: null } as unknown as ConversationView, done('c'), done('d'), done('e'), done('f'), done('g')]);
+    expect(r.segments.map(s => s.v.id)).toEqual(['a', 'c', 'd', 'e', 'f']);
+    expect(r.segments).toHaveLength(RECAP_MAX);
+    expect(r.segments[0].start).toBe(r.intro.end);
+    r.segments.forEach((s, i) => { if (i) expect(s.start).toBe(r.segments[i - 1].end); expect(s.plan.lines[0].seq).toBe(4); });
+    expect(r.outro.start).toBe(r.segments.at(-1)!.end);
+    expect(r.duration).toBeLessThan(90);
+    expect(planRecap([]).segments).toEqual([]);
+  });
+});

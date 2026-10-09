@@ -630,3 +630,9 @@ img.living{object-fit:cover}
 .ss-controls{display:flex;gap:8px;justify-content:center;align-items:center;flex-wrap:wrap}
 .ss-count{margin:0 6px}
 @media (prefers-reduced-motion:reduce){.ss-art{transition:none}.ss-art.on{animation:none}}
+/* This week on CrossTalk: the recap panel on Episodes. */
+.recap{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;border:1px solid var(--line);border-radius:10px;padding:14px;margin:14px 0}
+.recap-text{flex:1 1 260px}
+.recap-text p{margin:6px 0}
+.recap .check{display:flex;gap:8px;font-size:13px;color:var(--muted)}
+.recap .clip-canvas,.recap .clip-video{margin:0;max-width:200px}
