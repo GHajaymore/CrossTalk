@@ -247,7 +247,7 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
       </div>
       {view.mode === 'hotseat' && st === 'completed' && <VerdictCard view={view} setView={setView} toast={toast} />}
       {view.artist && (
-        <ArtistCard notes={view.artist} speakers={sp} conversationId={id} toast={toast} setView={setView} pictures={!!config?.irisPictures}
+        <ArtistCard notes={view.artist} speakers={sp} conversationId={id} toast={toast} setView={setView} pictures={!!config?.irisPictures} lang={view.language}
           onAgain={() => { api.askIris(id).catch(e => toast((e as Error).message)); /* her progress arrives over the live stream */ }}
           onJump={seq => document.getElementById(`turn-${seq}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })} />
       )}

@@ -3,6 +3,7 @@ import { ARTIST, artSeed, episodeLabel, HOME_STYLES, PAINT_STYLE_INFO, PAINT_STY
 import { api } from '../api/client';
 import { sketchSrc } from '../studio/ArtistCard';
 import { Footer } from './Footer';
+import { ArtViewer } from '../studio/ArtViewer';
 import { IrisPicture } from '../studio/IrisPicture';
 import { Slideshow } from '../studio/Slideshow';
 
@@ -120,9 +121,15 @@ export function IrisPage({ config }: { config: AppConfig | null }) {
 function GalleryCard({ g, pictures }: { g: GalleryEpisode; pictures: boolean }) {
   const now = g.artworks.find(a => g.current && a.version === g.current.version && a.style === g.current.style) ?? g.artworks[0];
   const [shown, setShown] = useState<Artwork>(now);
+  const [viewing, setViewing] = useState(false);
   const label = (a: Artwork) => `${PAINT_STYLE_INFO[a.style].name}${g.artworks.some(x => x.version !== a.version) ? ` · v${a.version}` : ''}`;
   return (
     <li className="g-card">
+      <button className="g-expand" onClick={() => setViewing(true)} aria-label={`Open “${shown.title}” full size`}>⤢</button>
+      {viewing && <ArtViewer onClose={() => setViewing(false)} art={{
+        src: art(g, shown), picture: shown.style === 'picture' && pictures ? { conversationId: g.conversationId, version: shown.version } : null,
+        title: shown.title, caption: shown.caption, styleName: PAINT_STYLE_INFO[shown.style].name, where: `${episodeLabel(g.episode)} · ${g.title}`,
+      }} />}
       <a className="g-link" href={`#/studio/${g.conversationId}/read`}>
         {shown.style === 'picture' && pictures
           ? <IrisPicture key={shown.id} conversationId={g.conversationId} version={shown.version} fallback={art(g, shown)} alt={`Iris's picture: ${shown.title}`} />

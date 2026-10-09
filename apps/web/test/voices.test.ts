@@ -79,3 +79,16 @@ describe('a voice that fits each host', () => {
     expect(spoken[1].pitch).toBeCloseTo(0.98);
   });
 });
+
+describe("Iris's own voice", () => {
+  const natural = (who: string, lang = 'en-US') => voice(`Microsoft ${who} Online (Natural) - ${lang}`, lang);
+  it("is a natural woman's voice in the episode's language, different from the hosts' where it can be", async () => {
+    const { irisVoice } = await import('../src/speech/BrowserSpeech');
+    const jenny = natural('Jenny'), aria = natural('Aria'), guy = natural('Guy');
+    withVoices([guy, jenny, aria, natural('Dalia', 'es-MX'), natural('Jorge', 'es-MX')]);
+    expect(irisVoice('en', [jenny])?.name).toContain('Aria');
+    expect(irisVoice('en', [jenny, aria])?.name).toContain('Guy');
+    expect(irisVoice('es')?.name).toContain('Dalia');
+    expect(irisVoice('hi')).toBeNull();
+  });
+});

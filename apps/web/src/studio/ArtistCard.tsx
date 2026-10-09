@@ -1,20 +1,36 @@
-import { useState } from 'react';
-import { ARTIST, artworkSvg, homeStylesFor, PAINT_STYLE_INFO, PAINT_STYLES, paintStyleOf, type ArtistNotes, type ConversationView, type PaintStyle, type Speakers } from '@crosstalk/shared';
+import { useEffect, useRef, useState } from 'react';
+import { ARTIST, artworkSvg, homeStylesFor, PAINT_STYLE_INFO, PAINT_STYLES, paintStyleOf, type ArtistNotes, type ConversationView, type Language, type PaintStyle, type Speakers } from '@crosstalk/shared';
+import { speakAsIris } from '../speech/BrowserSpeech';
 import { api } from '../api/client';
 import { LivingSketch, useDrawReplay } from './LivingSketch';
+import { ArtViewer } from './ArtViewer';
 import { IrisPicture } from './IrisPicture';
 
 /** Her sketch is shown as an image, never as live markup, so even a checked SVG can't run anything. */
 export const sketchSrc = (svg: string) => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 
-type Props = { notes: ArtistNotes; speakers: Speakers; conversationId: string; onAgain: () => void; onJump: (seq: number) => void; toast: (m: string) => void; setView: (v: ConversationView) => void; pictures?: boolean };
+type Props = { notes: ArtistNotes; speakers: Speakers; conversationId: string; onAgain: () => void; onJump: (seq: number) => void; toast: (m: string) => void; setView: (v: ConversationView) => void; pictures?: boolean; lang?: Language };
 
 /** Iris, the Artist: her perspective as a listener and the titled sketch of the moment that stayed with her. */
-export function ArtistCard({ notes: a, speakers, conversationId, onAgain, onJump, toast, setView, pictures = false }: Props) {
+export function ArtistCard({ notes: a, speakers, conversationId, onAgain, onJump, toast, setView, pictures = false, lang = 'en' }: Props) {
   const [rating, setRating] = useState<'up' | 'down' | null>(null);
   const [note, setNote] = useState('');
   const [sent, setSent] = useState(false);
   const replay = useDrawReplay();
+  const [viewing, setViewing] = useState(false);
+  // Hear Iris: she reads her reflection aloud in her own voice while her lines draw themselves again.
+  // It lasts until both her voice and her redrawing have finished; Stop ends both.
+  const [hearing, setHearing] = useState(false);
+  const [voiceDone, setVoiceDone] = useState(true);
+  const stopVoice = useRef<() => void>(() => {});
+  useEffect(() => () => stopVoice.current(), []);
+  useEffect(() => { if (hearing && voiceDone && !replay.playing) setHearing(false); }, [hearing, voiceDone, replay.playing]);
+  const hear = () => {
+    if (hearing) { stopVoice.current(); replay.stop(); setVoiceDone(true); setHearing(false); return; }
+    setHearing(true); setVoiceDone(false);
+    if (a.sketchSvg) replay.start();
+    stopVoice.current = speakAsIris(a.perspective, lang, () => setVoiceDone(true));
+  };
   const [restyling, setRestyling] = useState(false);
   const style = paintStyleOf(a.artStyle);
   const styleName = PAINT_STYLE_INFO[style].name;
@@ -66,14 +82,25 @@ export function ArtistCard({ notes: a, speakers, conversationId, onAgain, onJump
           {a.sketchSvg
             ? <div className="sketch living-wrap">
                 {painted && !replay.playing
-                  ? style === 'picture' && pictures
-                    ? <IrisPicture key={`${a.version}`} conversationId={conversationId} version={a.version} className="living paint-in" fallback={sketchSrc(artworkSvg(a)!)} alt={`Iris's picture: ${a.artTitle}`} />
-                    : <img key={style} className="living paint-in" src={sketchSrc(artworkSvg(a)!)} alt={`Iris's ${styleName.toLowerCase()}: ${a.artTitle}`} />
+                  ? <button className="art-open" onClick={() => setViewing(true)} aria-label={`Open “${a.artTitle}” full size`}>
+                      {style === 'picture' && pictures
+                        ? <IrisPicture key={`${a.version}`} conversationId={conversationId} version={a.version} className="living paint-in" fallback={sketchSrc(artworkSvg(a)!)} alt={`Iris's picture: ${a.artTitle}`} />
+                        : <img key={style} className="living paint-in" src={sketchSrc(artworkSvg(a)!)} alt={`Iris's ${styleName.toLowerCase()}: ${a.artTitle}`} />}
+                      <span className="expand-hint" aria-hidden="true">⤢</span>
+                    </button>
                   : <LivingSketch ghost className="living" svg={a.sketchSvg} progress={replay.progress ?? 1} label={`Iris's sketch: ${a.artTitle}`} />}
                 <button className="btn sm ghost draw-btn" onClick={replay.start} disabled={replay.playing}>{replay.playing ? 'Drawing…' : painted ? '▶ Watch her paint' : '▶ Watch her draw'}</button>
               </div>
             : <div className="sketch-missing"><p className="hint">{a.error}</p><button className="btn sm" onClick={onAgain}>Sketch again</button></div>}
-          <figcaption><span className="art-title">“{a.artTitle}”</span>Iris · {styleName.toLowerCase()} of turn {a.momentSeq}</figcaption>
+          <figcaption><span className="art-title">“{a.artTitle}”</span>Iris · {styleName.toLowerCase()} of turn {a.momentSeq}
+            {a.sketchSvg && <button className="link-btn full-size" onClick={() => setViewing(true)}>⤢ Full size</button>}</figcaption>
+          {viewing && a.sketchSvg && <ArtViewer onClose={() => setViewing(false)} art={{
+            src: sketchSrc(artworkSvg(a)!), picture: style === 'picture' && pictures ? { conversationId, version: a.version } : null,
+            title: a.artTitle, caption: a.caption, styleName, brief: style === 'picture' ? a.imagePrompt : undefined, where: `turn ${a.momentSeq}`,
+          }} />}
+          {a.imagePrompt && style === 'picture' && pictures && (
+            <aside className="sketchbook" aria-label="From her sketchbook"><span className="tag">From her sketchbook</span><p>{a.imagePrompt}</p></aside>
+          )}
         </figure>
         <div className="artist-body">
           <div className="styles" role="group" aria-label="Art style">
@@ -81,8 +108,11 @@ export function ArtistCard({ notes: a, speakers, conversationId, onAgain, onJump
             {[...PAINT_STYLES, ...homeStylesFor(speakers)].filter(s => s !== 'picture' || pictures).map(s => <button key={s} className="chip sm" aria-pressed={style === s} disabled={!a.sketchSvg || restyling}
               title={PAINT_STYLE_INFO[s].what} onClick={() => restyle(s)}>{PAINT_STYLE_INFO[s].name}</button>)}
           </div>
-          <span className="tag">As a listener</span>
-          <p className="persp">{a.perspective}</p>
+          <div className="persp-head">
+            <span className="tag">As a listener</span>
+            <button className="btn sm ghost hear-iris" aria-pressed={hearing} onClick={hear}>{hearing ? '■ Stop' : `▶ Hear ${ARTIST.name}`}</button>
+          </div>
+          <p className={`persp${hearing ? ' speaking' : ''}`}>{a.perspective}</p>
           <blockquote className="moment">“{a.caption}”<cite>The moment she drew · {who}, turn {a.momentSeq}</cite></blockquote>
           <div className="dock-row">
             <button className="btn sm" onClick={() => onJump(a.momentSeq)}>Go to turn {a.momentSeq}</button>

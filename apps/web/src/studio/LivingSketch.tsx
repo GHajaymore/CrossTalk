@@ -97,5 +97,6 @@ export function useDrawReplay(ms = 6000) {
     cancelAnimationFrame(raf.current);
     raf.current = requestAnimationFrame(step);
   };
-  return { progress: p, playing: p !== null, start };
+  const stop = () => { cancelAnimationFrame(raf.current); setP(null); };
+  return { progress: p, playing: p !== null, start, stop };
 }

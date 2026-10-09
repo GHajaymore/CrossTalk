@@ -157,3 +157,36 @@ export class BrowserSpeech implements SpeechProvider {
   resume() { synth()?.resume(); }
   stop() { this.token++; synth()?.cancel(); }
 }
+
+/**
+ * Iris's own voice: a natural-sounding woman's voice in the episode's language when the device has
+ * one, chosen to differ from the hosts' voices where it can.
+ */
+export function irisVoice(lang: Language = 'en', avoid: (SpeechSynthesisVoice | null)[] = []): SpeechSynthesisVoice | null {
+  const list = voicesIn(lang).filter(v => !avoid.includes(v));
+  const all = voicesIn(lang);
+  return list.find(v => voiceLook(v) === 'w' && voiceQuality(v) !== 'basic') ?? list.find(v => voiceQuality(v) !== 'basic') ?? list[0] ?? all[0] ?? null;
+}
+
+/** Reads text aloud in Iris's voice: a touch slower and brighter than the hosts. Returns a stop function. */
+export function speakAsIris(text: string, lang: Language, onDone: () => void, avoid: (SpeechSynthesisVoice | null)[] = []): () => void {
+  const s = synth();
+  if (!s) { onDone(); return () => {}; }
+  s.cancel();
+  const v = irisVoice(lang, avoid);
+  const parts = chunks(text);
+  let stopped = false;
+  const next = () => {
+    if (stopped) return;
+    const t = parts.shift();
+    if (!t) { onDone(); return; }
+    const u = new SpeechSynthesisUtterance(t);
+    if (v) u.voice = v;
+    u.lang = v?.lang ?? lang;
+    u.rate = 0.94; u.pitch = 1.06;
+    u.onend = u.onerror = () => next();
+    s.speak(u);
+  };
+  next();
+  return () => { stopped = true; s.cancel(); };
+}

@@ -122,6 +122,36 @@ test('this week on CrossTalk: a recap of the latest episodes, recorded on this d
   expect(dl.suggestedFilename()).toMatch(/^crosstalk-week-\d{4}-\d{2}-\d{2}\.(mp4|webm)$/);
 });
 
+test('Iris, unique: her sketchbook brief under the picture, and Hear Iris reads her reflection while she redraws', async ({ page }) => {
+  const id = await finishedEpisode(page.request);
+  await page.goto(`/#/studio/${id}/read`);
+  const card = page.getByRole('region', { name: "Iris's perspective" });
+  const book = card.getByRole('complementary', { name: 'From her sketchbook' });
+  await expect(book).toBeVisible();
+  expect((await book.innerText()).split(/\s+/).length).toBeGreaterThan(25);
+  await card.getByRole('button', { name: /Hear Iris/ }).click();
+  await expect(card.getByRole('button', { name: '■ Stop' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(card.locator('.persp.speaking')).toBeVisible();
+  await card.getByRole('button', { name: '■ Stop' }).click();
+  await expect(card.getByRole('button', { name: /Hear Iris/ })).toHaveAttribute('aria-pressed', 'false');
+
+  // Her art, full size: click it, see the title, quote and sketchbook, close with Esc.
+  await card.getByRole('button', { name: /full size/ }).first().click();
+  const viewer = page.getByRole('dialog', { name: /full size/ });
+  await expect(viewer).toBeVisible();
+  await expect(viewer.getByRole('heading')).toContainText('“');
+  await expect(viewer).toContainText('From her sketchbook');
+  await expect(viewer.getByRole('button', { name: 'Close' })).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(viewer).toHaveCount(0);
+  // And from the gallery.
+  await page.goto('/#/iris');
+  await page.getByRole('button', { name: /full size/ }).first().click();
+  await expect(page.getByRole('dialog', { name: /full size/ })).toBeVisible();
+  await page.getByRole('dialog').getByRole('button', { name: 'Close' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+});
+
 test('create → run → stop → refresh keeps every finished turn', async ({ page }) => {
   await page.goto('/#/create');
   await page.getByRole('button', { name: /Start recording/ }).click();

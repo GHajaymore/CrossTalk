@@ -647,3 +647,26 @@ img.living{object-fit:cover}
 span.ss-art{display:flex;align-items:center;justify-content:center}
 span.ss-art .iris-picture{width:100%;max-height:100%}
 span.ss-art .iris-picture>img{object-fit:contain;max-height:calc(100vh - 220px)}
+/* Hear Iris, her sketchbook note, and her painting arriving in brushstrokes. */
+.persp-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.persp.speaking{border-left:2px solid var(--iris);padding-left:10px;transition:padding .3s ease}
+.sketchbook{margin:10px 0 0;padding:10px 12px;border:1px dashed rgba(185,164,230,.45);border-radius:8px;background:rgba(185,164,230,.05);transform:rotate(-.4deg)}
+.sketchbook p{margin:4px 0 0;font-family:var(--f-say);font-style:italic;font-size:14px;line-height:1.5;color:var(--muted)}
+.iris-picture>img.pic-in{-webkit-mask-image:linear-gradient(100deg,#000 42%,rgba(0,0,0,.6) 50%,transparent 58%);mask-image:linear-gradient(100deg,#000 42%,rgba(0,0,0,.6) 50%,transparent 58%);-webkit-mask-size:320% 100%;mask-size:320% 100%;animation:pic-in 1.8s ease both,brush-in 2.6s cubic-bezier(.3,.6,.3,1) both}
+@keyframes brush-in{from{-webkit-mask-position:100% 0;mask-position:100% 0}to{-webkit-mask-position:0 0;mask-position:0 0}}
+@media (prefers-reduced-motion:reduce){.iris-picture>img.pic-in{-webkit-mask-image:none;mask-image:none}.sketchbook{transform:none}}
+/* Iris's art, full size. */
+.art-viewer{position:fixed;inset:0;z-index:210;background:rgba(8,8,9,.94);display:grid;place-items:center;padding:20px;overflow:auto}
+.art-viewer figure{margin:0;max-width:min(1200px,100%);width:100%}
+.art-viewer .iris-picture>img,.art-viewer figure>img{width:100%;max-height:72vh;object-fit:contain;border-radius:10px;background:#0f1013}
+.art-viewer figcaption{text-align:center;margin-top:12px}
+.art-viewer h2{font-family:var(--f-say);font-style:italic;font-size:clamp(22px,3.5vw,36px);margin:6px 0}
+.av-quote{font-style:italic;color:var(--muted);margin:0 0 8px}
+.av-brief{font-family:var(--f-say);font-style:italic;color:var(--muted);font-size:14px;max-width:720px;margin:0 auto 10px}
+.art-viewer .dock-row{justify-content:center}
+.art-open{all:unset;display:block;cursor:zoom-in;position:relative;width:100%}
+.art-open:focus-visible{outline:2px solid var(--cue);outline-offset:3px}
+.art-open .expand-hint{position:absolute;right:8px;bottom:8px;background:rgba(15,16,19,.82);color:#ECE8E1;font-size:12px;padding:3px 8px;border-radius:10px;opacity:.85}
+.g-card{position:relative}
+.g-expand{position:absolute;right:10px;top:10px;z-index:2;width:34px;height:34px;border-radius:17px;border:1px solid var(--line);background:rgba(15,16,19,.85);color:#ECE8E1;cursor:zoom-in;font-size:16px}
+.full-size{margin-left:8px;font-size:12px}
