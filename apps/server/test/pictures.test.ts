@@ -216,6 +216,9 @@ describe('try the camera', () => {
       expect(res.statusCode).toBe(200);
       expect(res.headers['content-type']).toBe('image/jpeg');
       expect(res.rawPayload).toEqual(jpeg);
+      // How many are left today, on the picture and on its own.
+      expect(res.headers['x-tries-left']).toBe('9');
+      expect((await t.app.inject({ method: 'GET', url: '/api/images/try' })).json()).toEqual({ left: 9, perDay: 10 });
       expect(asked[0]).toContain('A wooden door open onto snowy mountains');
       expect(asked[0]).not.toContain('<b>');
       expect(asked[0]).toContain('no real or famous people');
@@ -224,6 +227,7 @@ describe('try the camera', () => {
       const over = await t.app.inject({ method: 'POST', url: '/api/images/try', payload: { prompt: 'one more' } });
       expect(over.statusCode).toBe(429);
       expect(over.json().error).toMatch(/today's 10 tries/);
+      expect((await t.app.inject({ method: 'GET', url: '/api/images/try' })).json().left).toBe(0);
     } finally { await t.app.close(); }
   });
 });

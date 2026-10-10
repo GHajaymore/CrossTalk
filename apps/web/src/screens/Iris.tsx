@@ -7,6 +7,7 @@ import { Footer } from './Footer';
 import { ArtViewer } from '../studio/ArtViewer';
 import { engineStyleOf, IrisPicture } from '../studio/IrisPicture';
 import { Slideshow } from '../studio/Slideshow';
+import { PhotoOfTheDay } from '../studio/PhotoOfTheDay';
 
 // A tiny scene to show each home style: two figures at a table under a lamp.
 const SAMPLE = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 360"><g fill="none" stroke-width="3" stroke-linecap="round"><path d="M120 290 L480 290" stroke="#ECE8E1"/><circle cx="220" cy="170" r="22" stroke="#E8A55A"/><path d="M220 192 Q205 240 215 288 M220 210 Q250 225 270 240" stroke="#E8A55A"/><circle cx="380" cy="170" r="22" stroke="#5FB8B0"/><path d="M380 192 Q395 240 385 288 M380 210 Q350 225 330 240" stroke="#5FB8B0"/><path d="M300 60 L300 110 M275 130 Q300 100 325 130 Z" stroke="#E9D36A"/><path d="M260 250 L340 250" stroke="#B9A4E6"/></g></svg>';
@@ -80,6 +81,10 @@ export function IrisPage({ config }: { config: AppConfig | null }) {
         {!gallery ? <p className="hint">Loading…</p> : !gallery.length ? <p className="hint">No drawings yet. Finish an episode and Iris paints it.</p> : (
           <ul className="gallery">{gallery.map(g => <GalleryCard key={g.conversationId} g={g} pictures={!!config?.irisPictures} />)}</ul>
         )}
+      </section>
+
+      <section className="sec potd-sec"><h2>Photo of the day</h2>
+        <PhotoOfTheDay />
       </section>
 
       <section className="sec"><h2>Her styles</h2>
