@@ -1,4 +1,4 @@
-import { jobIn, speakerFor, turnTotal, type Length, type Speakers, type Turn } from '@crosstalk/shared';
+import { jobIn, jobLabel, speakerFor, turnTotal, type Length, type Speakers, type Turn } from '@crosstalk/shared';
 
 type Props = { turns: Turn[]; liveSeq: number | null; failedSeq: number | null; speakers: Speakers; branchSeq: number | null; length?: Length; cueSeqs: number[] };
 
@@ -6,7 +6,7 @@ type Props = { turns: Turn[]; liveSeq: number | null; failedSeq: number | null; 
 export function TurnRail({ turns, liveSeq, failedSeq, speakers, branchSeq, length, cueSeqs }: Props) {
   const done = new Set(turns.map(t => t.seq));
   const total = turnTotal({ branchSeq, length });
-  const job = (s: number) => jobIn({ branchSeq, length }, s);
+  const job = (s: number) => jobLabel(jobIn({ branchSeq, length }, s));
   return (
     <div className="rail" style={{ ['--n' as string]: total }} aria-hidden="true">
       {Array.from({ length: total }, (_, i) => i + 1).map(s => {

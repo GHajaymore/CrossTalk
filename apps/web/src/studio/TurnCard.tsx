@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { SpeakerId } from '@crosstalk/shared';
+import { jobLabel, type SpeakerId } from '@crosstalk/shared';
 import type { ReactionKind } from '@crosstalk/shared';
 import { ReactionChips } from './Reactions';
 
@@ -51,7 +51,7 @@ export function TurnCard(p: TurnCardProps) {
       <div className="card">
         <div className="card-head">
           <span className="nm">{p.name}</span>
-          <span className="tag">Turn {p.seq} · {p.objective}</span>
+          <span className="tag">Turn {p.seq} · {jobLabel(p.objective)}</span>
           {p.state === 'completed' && (
             <button className="menu-btn" aria-label={`Actions for turn ${p.seq}`} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(o => !o)}>⋯</button>
           )}

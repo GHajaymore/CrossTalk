@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CUE_LIMIT, CUE_TEXT_MAX, stepTemperature, TEMPERATURES, turnTotal, type ConversationView, type CueInput, type LiveTurn } from '@crosstalk/shared';
+import { CUE_LIMIT, CUE_TEXT_MAX, jobLabel, stepTemperature, TEMPERATURES, turnTotal, type ConversationView, type CueInput, type LiveTurn } from '@crosstalk/shared';
 import { api } from '../api/client';
 import { CUE_LABEL } from './CueCard';
 import { useDictation } from '../speech/useDictation';
@@ -61,7 +61,7 @@ export function CuePanel({ view, live, setView, toast, limit: cueLimit, allowHea
       <p className="hint">Pick a turn. The next host digs into it instead of moving on.</p>
       <div className="dock-row">
         <select value={deeperOn} disabled={off} onChange={e => setTarget(Number(e.target.value))} aria-label="Turn to go deeper on">
-          {turns.map(t => <option key={t.seq} value={t.seq}>Turn {t.seq} · {view.speakers[t.speakerId].name} · {t.objective}</option>)}
+          {turns.map(t => <option key={t.seq} value={t.seq}>Turn {t.seq} · {view.speakers[t.speakerId].name} · {jobLabel(t.objective)}</option>)}
         </select>
         <button className="btn sm" disabled={off || !deeperOn} onClick={() => send({ kind: 'deeper', targetSeq: Number(deeperOn) })}>Queue go deeper</button>
       </div>

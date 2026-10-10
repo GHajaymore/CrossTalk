@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { comicName, makeComic } from '../lib/comic';
 import { makePoster, posterName } from '../lib/poster';
 import { makePrint, printListing, printName } from '../lib/print';
-import { ARTIST, AUDIENCES, episodeLabel, MODES, NOTICE, TEMPERATURES, type ConversationView } from '@crosstalk/shared';
+import { ARTIST, AUDIENCES, episodeLabel, jobLabel, MODES, NOTICE, TEMPERATURES, type ConversationView } from '@crosstalk/shared';
 
 export function showNotes(c: ConversationView) {
   const sp = c.speakers;
@@ -14,7 +14,7 @@ export function showNotes(c: ConversationView) {
     a?.state === 'done' ? `\nFrom the booth, ${ARTIST.name}: "${a.perspective}"\n\nCover art: "${a.artTitle}" by ${ARTIST.name}` : '',
     '',
     'Chapters',
-    ...c.turns.map(t => `${t.seq}. ${t.objective}: ${sp[t.speakerId].name}`),
+    ...c.turns.map(t => `${t.seq}. ${jobLabel(t.objective)}: ${sp[t.speakerId].name}`),
     '',
     `${NOTICE} Voices and hosts are AI: ${sp.A.modelId} and ${sp.B.modelId}.`,
   ].join('\n');

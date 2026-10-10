@@ -3,6 +3,7 @@ import { sentencesOf, type SpeakerId, type Turn } from '@crosstalk/shared';
 // The beats a debate organiser looks for, in the order a listener needs them, from each turn's job.
 const BEATS: { jobs: string[]; label: string }[] = [
   { jobs: ['Catch', 'Push back'], label: 'Strongest challenge' },
+  { jobs: ['Test'], label: 'The crux' },
   { jobs: ['Rethink'], label: 'What changed a mind' },
   { jobs: ['Common ground'], label: 'Where they agree' },
   { jobs: ['Still unsure'], label: 'Still open' },
@@ -26,7 +27,7 @@ export function debateBeats(turns: Pick<Turn, 'seq' | 'speakerId' | 'objective' 
   });
 }
 
-/** "The debate in a minute": the arc of the episode in five lines, each one tap from its turn. */
+/** "The debate in a minute": the arc of the episode in six lines, each one tap from its turn. */
 export function DebateMap({ turns, names }: { turns: Turn[]; names: Record<SpeakerId, string> }) {
   const beats = debateBeats(turns);
   if (beats.length < 3) return null;

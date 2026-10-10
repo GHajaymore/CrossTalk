@@ -107,7 +107,7 @@ const generic = (topic: string) => [
   "Okay, picture one place and one small group trying it for a single season. Week one is novelty and friction. By month two, routines settle and the real effects show up.",
   "Ha, the week-one novelty is so true. But small trials attract people who want it to work. Early results almost always look better than a wider rollout.",
   "Fair. So you'd want to run it somewhere a bit reluctant too. If it works there, that tells you a lot more.",
-  "And ask what happens at the edges: the person with less money, less time, less say. If it only works for the motivated middle, that matters.",
+  "Here's what would actually move me: show it working for the person with less money, less time, less say, not just the motivated middle. If it does, I'm in.",
   "Here's what I find most valuable, though: deciding forces everyone to say what they actually value and what they'd give up. Even if nothing changes, people leave clearer.",
   "The catch is time. A lot of effects arrive slowly, after habits and prices adjust. Short trials miss them, and some decisions are hard to undo.",
   "Yeah, good point. Anything hard to reverse deserves way more caution than something you can quietly roll back.",
