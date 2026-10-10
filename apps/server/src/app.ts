@@ -330,6 +330,26 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
     : pollinations;
   const portraits = new Portraits(repo, f, undefined, undefined, imageQueue, imageService);
   const pictures = new IrisPictures(repo, f, imageQueue, undefined, undefined, imageService);
+  // Try the camera: one AI picture from your own words, to see what the image service makes. Never
+  // stored, at most TRY_PER_DAY a day and one at a time (through the same queue), with the same limits
+  // every picture has.
+  const TRY_PER_DAY = 10;
+  let tries = { day: '', n: 0 };
+  app.post<{ Body: { prompt?: unknown } }>('/api/images/try', async (req, reply) => {
+    const prompt = typeof req.body?.prompt === 'string' ? req.body.prompt.replace(/[<>{}\[\]]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 400) : '';
+    if (prompt.length < 3) throw new ControllerError('Describe the picture in a few words.', 400);
+    const day = new Date().toISOString().slice(0, 10);
+    if (tries.day !== day) tries = { day, n: 0 };
+    if (tries.n >= TRY_PER_DAY) throw new ControllerError(`That's today's ${TRY_PER_DAY} tries; more tomorrow.`, 429);
+    tries.n++;
+    const made = await imageQueue.run(() => imageService.make({
+      prompt: `${prompt}. Invented adults only: no children, no text, no words, no logos, no watermark, no real or famous people`,
+      width: 1024, height: 614, seedText: `${day}:${tries.n}`,
+    }, f, AbortSignal.timeout(90_000)).catch((e: Error) => ({ ok: false as const, busy: false, reason: `Couldn't reach ${imageService.name} (${e.message}).` })));
+    if (!made.ok) throw new ControllerError(made.reason, 502);
+    return reply.header('Cache-Control', 'no-store').type(made.img.mime).send(made.img.data);
+  });
+
   app.get<{ Params: { id: string; version: string }; Querystring: { style?: string } }>('/api/iris/picture/:id/:version', async (req, reply) => {
     // Her photograph by default; ?style=dreamscape or ?style=sketch for those.
     const style = (AI_STYLES as readonly string[]).includes(req.query.style ?? 'picture') ? (req.query.style ?? 'picture') as AiStyle : null;

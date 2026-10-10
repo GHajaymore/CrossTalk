@@ -205,3 +205,25 @@ describe('a mistyped Cloudflare Account ID', () => {
     await built.app.close();
   });
 });
+
+describe('try the camera', () => {
+  it('makes one picture from your words, with the usual limits, never kept, at most 10 a day', async () => {
+    const asked: string[] = [];
+    const f = (async (url: string) => { asked.push(decodeURIComponent(String(url))); return new Response(jpeg, { headers: { 'content-type': 'image/jpeg' } }); }) as unknown as typeof fetch;
+    const t = buildApp(mockConfig({ dbPath: ':memory:' }), { fetch: f });
+    try {
+      const res = await t.app.inject({ method: 'POST', url: '/api/images/try', payload: { prompt: 'A wooden door open onto snowy mountains <b>' } });
+      expect(res.statusCode).toBe(200);
+      expect(res.headers['content-type']).toBe('image/jpeg');
+      expect(res.rawPayload).toEqual(jpeg);
+      expect(asked[0]).toContain('A wooden door open onto snowy mountains');
+      expect(asked[0]).not.toContain('<b>');
+      expect(asked[0]).toContain('no real or famous people');
+      expect((await t.app.inject({ method: 'POST', url: '/api/images/try', payload: { prompt: '' } })).statusCode).toBe(400);
+      for (let i = 0; i < 9; i++) await t.app.inject({ method: 'POST', url: '/api/images/try', payload: { prompt: `try ${i}` } });
+      const over = await t.app.inject({ method: 'POST', url: '/api/images/try', payload: { prompt: 'one more' } });
+      expect(over.statusCode).toBe(429);
+      expect(over.json().error).toMatch(/today's 10 tries/);
+    } finally { await t.app.close(); }
+  });
+});
