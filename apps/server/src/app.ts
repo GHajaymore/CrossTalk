@@ -321,7 +321,11 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
   // The hosts' photos and Iris's paintings come from the same free service, one picture at a time.
   const imageQueue = new SerialQueue();
   // Cloudflare's real AI photos once it's set up (and confirmed free); otherwise Pollinations.
-  const imageService: ImageService = cfg.imageService === 'cloudflare' ? cloudflare(cfg.cloudflare.accountId, cfg.cloudflare.token)
+  // A Cloudflare Account ID is always 32 letters and numbers; a short or long one is a copying slip, said plainly.
+  const badAccount = cfg.imageService === 'cloudflare' && !/^[0-9a-f]{32}$/i.test(cfg.cloudflare.accountId);
+  const imageService: ImageService = badAccount
+    ? { name: 'Cloudflare Workers AI', make: async () => ({ ok: false, busy: false, reason: `CLOUDFLARE_ACCOUNT_ID should be 32 letters and numbers, but it has ${cfg.cloudflare.accountId.length}. Copy it again with Cloudflare's copy icon and paste it into Render.` }) }
+    : cfg.imageService === 'cloudflare' ? cloudflare(cfg.cloudflare.accountId, cfg.cloudflare.token)
     : cfg.imageService === 'blocked' ? { name: 'Cloudflare Workers AI', make: async () => ({ ok: false, busy: false, reason: 'Set CLOUDFLARE_PLAN=free to confirm your Cloudflare account is on the Free plan (no card), so no picture can ever be charged.' }) }
     : pollinations;
   const portraits = new Portraits(repo, f, undefined, undefined, imageQueue, imageService);

@@ -161,3 +161,16 @@ describe('real AI photos from Cloudflare (free account)', () => {
     await built.app.close();
   });
 });
+
+describe('a mistyped Cloudflare Account ID', () => {
+  it('is said plainly in Settings, not as a confusing 404', async () => {
+    const built = buildApp({ ...mockConfig({ dbPath: ':memory:' }), imageService: 'cloudflare', cloudflare: { accountId: '5ca55034550e551f75539e8694f78b6', token: 't' } });
+    // Ask for a host photo: it fails at once, with the reason.
+    const code = 'A-2-short-1-0-shirt-a3-b1';
+    expect((await built.app.inject({ url: `/api/portraits/${code}.jpg` })).statusCode).toBe(202);
+    await new Promise(r => setTimeout(r, 20));
+    const cfg = (await built.app.inject({ url: '/api/config' })).json();
+    expect(cfg.images.portraits.lastError).toMatch(/CLOUDFLARE_ACCOUNT_ID should be 32 letters and numbers, but it has 31/);
+    await built.app.close();
+  });
+});
