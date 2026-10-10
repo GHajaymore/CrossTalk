@@ -17,7 +17,7 @@ export type PaintStyle = (typeof ART_STYLES)[number];
 export type HomeStyle = (typeof HOME_STYLES)[number];
 
 export const PAINT_STYLE_INFO: Record<PaintStyle, { name: string; what: string }> = {
-  picture: { name: 'Picture', what: 'A full painted illustration of the moment, from her own art brief' },
+  picture: { name: 'Picture', what: 'A real-looking AI photograph of the moment, from her own brief to the camera' },
   sketch: { name: 'Sketch', what: 'Her line drawing, crisp and clear' },
   painting: { name: 'Painting', what: 'Watercolour washes and inky lines on grained paper' },
   dreamscape: { name: 'Dreamscape', what: 'A drifting sky, echoes and glow, for big open ideas' },

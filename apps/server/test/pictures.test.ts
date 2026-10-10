@@ -17,9 +17,11 @@ async function settle(app: { inject: (o: { url: string }) => Promise<{ statusCod
 describe("Iris's real paintings", () => {
   it('her brief, the tradition of a host\'s home and firm limits; never a name', () => {
     const p = picturePrompt({ imagePrompt: 'Two empty chairs in lamplight <script>', caption: 'x' }, 'Is a four-day week practical?', ['inkwash']);
-    expect(p).toMatch(/^Two empty chairs in lamplight/);
+    expect(p).toMatch(/^A real-looking cinematic photograph: Two empty chairs in lamplight/);
     expect(p).not.toContain('<');
-    expect(p).toContain('East Asian ink-wash');
+    expect(p).toContain('feel of East Asia');
+    expect(p).toMatch(/^A real-looking cinematic photograph: /);
+    expect(p).toContain('no children');
     expect(p).toContain('no text, no words, no letters');
     expect(p).toContain('no real or famous people');
     // No brief (an old drawing): the question and the quote stand in.
@@ -46,7 +48,7 @@ describe("Iris's real paintings", () => {
       const pics = asked.filter(u => u.includes('width=1024'));
       expect(pics).toHaveLength(1);
       expect(pics[0]).toContain(a.imagePrompt.slice(0, 40));
-      expect(pics[0]).toContain('Latin American folk art');
+      expect(pics[0]).toContain('feel of Latin America');
       expect(pics[0]).not.toContain(t.repo.view(id)!.speakers.A.name);
       await t.app.inject({ url });
       expect(asked.filter(u => u.includes('width=1024'))).toHaveLength(1);
@@ -113,12 +115,49 @@ describe('when the image service fails', () => {
     let answer = () => new Response('Too many requests from this IP', { status: 402, headers: { 'content-type': 'text/plain' } });
     const maker = new FreeImages({
       f: (async () => answer()) as unknown as typeof fetch, now: () => new Date('2026-10-10T10:00:00Z'), queue: new SerialQueue(), perDay: 10, maxBytes: 1_000_000,
-      url: k => `https://example.test/${k}`, saved: k => store.get(k) ?? null, save: (k, img) => { store.set(k, img); }, madeOn: () => 0, busyWaitMs: 1,
+      job: k => ({ prompt: k, width: 64, height: 64, seedText: k }), saved: k => store.get(k) ?? null, save: (k, img) => { store.set(k, img); }, madeOn: () => 0, busyWaitMs: 1,
     });
     expect(await maker.get('a')).toBeNull();
     expect(maker.health).toMatchObject({ lastOkAt: null, lastError: 'The image service answered 402: Too many requests from this IP', lastErrorAt: '2026-10-10T10:00:00.000Z' });
     answer = () => new Response(new Uint8Array([1, 2, 3]), { status: 200, headers: { 'content-type': 'image/jpeg' } });
     expect(await maker.get('b')).not.toBeNull();
     expect(maker.health.lastOkAt).toBe('2026-10-10T10:00:00.000Z');
+  });
+});
+
+describe('real AI photos from Cloudflare (free account)', () => {
+  it('is used only with an account, a token and the free plan confirmed', async () => {
+    const { loadConfig } = await import('../src/config');
+    expect(loadConfig({}).imageService).toBe('pollinations');
+    expect(loadConfig({ CLOUDFLARE_ACCOUNT_ID: 'acc', CLOUDFLARE_API_TOKEN: 'tok' }).imageService).toBe('blocked');
+    expect(loadConfig({ CLOUDFLARE_ACCOUNT_ID: 'acc', CLOUDFLARE_API_TOKEN: 'tok', CLOUDFLARE_PLAN: 'free' }).imageService).toBe('cloudflare');
+  });
+
+  it('asks FLUX.1 schnell for the photo, with the token only in the header, and reads the picture back', async () => {
+    const { cloudflare, CLOUDFLARE_MODEL } = await import('../src/freeImages');
+    const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3]);
+    const calls: { url: string; init: RequestInit }[] = [];
+    const f = (async (url: string, init: RequestInit) => { calls.push({ url, init }); return Response.json({ success: true, result: { image: jpeg.toString('base64') } }); }) as unknown as typeof fetch;
+    const made = await cloudflare('acc123', 'cf-SECRET-token').make({ prompt: 'A rainy street at dusk', width: 1024, height: 614, seedText: 'x' }, f, new AbortController().signal);
+    expect(made).toEqual({ ok: true, img: { mime: 'image/jpeg', data: jpeg } });
+    expect(CLOUDFLARE_MODEL).toBe('@cf/black-forest-labs/flux-1-schnell');
+    expect(calls[0].url).toBe('https://api.cloudflare.com/client/v4/accounts/acc123/ai/run/@cf/black-forest-labs/flux-1-schnell');
+    expect((calls[0].init.headers as Record<string, string>).Authorization).toBe('Bearer cf-SECRET-token');
+    expect(String(calls[0].init.body)).not.toContain('cf-SECRET-token');
+    expect(JSON.parse(String(calls[0].init.body))).toMatchObject({ prompt: 'A rainy street at dusk' });
+  });
+
+  it("says plainly when the free daily allowance is spent, and doesn't keep retrying", async () => {
+    const { cloudflare } = await import('../src/freeImages');
+    const f = (async () => Response.json({ success: false, errors: [{ message: 'you have used up your daily free allocation of 10,000 neurons' }] }, { status: 429 })) as unknown as typeof fetch;
+    const made = await cloudflare('a', 't').make({ prompt: 'x', width: 1, height: 1, seedText: 'x' }, f, new AbortController().signal);
+    expect(made).toMatchObject({ ok: false, busy: false, reason: expect.stringMatching(/daily allowance is used up; it resets at 00:00 UTC/) });
+  });
+
+  it('shows in Settings which service makes the pictures, and a blocked Cloudflare explains itself', async () => {
+    const built = buildApp({ ...mockConfig({ dbPath: ':memory:' }), imageService: 'blocked' });
+    const cfg = (await built.app.inject({ url: '/api/config' })).json();
+    expect(cfg.images.service).toBe('Cloudflare Workers AI');
+    await built.app.close();
   });
 });

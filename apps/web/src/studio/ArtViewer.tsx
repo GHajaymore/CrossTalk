@@ -48,7 +48,7 @@ export function ArtViewer({ art, onClose }: { art: ViewedArt; onClose: () => voi
           {art.brief && <p className="av-brief"><span className="tag">From her sketchbook</span> {art.brief}</p>}
           <div className="dock-row">
             {!art.picture && <a className="btn sm" href={art.src} download={`${file}.svg`}>Download</a>}
-            {art.picture && <button className="btn sm" onClick={() => void downloadPicture(art, file)}>Download painting</button>}
+            {art.picture && <button className="btn sm" onClick={() => void downloadPicture(art, file)}>Download picture</button>}
             <button ref={close} className="btn sm ghost" onClick={onClose}>Close</button>
           </div>
         </figcaption>

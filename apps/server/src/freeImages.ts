@@ -1,5 +1,6 @@
-// Pictures from a free image service (Pollinations: no key, no account, no cost). Shared by the hosts'
-// photo portraits and Iris's paintings. Each picture is made once, checked to be an image, stored and
+// Pictures from a free AI image service: Cloudflare Workers AI (FLUX.1 schnell, on a free account
+// with no card) when it's set up, otherwise Pollinations (no key, no account). Never both: one
+// service, chosen in the settings. Shared by the hosts' photo portraits and Iris's pictures. Each picture is made once, checked to be an image, stored and
 // served from the database. The service makes one picture at a time, so everything goes through one
 // queue; requests never wait on it (202 while a picture is being made, the page asks again).
 
@@ -10,6 +11,60 @@ const BUSY_WAIT_MS = 8_000;
 const FAILED_WAIT_MS = 10 * 60_000;
 
 export type Img = { mime: string; data: Buffer };
+
+/** What to make: the words, the size wanted, and a seed text (the same request gives the same picture where the service allows). */
+export type ImageJob = { prompt: string; width: number; height: number; seedText: string };
+type Made = { ok: true; img: Img } | { ok: false; busy: boolean; reason: string };
+
+/** One image service. */
+export type ImageService = { name: string; make(job: ImageJob, f: typeof fetch, signal: AbortSignal): Promise<Made> };
+
+const IMAGE_MIME = /^image\/(jpeg|png|webp)$/;
+
+/** Pollinations: a plain web address per picture. */
+export const pollinations: ImageService = {
+  name: 'Pollinations',
+  async make(job, f, signal) {
+    const res = await f(pollinationsUrl(job.prompt, job), { signal, headers: { Accept: 'image/jpeg,image/png,image/webp' } });
+    const mime = (res.headers.get('content-type') ?? '').split(';')[0].trim();
+    if (!res.ok) {
+      const body = (await res.text().catch(() => '')).replace(/\s+/g, ' ').slice(0, 160);
+      return { ok: false, busy: res.status === 429 || res.status === 503, reason: `The image service answered ${res.status}${body ? `: ${body}` : ''}` };
+    }
+    if (!IMAGE_MIME.test(mime)) return { ok: false, busy: false, reason: `The image service sent ${mime || 'something'} instead of a picture.` };
+    return { ok: true, img: { mime, data: Buffer.from(await res.arrayBuffer()) } };
+  },
+};
+
+/** The one Cloudflare model CrossTalk uses: FLUX.1 schnell, a fast photographic model. */
+export const CLOUDFLARE_MODEL = '@cf/black-forest-labs/flux-1-schnell';
+
+/** Cloudflare Workers AI on the owner's free account. The token travels only in the header. */
+export function cloudflare(accountId: string, token: string): ImageService {
+  return {
+    name: 'Cloudflare Workers AI',
+    async make(job, f, signal) {
+      const res = await f(`https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(accountId)}/ai/run/${CLOUDFLARE_MODEL}`, {
+        method: 'POST', signal,
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: job.prompt.slice(0, 2048), steps: 6 }),
+      });
+      let body: { success?: boolean; result?: { image?: string }; errors?: { message?: string }[] } = {};
+      try { body = await res.json() as typeof body; } catch { /* not JSON */ }
+      const said = body.errors?.map(e => e.message).filter(Boolean).join('; ').slice(0, 200) ?? '';
+      if (!res.ok || !body.result?.image) {
+        // A spent daily allowance isn't "busy": it's back tomorrow (00:00 UTC).
+        const daily = /neuron|daily|allocation|quota/i.test(said);
+        return { ok: false, busy: !daily && (res.status === 429 || res.status >= 500), reason: `Cloudflare answered ${res.status}${said ? `: ${said}` : ''}${daily ? ' (the free daily allowance is used up; it resets at 00:00 UTC)' : ''}` };
+      }
+      const data = Buffer.from(body.result.image, 'base64');
+      // FLUX answers in JPEG; check the bytes rather than trust it.
+      const mime = data[0] === 0xff && data[1] === 0xd8 ? 'image/jpeg' : data[0] === 0x89 && data[1] === 0x50 ? 'image/png' : data.subarray(8, 12).toString() === 'WEBP' ? 'image/webp' : '';
+      if (!mime) return { ok: false, busy: false, reason: 'Cloudflare sent something that isn\'t a picture.' };
+      return { ok: true, img: { mime, data } };
+    },
+  };
+}
 
 /** One picture at a time, in order. */
 export class SerialQueue {
@@ -33,8 +88,10 @@ export type MakerOptions = {
   now: () => Date;
   queue: SerialQueue;
   perDay: number;
-  /** Where to fetch a key's picture from, or null when the key isn't one we make. */
-  url: (key: string) => string | null;
+  /** What to make for a key, or null when the key isn't one we make. */
+  job: (key: string) => ImageJob | null;
+  /** Which service makes it (Pollinations when left out). */
+  service?: ImageService;
   saved: (key: string) => Img | null;
   save: (key: string, img: Img, at: string) => void;
   madeOn: (day: string) => number;
@@ -56,7 +113,7 @@ export class FreeImages {
 
   /** At once: the stored picture, 'pending' while it's being made (started if need be), or null when there won't be one. */
   check(key: string): Img | 'pending' | null {
-    if (this.o.url(key) === null) return null;
+    if (this.o.job(key) === null) return null;
     const saved = this.o.saved(key);
     if (saved) return saved;
     if (this.inFlight.has(key)) return 'pending';
@@ -73,40 +130,39 @@ export class FreeImages {
 
   /** The stored picture, or one made now (waiting for it); null when there won't be one. */
   async get(key: string): Promise<Img | null> {
-    const url = this.o.url(key);
-    if (url === null) return null;
+    const job = this.o.job(key);
+    if (job === null) return null;
     const saved = this.o.saved(key);
     if (saved) return saved;
     const pending = this.inFlight.get(key);
     if (pending) return pending;
     if (!this.mayStart(key)) return null;
-    const p = this.o.queue.run(() => this.fetchOne(key, url))
+    const p = this.o.queue.run(() => this.fetchOne(key, job))
       .then(got => { if (!got) this.failed.set(key, this.o.now().getTime()); return got; })
       .finally(() => this.inFlight.delete(key));
     this.inFlight.set(key, p);
     return p;
   }
 
-  private async fetchOne(key: string, url: string, retry = true): Promise<Img | null> {
+  private async fetchOne(key: string, job: ImageJob, retry = true): Promise<Img | null> {
+    const service = this.o.service ?? pollinations;
     try {
-      const res = await this.o.f(url, { signal: AbortSignal.timeout(TIMEOUT_MS), headers: { Accept: 'image/jpeg,image/png,image/webp' } });
-      if ((res.status === 429 || res.status === 503) && retry) {
-        await new Promise(r => setTimeout(r, this.o.busyWaitMs ?? BUSY_WAIT_MS));
-        return this.fetchOne(key, url, false);
+      const made = await service.make(job, this.o.f, AbortSignal.timeout(TIMEOUT_MS));
+      if (!made.ok) {
+        if (made.busy && retry) {
+          await new Promise(r => setTimeout(r, this.o.busyWaitMs ?? BUSY_WAIT_MS));
+          return this.fetchOne(key, job, false);
+        }
+        return this.failure(made.reason);
       }
-      const mime = (res.headers.get('content-type') ?? '').split(';')[0].trim();
-      if (!res.ok) {
-        const body = (await res.text().catch(() => '')).replace(/\s+/g, ' ').slice(0, 160);
-        return this.failure(`The image service answered ${res.status}${body ? `: ${body}` : ''}`);
-      }
-      if (!/^image\/(jpeg|png|webp)$/.test(mime)) return this.failure(`The image service sent ${mime || 'something'} instead of a picture.`);
-      const data = Buffer.from(await res.arrayBuffer());
+      const { mime, data } = made.img;
+      if (!IMAGE_MIME.test(mime)) return this.failure(`${service.name} sent ${mime || 'something'} instead of a picture.`);
       if (!data.length || data.length > this.o.maxBytes) return this.failure(data.length ? 'The picture was too large.' : 'The picture was empty.');
       this.o.save(key, { mime, data }, this.o.now().toISOString());
       this.health = { ...this.health, lastOkAt: this.o.now().toISOString() };
       return { mime, data };
     } catch (e) {
-      return this.failure((e as Error).name === 'TimeoutError' ? 'The image service took over 90 seconds.' : `Couldn't reach the image service (${(e as Error).message}).`);
+      return this.failure((e as Error).name === 'TimeoutError' ? `${service.name} took over 90 seconds.` : `Couldn't reach ${service.name} (${(e as Error).message}).`);
     }
   }
 

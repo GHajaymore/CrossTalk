@@ -135,3 +135,26 @@ keep everything on your server and use the drawn portraits instead, add `PORTRAI
 Render's **Environment** tab.
 
 Iris's full paintings come from the same free service. To keep her to line art, add `IRIS_PICTURES` = `off`.
+
+### Real AI photos from Cloudflare (free, about 10 minutes)
+
+For dependable, real-looking AI photographs of the hosts and Iris's pictures, connect a free
+Cloudflare account. It runs FLUX.1 schnell, an AI image model; every photo is made new, never taken
+from a library. The free allowance is 10,000 "neurons" a day (roughly 150 to 200 photos), reset at
+00:00 UTC. CrossTalk makes at most 54 a day (24 host photos, 30 of Iris's).
+
+1. Sign up at **dash.cloudflare.com**. Stay on the **Free** plan: don't add a card or upgrade to
+   Workers Paid. With no card, nothing can be charged; past the daily allowance, pictures just wait
+   for tomorrow and Iris paints her own meanwhile.
+2. Copy your **Account ID**: it's on the right of the account's home page (or in the address bar
+   after `dash.cloudflare.com/`).
+3. Go to **My Profile → API Tokens → Create Token**, pick the **Workers AI** template, and create it.
+   Copy the token straight into step 4; Cloudflare shows it only once.
+4. In Render → **Environment**, add:
+   - `CLOUDFLARE_ACCOUNT_ID` = your Account ID
+   - `CLOUDFLARE_API_TOKEN` = the token (only ever in Render's page)
+   - `CLOUDFLARE_PLAN` = `free`
+5. Save and deploy. **Settings → Pictures** in CrossTalk then says "Cloudflare Workers AI" and shows
+   when the last photo arrived, or why one didn't.
+
+Without these, CrossTalk keeps using Pollinations.
