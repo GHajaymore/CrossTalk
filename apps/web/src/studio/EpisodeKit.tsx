@@ -81,7 +81,7 @@ function ClipTile({ c, toast, photos }: { c: ConversationView; toast: (m: string
   const canShare = !!video && typeof navigator.canShare === 'function' && navigator.canShare({ files: [video.file] });
   return (
     <div className="kit-tile clip-tile"><b>Social clip</b>
-      {state === 'idle' && <p>The key moment as a vertical video for Reels, Shorts or TikTok: the hosts, captions that light up word by word, where they landed, and Iris's art. 30 to 45 seconds, made on this device while you watch.</p>}
+      {state === 'idle' && <p>A 30–45 second vertical video with live captions and Iris's art, for Reels, Shorts or TikTok.</p>}
       {state === 'idle' && <label className="check"><input type="checkbox" checked={music} onChange={e => setMusic(e.target.checked)} /> Soft music, composed for this episode on your device (free to post)</label>}
       <canvas ref={canvas} className="clip-canvas" hidden={state !== 'recording'} aria-label="Your clip, being recorded" />
       {state === 'recording' && <p className="hint" role="status">Recording {Math.floor(progress.sec)} of {Math.round(progress.total) || '…'} seconds. Keep this tab open.</p>}
@@ -110,17 +110,17 @@ export function EpisodeKit({ c, toast, photos = false }: { c: ConversationView; 
         <button className="btn sm" onClick={copy}>Copy show notes</button>
       </div>
       <div className="kit-grid">
-        <div className="kit-tile"><b>Podcast episode</b><p>Title, show notes, {c.turns.length} chapters and the full transcript are ready. {c.audio ? 'Audio with natural voices is ready too.' : 'Audio comes when the episode is voiced.'}</p><span className="badge ok">Text ready</span><span className={`badge ${c.audio ? 'ok' : 'later'}`}>{c.audio ? 'Audio ready' : 'Audio · later'}</span></div>
-        <div className="kit-tile"><b>Episode page</b><p>One file with {c.artist?.state === 'done' ? "Iris's art, " : ''}the whole conversation{c.turns.some(t => t.stance != null) ? ', the mind-change meter' : ''} and a Play button that reads it aloud. Opens in any browser, works offline, sends nothing.</p>
+        <div className="kit-tile"><b>Podcast episode</b><p>Show notes, {c.turns.length} chapters and the transcript. {c.audio ? 'Audio with natural voices too.' : 'Audio comes when it is voiced.'}</p><span className="badge ok">Text ready</span><span className={`badge ${c.audio ? 'ok' : 'later'}`}>{c.audio ? 'Audio ready' : 'Audio · later'}</span></div>
+        <div className="kit-tile"><b>Episode page</b><p>One file with {c.artist?.state === 'done' ? "Iris's art, " : ''}the whole conversation and a Play button. Works offline.</p>
           <div className="dock-row"><a className="btn sm" href={`/api/conversations/${c.id}/export.html`} download>Download page</a></div>
           <span className="badge ok">Free · works offline</span></div>
         <ImageTile c={c} toast={toast} title="Episode poster" button="Make poster" alt="Poster for" make={makePoster} name={posterName}
-          blurb="The question, the hosts, Iris's sketch and quote, and where each host landed, in one image to share." />
+          blurb="The question, the hosts, Iris's art and where each landed, in one image." />
         <ImageTile c={c} toast={toast} title="Comic strip" button="Make comic" alt="Comic strip of" make={makeComic} name={comicName}
-          blurb="The episode in 4 panels: the opening, the clash, the moment Iris drew, and where the hosts landed." />
+          blurb="The episode in 4 panels, from the opening to where they landed." />
         <ClipTile c={c} toast={toast} photos={photos} />
         <ImageTile c={c} toast={toast} title="Iris print" button="Make print" alt="Iris print for" make={makePrint} name={printName}
-          blurb={`“${c.artist?.artTitle ?? 'Her drawing'}” as a print-ready A4 page (300 dpi), matted like a gallery print, with her title and the quote.`}
+          blurb={`“${c.artist?.artTitle ?? 'Her drawing'}” as a matted A4 print (300 dpi).`}
           extra={<button className="btn sm ghost" onClick={async () => { try { await navigator.clipboard.writeText(printListing(c)); toast('Listing text copied'); } catch { toast('Copying is blocked in this browser'); } }}>Copy listing text</button>} />
       </div>
       <p className="hint publish-line">

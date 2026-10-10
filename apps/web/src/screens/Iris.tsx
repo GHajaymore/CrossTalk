@@ -90,7 +90,8 @@ export function IrisPage({ config }: { config: AppConfig | null }) {
         <MyPhotos config={config} refresh={kept} />
       </section>
 
-      <section className="sec"><h2>Her styles</h2>
+      <details className="sec styles-fold">
+        <summary><h2>Her styles</h2><span className="hint">{styles ? styles.filter(s => s !== 'picture' || config?.irisPictures !== false).map(s => PAINT_STYLE_INFO[s].name).join(', ') || 'None ticked' : '…'}{homeOn ? ' · home styles on' : ''}</span><span className="link-btn">Change</span></summary>
         <p className="hint">Tick the styles Iris may use. With more than one, she picks the one that fits each episode (and leans toward the ones you keep choosing). You can still switch any drawing on her card under Read.</p>
         <div role="group" aria-label="Styles Iris may use"><ul className="iris-styles">
           {PAINT_STYLES.map(s => {
@@ -121,7 +122,7 @@ export function IrisPage({ config }: { config: AppConfig | null }) {
         {styleMsg && <p className="hint" role="status">{styleMsg}</p>}
         {config?.irisPictures !== false ? <p className="hint">Picture, Dreamscape and Sketch: she paints one in your browser straight away, then the free AI image service{config ? <> (<b>{config.images.service}</b>)</> : ''} makes the finished piece from her brief, and it fades in. Only the brief is sent, never names. Painting and the home styles are made entirely in your browser from her own lines.</p>
           : <p className="hint">Every style is drawn in your browser from her own lines.</p>}
-      </section>
+      </details>
 
       <section className="sec"><h2>What Iris has learned</h2>
         <p className="hint">She reads your latest 10 notes before every drawing. Add one with "Help Iris learn" on her card, under Read in the Studio.</p>

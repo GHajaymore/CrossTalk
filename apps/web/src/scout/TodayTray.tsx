@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { AUTOPILOT_REQUESTS, SCOUT_CATS, SCOUT_REGIONS, scoutPicks, splitLabel, type Audience, type Rules, type ScoutPrefs, type ScoutTopic } from '@crosstalk/shared';
 import { api, type ScoutView } from '../api/client';
 import { BriefBox } from './BriefBox';
-import { ScoutPrefsEditor } from './ScoutPrefsEditor';
 
 type Props = { rules: Rules; audience: Audience; selected: string | null; onPick: (t: ScoutTopic) => void; toast: (m: string) => void; real: boolean };
 
@@ -52,16 +51,13 @@ export function TodayTray({ rules, audience, selected, onPick, toast, real }: Pr
         <div><span className="tag">Today · from the Scout{real ? '' : ' · sample topics'}</span><h2>What people are arguing about</h2></div>
         <label className="switch"><input type="checkbox" checked={prefs.autopilot} onChange={e => save({ ...prefs, autopilot: e.target.checked })} /> Autopilot</label>
       </div>
-      {/* Where the Scout looks is a setting, not a step: folded away until you want it. */}
-      <details className="scout-prefs">
-        <summary>Customise the Scout · themes, places and sources</summary>
-        <ScoutPrefsEditor prefs={prefs} onChange={save} audience={audience} allowPolitics={rules.allowPolitics} />
-        <p className="hint">
-          {prefs.rank === 'buzz' ? 'Ranked by how much people are talking about it.' : 'Ranked by how divided people are.'}{' '}
-          The Scout looks every day at {at}{last ? `; last looked ${when(last.startedAt)}` : ''}.{' '}
-          {prefs.autopilot ? `Autopilot runs the top pick as a Friendly Debate, with Iris, once a day (about ${AUTOPILOT_REQUESTS} requests).` : 'Turn on Autopilot to have the top pick ready as an episode each morning.'}
-        </p>
-      </details>
+      {/* Where the Scout looks is a setting, so it lives in Settings; here, just what it's doing. */}
+      <p className="hint scout-line">
+        {prefs.rank === 'buzz' ? 'Ranked by how much people are talking about it.' : 'Ranked by how divided people are.'}{' '}
+        Looks every day at {at}.{' '}
+        {prefs.autopilot ? `Autopilot runs the top pick as a Friendly Debate, with Iris (about ${AUTOPILOT_REQUESTS} requests).` : 'Autopilot can have the top pick ready as an episode each morning.'}{' '}
+        <a href="#/settings">Customise the Scout</a>
+      </p>
       {last?.state === 'failed' && <p className="hint">Last run didn't finish: {last.error}</p>}
       {last?.sourcesFailed.length ? <p className="hint">Couldn't reach {last.sourcesFailed.join(', ')} last time; the others still counted.</p> : null}
       {last?.autopilotConversationId && <p className="hint">Autopilot made today's episode: <a href={`#/studio/${last.autopilotConversationId}/watch`}>open it</a>.</p>}

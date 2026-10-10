@@ -31,6 +31,9 @@ test('length: a Short episode is 8 turns, chosen by listening time', async ({ pa
 
 test('hosts from somewhere: the name bar, the style hint, and their first lines', async ({ page }) => {
   await page.goto('/#/create');
+  // The hosts fold into one line until you change them.
+  await expect(page.locator('.hosts-fold > summary')).toContainText('At the table');
+  await page.locator('.hosts-fold > summary').click();
   await page.getByRole('region', { name: 'Speaker A' }).getByLabel('Home').selectOption('KE');
   await page.getByRole('region', { name: 'Speaker B' }).getByLabel('Home').selectOption('IN');
   await expect(page.getByRole('region', { name: 'Speaker A' })).toContainText('Warm and spirited: clearly there at Lively.');
@@ -55,6 +58,7 @@ test('hosts from somewhere: the name bar, the style hint, and their first lines'
 
 test('language: a host from Mexico puts Spanish first; the episode greets in Spanish', async ({ page }) => {
   await page.goto('/#/create');
+  await page.locator('.hosts-fold > summary').click();
   await page.getByRole('region', { name: 'Speaker B' }).getByLabel('Home').selectOption('MX');
   const lang = page.getByLabel('Language');
   await expect(lang.locator('optgroup').first()).toHaveAttribute('label', 'For these hosts');
@@ -86,6 +90,7 @@ test('host photos: "still being made" is waited for, then the photo shows and mo
   await expect(page.locator('.set-photo.ok img')).toHaveCount(2, { timeout: 20_000 });
   // Typing a name doesn't ask for a photo per keystroke.
   const before = asked.size;
+  await page.locator('.hosts-fold > summary').click();
   await page.getByRole('region', { name: 'Speaker A' }).getByLabel('Name').pressSequentially('Priyanka', { delay: 40 });
   await expect.poll(() => asked.size, { timeout: 5000 }).toBe(before + 1);
   // The photo moves (its tilt and turn change over time).
@@ -285,6 +290,8 @@ test("Iris's card shows her sketch, perspective, and learns from feedback", asyn
 
 test("Iris: tick your styles, and the gallery keeps every version", async ({ page, request }) => {
   await page.goto('/#/iris');
+  // Her styles sit in one line until you change them.
+  await page.locator('.styles-fold > summary').click();
   const picks = page.getByRole('group', { name: 'Styles Iris may use' });
   // Untick Picture, Sketch and Dreamscape: Painting only.
   await picks.getByRole('button', { name: /^Picture/ }).click();
@@ -450,24 +457,28 @@ test('keyboard only: the turn menu and the branch dialog', async ({ page, reques
 
 test('Scout: Show more is free, sources can be switched, social posts stay opinions', async ({ page }) => {
   await page.goto('/#/create');
+  await page.getByRole('tab', { name: '📰 In the news' }).click();
   await page.getByRole('button', { name: '↻ Refresh topics' }).click();
   await expect(page.locator('.topic-card')).toHaveCount(5);
-  await page.getByText('Customise the Scout').click();
   await page.getByRole('button', { name: /Show more · \d+ left/ }).click();
   await expect.poll(() => page.locator('.topic-card').count()).toBeGreaterThan(5);
   await expect(page.locator('.topic-card', { hasText: 'Has tipping culture gone too far?' })).toBeVisible();
+  // The tab is remembered on this device.
+  await page.reload();
+  await expect(page.getByRole('tab', { name: '📰 In the news' })).toHaveAttribute('aria-selected', 'true');
+  // Where the Scout looks is set in one place: Settings.
+  await page.getByRole('link', { name: 'Customise the Scout' }).click();
   const sources = page.getByRole('group', { name: 'Sources' });
   await expect(page.getByText(/brief reports them as opinions, never as facts/)).toBeVisible();
   await sources.getByRole('button', { name: 'Reddit' }).click();
   await expect(sources.getByRole('button', { name: 'Reddit' })).toHaveAttribute('aria-pressed', 'false');
   await sources.getByRole('button', { name: 'Reddit' }).click();
+  await page.goto('/#/create');
   await expect(page.getByText(/Last refreshed just now/)).toBeVisible();
 });
 
 test('Scout: your interests, countries and own sites; briefs show their spread', async ({ page, request }) => {
-  await page.goto('/#/create');
-  await page.getByRole('button', { name: '↻ Refresh topics' }).click().catch(() => {});
-  await page.getByText('Customise the Scout').click();
+  await page.goto('/#/settings');
   await page.getByLabel('Your interests').fill('golf, tipping');
   await page.getByLabel('Your interests').press('Enter');
   await page.getByLabel('Follow a country').selectOption('IN');
@@ -479,6 +490,9 @@ test('Scout: your interests, countries and own sites; briefs show their spread',
   await link.fill('https://news.example/rss');
   await page.getByRole('group', { name: 'Your news sites' }).getByRole('button', { name: 'Add' }).click();
   await expect(page.getByRole('button', { name: 'Remove https://news.example/rss' })).toBeVisible();
+  await page.goto('/#/create');
+  await page.getByRole('tab', { name: '📰 In the news' }).click();
+  await page.getByRole('button', { name: '↻ Refresh topics' }).click().catch(() => {});
   await expect(page.locator('.topic-card .perspectives').first()).toContainText(/\d+ sources?/);
   const prefs = (await (await request.get('/api/scout')).json()).prefs;
   expect(prefs).toMatchObject({ interests: 'golf, tipping', countries: ['IN'], feeds: ['https://news.example/rss'] });
@@ -488,6 +502,7 @@ test('Scout: your interests, countries and own sites; briefs show their spread',
 
 test('Scout: run it, pick a topic, and the brief follows the episode', async ({ page, request }) => {
   await page.goto('/#/create');
+  await page.getByRole('tab', { name: '📰 In the news' }).click();
   await page.getByRole('button', { name: '↻ Refresh topics' }).click();
   const card = page.locator('.topic-card').first();
   await expect(card).toBeVisible();

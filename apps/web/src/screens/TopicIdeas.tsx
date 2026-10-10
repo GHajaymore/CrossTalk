@@ -19,7 +19,7 @@ export function TopicIdeas({ topic, onPick }: { topic: string; onPick: (q: strin
   return (
     <div className="topic-ideas">
       <div className="ti-head">
-        <span className="tag">Ideas</span>
+        <span className="tag">Pick a theme, then a question</span>
         <button className="link-btn" onClick={surprise}>🎲 Surprise me</button>
       </div>
       <div className="ti-themes" role="group" aria-label="Topic themes">
