@@ -12,6 +12,8 @@ import { Slideshow } from '../studio/Slideshow';
 const SAMPLE = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 360"><g fill="none" stroke-width="3" stroke-linecap="round"><path d="M120 290 L480 290" stroke="#ECE8E1"/><circle cx="220" cy="170" r="22" stroke="#E8A55A"/><path d="M220 192 Q205 240 215 288 M220 210 Q250 225 270 240" stroke="#E8A55A"/><circle cx="380" cy="170" r="22" stroke="#5FB8B0"/><path d="M380 192 Q395 240 385 288 M380 210 Q350 225 330 240" stroke="#5FB8B0"/><path d="M300 60 L300 110 M275 130 Q300 100 325 130 Z" stroke="#E9D36A"/><path d="M260 250 L340 250" stroke="#B9A4E6"/></g></svg>';
 
 const art = (g: GalleryEpisode, a: Artwork) => sketchSrc(paintSvg(a.svg, a.style, artSeed(g.conversationId, a.version)));
+/** What her own engine paints a Picture from. */
+const engineOf = (g: GalleryEpisode, a: Artwork) => ({ sketch: a.svg, seed: artSeed(g.conversationId, a.version), brief: a.brief });
 
 /** Iris, the Artist: everything she has drawn, and everything she has learned from you. */
 export function IrisPage({ config }: { config: AppConfig | null }) {
@@ -132,7 +134,7 @@ function LatestWork({ g, pictures, onPlay }: { g: GalleryEpisode; pictures: bool
     <section className="latest-work" aria-label="Her latest piece">
       <button className="art-open lw-art" onClick={() => setViewing(true)} aria-label={`Open “${a.title}” full size`}>
         {picture
-          ? <IrisPicture conversationId={g.conversationId} version={a.version} fallback={art(g, a)} alt={`Iris's picture: ${a.title}`} />
+          ? <IrisPicture conversationId={g.conversationId} version={a.version} fallback={art(g, a)} alt={`Iris's picture: ${a.title}`} engine={engineOf(g, a)} />
           : <img src={art(g, a)} alt={`Iris's ${PAINT_STYLE_INFO[a.style].name.toLowerCase()}: ${a.title}`} />}
         <span className="expand-hint" aria-hidden="true">⤢</span>
       </button>
@@ -149,6 +151,7 @@ function LatestWork({ g, pictures, onPlay }: { g: GalleryEpisode; pictures: bool
       {viewing && <ArtViewer onClose={() => setViewing(false)} art={{
         src: art(g, a), picture: picture ? { conversationId: g.conversationId, version: a.version } : null,
         title: a.title, caption: a.caption, styleName: PAINT_STYLE_INFO[a.style].name, where: `${episodeLabel(g.episode)} · ${g.title}`,
+        brief: picture ? a.brief : undefined, engine: picture ? engineOf(g, a) : undefined,
       }} />}
     </section>
   );
@@ -166,10 +169,11 @@ function GalleryCard({ g, pictures }: { g: GalleryEpisode; pictures: boolean }) 
       {viewing && <ArtViewer onClose={() => setViewing(false)} art={{
         src: art(g, shown), picture: shown.style === 'picture' && pictures ? { conversationId: g.conversationId, version: shown.version } : null,
         title: shown.title, caption: shown.caption, styleName: PAINT_STYLE_INFO[shown.style].name, where: `${episodeLabel(g.episode)} · ${g.title}`,
+        brief: shown.style === 'picture' && pictures ? shown.brief : undefined, engine: shown.style === 'picture' && pictures ? engineOf(g, shown) : undefined,
       }} />}
       <a className="g-link" href={`#/studio/${g.conversationId}/read`}>
         {shown.style === 'picture' && pictures
-          ? <IrisPicture key={shown.id} conversationId={g.conversationId} version={shown.version} fallback={art(g, shown)} alt={`Iris's picture: ${shown.title}`} />
+          ? <IrisPicture key={shown.id} conversationId={g.conversationId} version={shown.version} fallback={art(g, shown)} alt={`Iris's picture: ${shown.title}`} engine={engineOf(g, shown)} />
           : <img src={art(g, shown)} alt={`Iris's ${PAINT_STYLE_INFO[shown.style].name.toLowerCase()}: ${shown.title}`} />}
         <span className="g-title">“{shown.title}”</span>
         <span className="g-quote">“{shown.caption}”</span>

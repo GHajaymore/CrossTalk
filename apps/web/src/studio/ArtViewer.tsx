@@ -1,7 +1,9 @@
 import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { ARTIST } from '@crosstalk/shared';
-import { IrisPicture } from './IrisPicture';
+import { irisArtCached } from '../lib/irisEngine';
+import { pictureUrl } from '../lib/usePolledImage';
+import { IrisPicture, type EngineArt } from './IrisPicture';
 
 export type ViewedArt = {
   /** Her line art (or painted line art) as an image URL; shown at once and as the fallback. */
@@ -13,6 +15,8 @@ export type ViewedArt = {
   styleName: string;
   brief?: string;
   where?: string;
+  /** What her own engine paints from, for a Picture. */
+  engine?: EngineArt;
 };
 
 /** Iris's art, full size: the piece, its title and quote, her sketchbook note, and a download. Esc or a click outside closes it. */
@@ -35,7 +39,7 @@ export function ArtViewer({ art, onClose }: { art: ViewedArt; onClose: () => voi
     <div className="art-viewer" role="dialog" aria-modal="true" aria-label={`${art.title}, full size`} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <figure>
         {art.picture
-          ? <IrisPicture conversationId={art.picture.conversationId} version={art.picture.version} fallback={art.src} alt={alt} />
+          ? <IrisPicture conversationId={art.picture.conversationId} version={art.picture.version} fallback={art.src} alt={alt} engine={art.engine} />
           : <img src={art.src} alt={alt} />}
         <figcaption>
           <span className="tag">{ARTIST.name}, {ARTIST.role} · {art.styleName}{art.where ? ` · ${art.where}` : ''}</span>
@@ -44,7 +48,7 @@ export function ArtViewer({ art, onClose }: { art: ViewedArt; onClose: () => voi
           {art.brief && <p className="av-brief"><span className="tag">From her sketchbook</span> {art.brief}</p>}
           <div className="dock-row">
             {!art.picture && <a className="btn sm" href={art.src} download={`${file}.svg`}>Download</a>}
-            {art.picture && <a className="btn sm" href={`/api/iris/picture/${art.picture.conversationId}/${art.picture.version}.jpg`} download={`${file}.jpg`}>Download painting</a>}
+            {art.picture && <button className="btn sm" onClick={() => void downloadPicture(art, file)}>Download painting</button>}
             <button ref={close} className="btn sm ghost" onClick={onClose}>Close</button>
           </div>
         </figcaption>
@@ -52,4 +56,18 @@ export function ArtViewer({ art, onClose }: { art: ViewedArt; onClose: () => voi
     </div>,
     document.body,
   );
+}
+
+/** The full painting if the image service made one, otherwise the one she painted here. */
+async function downloadPicture(art: ViewedArt, file: string) {
+  let href: string | null = null;
+  try {
+    const r = await fetch(pictureUrl(art.picture!.conversationId, art.picture!.version));
+    if (r.status === 200 && (r.headers.get('content-type') ?? '').startsWith('image/')) href = URL.createObjectURL(await r.blob());
+  } catch { /* offline: use hers */ }
+  href ??= art.engine ? irisArtCached(art.engine) : null;
+  if (!href) return;
+  const a = document.createElement('a');
+  a.href = href; a.download = `${file}.jpg`;
+  document.body.appendChild(a); a.click(); a.remove();
 }

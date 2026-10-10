@@ -195,6 +195,7 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
     admin: admin.state(cookie),
     storage: !cfg.hosted ? 'local' : cfg.backup ? 'backed-up' : 'forgets',
     backup: backup.status,
+    images: { portraits: portraits.health, pictures: pictures.health },
     portraits: cfg.portraits,
     irisPictures: cfg.irisPictures,
   });

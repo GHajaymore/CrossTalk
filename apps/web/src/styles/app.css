@@ -643,7 +643,7 @@ img.living{object-fit:cover}
 .recap .clip-canvas,.recap .clip-video{margin:0;max-width:200px}
 /* Iris's full painting fading in over her line art. */
 .iris-picture{position:relative;display:block}
-.iris-picture>img{display:block;width:100%}
+.iris-picture>img,.iris-picture>canvas{display:block;width:100%;height:auto}
 .iris-picture>img.pic-in{position:absolute;inset:0;height:100%;object-fit:cover;animation:pic-in 1.8s ease both}
 @keyframes pic-in{from{opacity:0;filter:blur(8px)}to{opacity:1;filter:none}}
 .painting-now{position:absolute;left:8px;top:8px;background:rgba(15,16,19,.8);padding:3px 8px;border-radius:10px;animation:pulse-tag 1.6s ease-in-out infinite}
@@ -651,7 +651,7 @@ img.living{object-fit:cover}
 @media (prefers-reduced-motion:reduce){.iris-picture>img.pic-in{animation:none}.painting-now{animation:none}}
 span.ss-art{display:flex;align-items:center;justify-content:center}
 span.ss-art .iris-picture{width:100%;max-height:100%}
-span.ss-art .iris-picture>img{object-fit:contain;max-height:calc(100vh - 220px)}
+span.ss-art .iris-picture>img,span.ss-art .iris-picture>canvas{object-fit:contain;max-height:calc(100vh - 220px)}
 /* Hear Iris, her sketchbook note, and her painting arriving in brushstrokes. */
 .persp-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .persp.speaking{border-left:2px solid var(--iris);padding-left:10px;transition:padding .3s ease}
@@ -663,7 +663,7 @@ span.ss-art .iris-picture>img{object-fit:contain;max-height:calc(100vh - 220px)}
 /* Iris's art, full size. */
 .art-viewer{position:fixed;inset:0;z-index:210;background:#0b0b0c;display:grid;place-items:center;padding:20px;overflow:auto}
 .art-viewer figure{margin:0;max-width:min(1200px,100%);width:100%}
-.art-viewer .iris-picture>img,.art-viewer figure>img{width:100%;max-height:72vh;object-fit:contain;border-radius:10px;background:#0f1013}
+.art-viewer .iris-picture>img,.art-viewer .iris-picture>canvas,.art-viewer figure>img{width:100%;max-height:72vh;object-fit:contain;border-radius:10px;background:#0f1013}
 .art-viewer figcaption{text-align:center;margin-top:12px}
 .art-viewer h2{font-family:var(--f-say);font-style:italic;font-size:clamp(22px,3.5vw,36px);margin:6px 0}
 .av-quote{font-style:italic;color:var(--muted);margin:0 0 8px}

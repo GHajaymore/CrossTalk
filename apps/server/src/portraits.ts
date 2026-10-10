@@ -23,5 +23,6 @@ export class Portraits {
     });
   }
   check(code: string): Img | 'pending' | null { return this.maker.check(code); }
+  get health() { return this.maker.health; }
   get(code: string): Promise<Img | null> { return this.maker.get(code); }
 }

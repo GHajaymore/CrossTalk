@@ -35,6 +35,24 @@ function BackupSection({ config, refreshConfig }: { config: AppConfig; refreshCo
   );
 }
 
+/** How the free image service is doing, so a missing photo or painting has a reason. */
+function ImagesSection({ config }: { config: AppConfig }) {
+  const line = (h: AppConfig['images']['portraits']) => {
+    const ok = h.lastOkAt ? Date.parse(h.lastOkAt) : 0, bad = h.lastErrorAt ? Date.parse(h.lastErrorAt) : 0;
+    if (!ok && !bad) return 'Nothing asked for since the server started.';
+    return bad > ok ? `✕ Last try failed ${ago(h.lastErrorAt!)}: ${h.lastError}` : `✓ Last picture arrived ${ago(h.lastOkAt!)}.`;
+  };
+  return (
+    <section className="sec"><h2>Pictures</h2>
+      <p className="hint">The hosts' photos and Iris's full paintings come from a free image service. When it can't make one, Iris paints her own on your device instead.</p>
+      <dl className="kv">
+        {config.portraits && <><dt>Host photos</dt><dd>{line(config.images.portraits)}</dd></>}
+        {config.irisPictures && <><dt>Iris's paintings</dt><dd>{line(config.images.pictures)}</dd></>}
+      </dl>
+    </section>
+  );
+}
+
 export function Settings({ config, refreshConfig }: { config: AppConfig | null; refreshConfig: () => void }) {
   const [checking, setChecking] = useState(false);
   const real = !!config && config.providerMode !== 'mock';
@@ -92,6 +110,7 @@ export function Settings({ config, refreshConfig }: { config: AppConfig | null; 
         <p className="hint">The daily limit is a local safety limit set by the app. It is not a billing guarantee from any provider.</p>
       </section>
       {config && config.storage !== 'local' && <BackupSection config={config} refreshConfig={refreshConfig} />}
+      {config && (config.portraits || config.irisPictures) && <ImagesSection config={config} />}
       <section className="sec"><h2>API key</h2>
         <p className="hint">The {service} key lives only in the server's settings, read by the local server. The browser never receives it.</p>
         <dl className="kv"><dt>{config?.keyName ?? 'OPENROUTER_API_KEY'}</dt><dd>{!real ? 'not needed in mock mode' : config?.apiKeySet ? 'set' : 'not set'}</dd></dl>

@@ -241,7 +241,7 @@ export function cleanStyles(input: unknown): PaintStyle[] {
 }
 
 /** One saved piece in Iris's gallery: a drawing version, in one style. */
-export type Artwork = { id: number; version: number; style: PaintStyle; title: string; caption: string; momentSeq: number; svg: string; createdAt: string };
+export type Artwork = { id: number; version: number; style: PaintStyle; title: string; caption: string; momentSeq: number; svg: string; createdAt: string; /** Her art brief (colours, mood, composition). */ brief?: string };
 /** An episode's shelf in the gallery: what's showing now, and everything she has made for it. */
 export type GalleryEpisode = {
   conversationId: string; title: string; topic: string; episode: number; parentId: string | null; round: number;

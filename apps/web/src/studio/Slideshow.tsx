@@ -75,7 +75,7 @@ export function Slideshow({ gallery, onClose, pictures = false }: { gallery: Gal
           const alt = k === i ? `${ARTIST.name}'s ${PAINT_STYLE_INFO[x.a.style].name.toLowerCase()}: ${x.a.title}` : '';
           // Her full painting where there is one (fetched only once its slide is near).
           return x.a.style === 'picture' && pictures && Math.abs(k - i) <= 1
-            ? <span key={x.a.id} className={cls} aria-hidden={k !== i}><IrisPicture conversationId={x.g.conversationId} version={x.a.version} fallback={x.src} alt={alt} /></span>
+            ? <span key={x.a.id} className={cls} aria-hidden={k !== i}><IrisPicture conversationId={x.g.conversationId} version={x.a.version} fallback={x.src} alt={alt} engine={{ sketch: x.a.svg, seed: artSeed(x.g.conversationId, x.a.version), brief: x.a.brief }} /></span>
             : <img key={x.a.id} src={x.src} alt={alt} className={cls} aria-hidden={k !== i} />;
         })}
       </div>
