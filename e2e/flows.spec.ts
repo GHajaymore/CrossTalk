@@ -126,6 +126,11 @@ test('react while you listen: emoji float up, and each line keeps its count', as
   // The hosts' own joke: the line the co-host laughed at says so.
   await expect(page.locator('#turn-5')).toContainText(/😄 .+ laughed/);
   await expect(page.locator('#turn-4')).not.toContainText('laughed');
+  // The debate in a minute: the organiser's five beats, each from its own turn.
+  const map = page.locator('.debate-map');
+  await expect(map.locator('li')).toHaveCount(5);
+  await expect(map).toContainText('What changed a mind');
+  await expect(map.getByRole('link', { name: /turn \d+/ }).first()).toBeVisible();
 });
 
 test('Iris gallery as an exhibition: play, step with the keys, pause, close with Esc', async ({ page }) => {

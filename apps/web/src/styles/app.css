@@ -702,3 +702,14 @@ span.ss-art .iris-picture>img,span.ss-art .iris-picture>canvas{object-fit:contai
 .scout-prefs{border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin:8px 0}
 .scout-prefs>summary{cursor:pointer;color:var(--muted);font-size:14px}
 .scout-prefs[open]>summary{margin-bottom:10px;color:var(--text)}
+
+/* Read: the debate in a minute. */
+.debate-map{border:1px solid var(--line);border-radius:12px;padding:12px 16px;margin:10px 0 18px;background:var(--panel, transparent)}
+.debate-map>summary{cursor:pointer;list-style:none}
+.debate-map>summary::-webkit-details-marker{display:none}
+.debate-map ol{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:10px}
+.debate-map li{display:grid;grid-template-columns:170px 1fr;gap:12px;align-items:baseline}
+.dm-label{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.dm-point{line-height:1.5}
+.dm-who.A{color:var(--a)}.dm-who.B{color:var(--b)}
+@media (max-width:640px){.debate-map li{grid-template-columns:1fr;gap:2px}}

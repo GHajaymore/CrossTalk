@@ -10,6 +10,7 @@ import { BriefBox } from '../scout/BriefBox';
 import { BranchDialog } from '../studio/BranchDialog';
 import { LivingSketch, sketchProgress } from '../studio/LivingSketch';
 import { MindMeter } from '../studio/MindMeter';
+import { DebateMap } from '../studio/DebateMap';
 import { VerdictCard } from '../studio/VerdictCard';
 import { RoundCard } from '../studio/RoundCard';
 import { HandCall } from '../studio/HandCall';
@@ -215,6 +216,7 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
     <>
       {view.brief && <BriefBox brief={view.brief} note={view.brief.sources.join(', ')} />}
       <MindMeter turns={view.turns} speakers={sp} you={you} done={st === 'completed'} onYou={setYou} />
+      {st === 'completed' && <DebateMap turns={view.turns} names={{ A: sp.A.name, B: sp.B.name }} />}
       <div className="table" lang={language}>
         {!view.turns.length && !live && st === 'idle' && (
           <div className="empty-stage"><p>Both seats are ready. Press Start to hear {sp.A.name} open.</p></div>
