@@ -40,15 +40,18 @@ export function usePolledImage(url: string | null, delayMs = 0, tries = 30, retr
   return img;
 }
 
-/** Where Iris's AI picture of one drawing version lives: her photograph, or her dreamscape or sketch. */
-export const pictureUrl = (conversationId: string, version: number, style: 'picture' | 'dreamscape' | 'sketch' = 'picture') =>
-  `/api/iris/picture/${conversationId}/${version}.jpg${style === 'picture' ? '' : `?style=${style}`}`;
+/** Where Iris's AI picture of one drawing version lives: her photograph, or her dreamscape or sketch. `ready` only fetches one already made. */
+export const pictureUrl = (conversationId: string, version: number, style: 'picture' | 'dreamscape' | 'sketch' = 'picture', ready = false) => {
+  const q = [style === 'picture' ? '' : `style=${style}`, ready ? 'ready=1' : ''].filter(Boolean).join('&');
+  return `/api/iris/picture/${conversationId}/${version}.jpg${q ? `?${q}` : ''}`;
+};
 
 /** Iris's finished painting for an episode's current drawing, if it's ready now (no waiting). */
-export async function readyPicture(v: { id: string; artist?: { artStyle: string; version: number } | null }): Promise<Blob | null> {
-  if (v.artist?.artStyle !== 'picture') return null;
+export async function readyPicture(v: { id: string; artist?: { artStyle: string; version: number } | null }, onlyReady = false): Promise<Blob | null> {
+  const style = v.artist?.artStyle;
+  if (style !== 'picture' && style !== 'dreamscape' && style !== 'sketch') return null;
   try {
-    const r = await fetch(pictureUrl(v.id, v.artist.version));
+    const r = await fetch(pictureUrl(v.id, v.artist!.version, style, onlyReady));
     return r.status === 200 && (r.headers.get('content-type') ?? '').startsWith('image/') ? await r.blob() : null;
   } catch { return null; }
 }

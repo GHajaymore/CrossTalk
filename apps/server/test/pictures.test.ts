@@ -227,3 +227,20 @@ describe('try the camera', () => {
     } finally { await t.app.close(); }
   });
 });
+
+describe('thumbnails never spend the day', () => {
+  it('?ready=1 only answers with a picture already made, and never asks the service', async () => {
+    const asked: string[] = [];
+    const f = (async (url: string) => { asked.push(String(url)); return new Response(jpeg, { headers: { 'content-type': 'image/jpeg' } }); }) as unknown as typeof fetch;
+    const t = buildApp(mockConfig({ dbPath: ':memory:', dailyLimit: 500 }), { timing: INSTANT, fetch: f });
+    try {
+      const id = (await t.app.inject({ method: 'POST', url: '/api/conversations', payload: { ...draft(), length: 'short' } })).json().id;
+      await t.controller.start(id); await t.controller.settled(id); await t.iris.settled(id);
+      const v = t.repo.view(id)!.artist!.version;
+      expect((await t.app.inject({ url: `/api/iris/picture/${id}/${v}.jpg?ready=1` })).statusCode).toBe(404);
+      expect(asked.filter(u => u.includes('width=1024'))).toHaveLength(0);
+      t.repo.savePicture(id, v, 'image/jpeg', jpeg, new Date().toISOString());
+      expect((await t.app.inject({ url: `/api/iris/picture/${id}/${v}.jpg?ready=1` })).statusCode).toBe(200);
+    } finally { await t.app.close(); }
+  });
+});

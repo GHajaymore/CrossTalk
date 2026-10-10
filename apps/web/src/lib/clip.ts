@@ -11,7 +11,7 @@ import {
   type ConversationView, type SpeakerId,
 } from '@crosstalk/shared';
 import { Portrait } from '../studio/Portrait';
-import { readyPicture } from './usePolledImage';
+import { bestArt } from './irisArt';
 import fixWebmDuration from 'fix-webm-duration';
 import { musicPlan, playMusic, type MusicPlan } from './clipMusic';
 import { C, loadImage, SAY, TAG, UI, wrap } from './poster';
@@ -103,10 +103,10 @@ export async function loadClipAssets(v: ConversationView, photos: boolean): Prom
     return { photo, ...drawn };
   };
   const svg = artworkSvg(v.artist);
-  // Her full painting when it's ready; her line art otherwise.
+  // Her AI picture when it's ready, otherwise the one she paints here; her line art for line styles.
   const art = async () => {
-    const pic = await readyPicture(v);
-    if (pic) return loadImage(URL.createObjectURL(pic)).catch(() => null);
+    const best = await bestArt(v).catch(() => null);
+    if (best) return loadImage(best).catch(() => null);
     return svg ? loadImage(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`).catch(() => null) : null;
   };
   const [A, B, artImg] = await Promise.all([host('A'), host('B'), art()]);
