@@ -89,6 +89,9 @@ export const JOBS = [
   'Big idea', 'Catch', 'Rethink', 'Curveball', 'Common ground', 'Still unsure', 'Takeaway', 'Sign-off',
 ] as const;
 
+/** A turn's job as listeners see it ('Test' is stored, 'Crux' is what it does). */
+export const jobLabel = (job: string) => (job === 'Test' ? 'Crux' : job);
+
 /** The longest episode (Long). Normal is 16, Short is 8. */
 export const MAX_TURNS = 24;
 

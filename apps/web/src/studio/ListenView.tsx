@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { ARTIST, artworkSvg, episodeLabel, hostSubtitle, paintStyleOf, type ConversationView, type SpeakerId } from '@crosstalk/shared';
+import { ARTIST, artworkSvg, episodeLabel, hostSubtitle, jobLabel, paintStyleOf, type ConversationView, type SpeakerId } from '@crosstalk/shared';
 import type { Playback } from '../speech/usePlayback';
 import { sketchSrc } from './ArtistCard';
 import { LivingSketch, sketchProgress } from './LivingSketch';
@@ -95,7 +95,7 @@ export function ListenView({ view, play, rate, setRate }: Props) {
           <li key={t.seq}>
             <button onClick={() => play.playFrom(t.seq)} aria-current={on && t.seq === seq ? 'true' : undefined}>
               <span className={`flag ${t.speakerId}`} aria-hidden="true">{t.speakerId}</span>
-              <span className="ch-text"><b>{t.objective}</b><span className="hint">{sp[t.speakerId].name} · {hostSubtitle(sp[t.speakerId])}</span></span>
+              <span className="ch-text"><b>{jobLabel(t.objective)}</b><span className="hint">{sp[t.speakerId].name} · {hostSubtitle(sp[t.speakerId])}</span></span>
               <span className="tag">{clock ? mmss(view.audio?.timings.find(x => x.seq === t.seq)?.start ?? 0) : t.seq}</span>
             </button>
           </li>

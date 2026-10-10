@@ -15,6 +15,15 @@ describe('the debate in a minute', () => {
     expect(beats[0]).toMatchObject({ seq: 10, speakerId: 'B' });
   });
 
+  it('names the crux: what would change a mind', () => {
+    const beats = debateBeats([
+      turn(4, 'Push back', 'But who covers Fridays?'), turn(8, 'Test', 'Show me it works for shift workers and I am in.'),
+      turn(11, 'Rethink', 'Fair.'), turn(15, 'Takeaway', 'Try it.'),
+    ]);
+    expect(beats.map(b => b.label)).toEqual(['Strongest challenge', 'The crux', 'What changed a mind', 'Takeaway']);
+    expect(beats[1]).toMatchObject({ seq: 8, speakerId: 'B' });
+  });
+
   it('stays out of the way when an episode has no such shape', () => {
     expect(debateBeats([turn(1, 'Hello', 'Hi.'), turn(2, 'First take', 'Sure.')])).toHaveLength(0);
   });
