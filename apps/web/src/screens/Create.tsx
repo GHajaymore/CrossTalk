@@ -36,6 +36,9 @@ function budgetLine(c: AppConfig, length: Length) {
 
 export function Create({ config, go, refreshConfig, toast }: Props) {
   const [topic, setTopic] = useState<string>(PRESETS[2]);
+  // Where you last looked for a topic (this device only).
+  const [source, setSource] = useState<'ideas' | 'news'>(() => { try { return localStorage.getItem('ct_topic_source') === 'news' ? 'news' : 'ideas'; } catch { return 'ideas'; } });
+  const pickSource = (s: 'ideas' | 'news') => { setSource(s); try { localStorage.setItem('ct_topic_source', s); } catch { /* storage blocked */ } };
   const [mode, setMode] = useState<Mode>('explore');
   const [format, setFormat] = useState<Format>('recorded');
   // Your last length choice, remembered on this device (Short saves free requests).
@@ -179,11 +182,16 @@ export function Create({ config, go, refreshConfig, toast }: Props) {
         {blockedWord && <p className="hint blocked-hint" role="alert">✕ “{blockedWord}” is on the Control room's blocked list, so this topic can't go on air.</p>}
         {kidsBlocked && <p className="hint">Politics and scandals aren't used for Kids episodes, so this topic's brief is off. Pick another topic or audience.</p>}
         {scoutTopic && !briefOn && !kidsBlocked && <p className="hint">You changed the question, so the Scout's brief won't be used. <button className="link-btn" onClick={() => setTopic(scoutTopic.question)}>Put it back</button></p>}
-        <TopicIdeas topic={topic} onPick={setTopic} />
+        {/* Two ways to find a topic, one at a time: ideas by theme, or what's in the news today. */}
+        <div className="source-tabs" role="tablist" aria-label="Find a topic">
+          <button role="tab" aria-selected={source === 'ideas'} className="source-tab" onClick={() => pickSource('ideas')}>💡 Ideas</button>
+          <button role="tab" aria-selected={source === 'news'} className="source-tab" onClick={() => pickSource('news')}>📰 In the news</button>
+        </div>
+        {source === 'ideas' && <TopicIdeas topic={topic} onPick={setTopic} />}
       </div>
 
-      <TodayTray rules={rules} audience={audience} selected={scoutTopic?.id ?? null} real={real} toast={toast}
-        onPick={t => { setScoutTopic(t); setTopic(t.question); setMode('debate'); document.getElementById('topic')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }} />
+      {source === 'news' && <TodayTray rules={rules} audience={audience} selected={scoutTopic?.id ?? null} real={real} toast={toast}
+        onPick={t => { setScoutTopic(t); setTopic(t.question); setMode('debate'); document.getElementById('topic')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }} />}
 
       <StudioSet photos={config?.portraits}
         show={`CrossTalk · ${FORMATS[format].label}`}
@@ -271,10 +279,17 @@ export function Create({ config, go, refreshConfig, toast }: Props) {
       </section>
 
 
-      <div>
-        <div className="tag" style={{ marginBottom: 8 }}>At the table</div>
+      {/* The hosts are picked for the topic; their details fold away until you want to change them. */}
+      <details className="hosts-fold">
+        <summary>
+          <span className="tag">At the table</span>
+          <span className="hosts-sum">
+            {(['A', 'B'] as const).map(k => <span key={k} className="host-sum"><span className={`flag ${k}`} aria-hidden="true">{k}</span><b>{speakers[k].name}</b> <span className="hint">{real && drafts[k].autoRole ? 'role written when you start' : hostSubtitle(speakers[k])} · {PERSONAS[speakers[k].persona].label}</span></span>)}
+          </span>
+          <span className="link-btn hosts-change">Change</span>
+        </summary>
         <div className="facing">{seat('A')}<div className="table-gap" aria-hidden="true"><span className="tag">across the table</span></div>{seat('B')}</div>
-      </div>
+      </details>
 
       <div className="booth-note">
         <span className="flag C" aria-hidden="true">I</span>
