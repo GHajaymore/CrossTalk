@@ -172,6 +172,19 @@ export function Create({ config, go, refreshConfig, toast }: Props) {
 
       <WhatsNew />
 
+      <div className="topic-box">
+        <label className="tag" htmlFor="topic">Topic</label>
+        <textarea id="topic" maxLength={TOPIC_MAX} placeholder="Ask a question worth two perspectives" value={topic} onChange={e => setTopic(e.target.value)} />
+        {briefOn && <BriefBox brief={scoutTopic!} note="from the Scout" />}
+        {blockedWord && <p className="hint blocked-hint" role="alert">✕ “{blockedWord}” is on the Control room's blocked list, so this topic can't go on air.</p>}
+        {kidsBlocked && <p className="hint">Politics and scandals aren't used for Kids episodes, so this topic's brief is off. Pick another topic or audience.</p>}
+        {scoutTopic && !briefOn && !kidsBlocked && <p className="hint">You changed the question, so the Scout's brief won't be used. <button className="link-btn" onClick={() => setTopic(scoutTopic.question)}>Put it back</button></p>}
+        <TopicIdeas topic={topic} onPick={setTopic} />
+      </div>
+
+      <TodayTray rules={rules} audience={audience} selected={scoutTopic?.id ?? null} real={real} toast={toast}
+        onPick={t => { setScoutTopic(t); setTopic(t.question); setMode('debate'); document.getElementById('topic')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }} />
+
       <StudioSet photos={config?.portraits}
         show={`CrossTalk · ${FORMATS[format].label}`}
         topic={topic.trim() || 'Pick a topic to start recording'}
@@ -189,19 +202,9 @@ export function Create({ config, go, refreshConfig, toast }: Props) {
         iris={{ text: 'Iris · in the booth', active: false }}
       />
 
-      <TodayTray rules={rules} audience={audience} selected={scoutTopic?.id ?? null} real={real} toast={toast}
-        onPick={t => { setScoutTopic(t); setTopic(t.question); setMode('debate'); document.getElementById('topic')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }} />
-
-      <div className="topic-box">
-        <label className="tag" htmlFor="topic">Topic</label>
-        <textarea id="topic" maxLength={TOPIC_MAX} placeholder="Ask a question worth two perspectives" value={topic} onChange={e => setTopic(e.target.value)} />
-        {briefOn && <BriefBox brief={scoutTopic!} note="from the Scout" />}
-        {blockedWord && <p className="hint blocked-hint" role="alert">✕ “{blockedWord}” is on the Control room's blocked list, so this topic can't go on air.</p>}
-        {kidsBlocked && <p className="hint">Politics and scandals aren't used for Kids episodes, so this topic's brief is off. Pick another topic or audience.</p>}
-        {scoutTopic && !briefOn && !kidsBlocked && <p className="hint">You changed the question, so the Scout's brief won't be used. <button className="link-btn" onClick={() => setTopic(scoutTopic.question)}>Put it back</button></p>}
-        <TopicIdeas topic={topic} onPick={setTopic} />
-      </div>
-
+      <section className="shape" aria-labelledby="shape-h">
+        <h2 id="shape-h" className="tag">Shape the show</h2>
+        <div className="shape-grid">
       <div>
         <div className="tag" style={{ marginBottom: 8 }}>Mode</div>
         <div className="seg" role="group" aria-label="Mode">
@@ -262,7 +265,11 @@ export function Create({ config, go, refreshConfig, toast }: Props) {
           <p className="mode-help">{TEMPERATURES[temperature].help} You can turn it up or down mid-discussion.</p>
         </div>
       </div>
+      </div>
       <p className="hint">Political topics are fine when you choose them: both speakers must represent each side fairly and never tell you what to believe. In mock mode the scripted text only hints at these settings; real models follow them fully.</p>
+
+      </section>
+
 
       <div>
         <div className="tag" style={{ marginBottom: 8 }}>At the table</div>

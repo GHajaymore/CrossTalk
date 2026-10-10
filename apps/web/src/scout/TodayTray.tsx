@@ -52,12 +52,16 @@ export function TodayTray({ rules, audience, selected, onPick, toast, real }: Pr
         <div><span className="tag">Today · from the Scout{real ? '' : ' · sample topics'}</span><h2>What people are arguing about</h2></div>
         <label className="switch"><input type="checkbox" checked={prefs.autopilot} onChange={e => save({ ...prefs, autopilot: e.target.checked })} /> Autopilot</label>
       </div>
-      <ScoutPrefsEditor prefs={prefs} onChange={save} audience={audience} allowPolitics={rules.allowPolitics} />
-      <p className="hint">
-        {prefs.rank === 'buzz' ? 'Ranked by how much people are talking about it.' : 'Ranked by how divided people are.'}{' '}
-        The Scout looks every day at {at}{last ? `; last looked ${when(last.startedAt)}` : ''}.{' '}
-        {prefs.autopilot ? `Autopilot runs the top pick as a Friendly Debate, with Iris, once a day (about ${AUTOPILOT_REQUESTS} requests).` : 'Turn on Autopilot to have the top pick ready as an episode each morning.'}
-      </p>
+      {/* Where the Scout looks is a setting, not a step: folded away until you want it. */}
+      <details className="scout-prefs">
+        <summary>Customise the Scout · themes, places and sources</summary>
+        <ScoutPrefsEditor prefs={prefs} onChange={save} audience={audience} allowPolitics={rules.allowPolitics} />
+        <p className="hint">
+          {prefs.rank === 'buzz' ? 'Ranked by how much people are talking about it.' : 'Ranked by how divided people are.'}{' '}
+          The Scout looks every day at {at}{last ? `; last looked ${when(last.startedAt)}` : ''}.{' '}
+          {prefs.autopilot ? `Autopilot runs the top pick as a Friendly Debate, with Iris, once a day (about ${AUTOPILOT_REQUESTS} requests).` : 'Turn on Autopilot to have the top pick ready as an episode each morning.'}
+        </p>
+      </details>
       {last?.state === 'failed' && <p className="hint">Last run didn't finish: {last.error}</p>}
       {last?.sourcesFailed.length ? <p className="hint">Couldn't reach {last.sourcesFailed.join(', ')} last time; the others still counted.</p> : null}
       {last?.autopilotConversationId && <p className="hint">Autopilot made today's episode: <a href={`#/studio/${last.autopilotConversationId}/watch`}>open it</a>.</p>}

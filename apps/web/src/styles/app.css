@@ -693,3 +693,12 @@ span.ss-art .iris-picture>img,span.ss-art .iris-picture>canvas{object-fit:contai
 .try-camera textarea{min-height:64px}
 .try-out{margin:4px 0 0;display:grid;gap:8px;justify-items:start}
 .try-out img{width:100%;max-width:720px;border-radius:10px;display:block}
+
+/* Create: the show's settings as a calm two-column grid on wide screens. */
+.shape{display:grid;gap:12px}
+.shape-grid{display:grid;gap:22px 32px}
+@media (min-width:900px){.shape-grid{grid-template-columns:1fr 1fr}.shape-grid>.dials{grid-column:1/-1}}
+/* The Scout's settings, folded away until wanted. */
+.scout-prefs{border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin:8px 0}
+.scout-prefs>summary{cursor:pointer;color:var(--muted);font-size:14px}
+.scout-prefs[open]>summary{margin-bottom:10px;color:var(--text)}

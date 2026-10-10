@@ -440,6 +440,7 @@ test('Scout: Show more is free, sources can be switched, social posts stay opini
   await page.goto('/#/create');
   await page.getByRole('button', { name: '↻ Refresh topics' }).click();
   await expect(page.locator('.topic-card')).toHaveCount(5);
+  await page.getByText('Customise the Scout').click();
   await page.getByRole('button', { name: /Show more · \d+ left/ }).click();
   await expect.poll(() => page.locator('.topic-card').count()).toBeGreaterThan(5);
   await expect(page.locator('.topic-card', { hasText: 'Has tipping culture gone too far?' })).toBeVisible();
@@ -454,6 +455,7 @@ test('Scout: Show more is free, sources can be switched, social posts stay opini
 test('Scout: your interests, countries and own sites; briefs show their spread', async ({ page, request }) => {
   await page.goto('/#/create');
   await page.getByRole('button', { name: '↻ Refresh topics' }).click().catch(() => {});
+  await page.getByText('Customise the Scout').click();
   await page.getByLabel('Your interests').fill('golf, tipping');
   await page.getByLabel('Your interests').press('Enter');
   await page.getByLabel('Follow a country').selectOption('IN');
