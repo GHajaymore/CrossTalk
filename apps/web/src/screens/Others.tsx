@@ -35,6 +35,35 @@ function BackupSection({ config, refreshConfig }: { config: AppConfig; refreshCo
   );
 }
 
+/** Try the camera: one AI picture from your own words, made now and not kept. */
+function TryCamera() {
+  const [prompt, setPrompt] = useState('A real photograph of an old wooden door standing alone on a meadow, open onto snowy mountains at sunrise, mist in the valley, 35mm');
+  const [busy, setBusy] = useState(false);
+  const [img, setImg] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const go = async () => {
+    setBusy(true); setError(null);
+    try {
+      const r = await fetch('/api/images/try', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt }) });
+      if (!r.ok) throw new Error(((await r.json().catch(() => ({}))) as { error?: string }).error ?? `It didn't work (${r.status}).`);
+      const url = URL.createObjectURL(await r.blob());
+      setImg(old => { if (old) URL.revokeObjectURL(old); return url; });
+    } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
+  };
+  return (
+    <div className="try-camera">
+      <label className="tag" htmlFor="try-prompt">Try the camera</label>
+      <textarea id="try-prompt" maxLength={400} value={prompt} onChange={e => setPrompt(e.target.value)} />
+      <div className="dock-row">
+        <button className="btn sm" disabled={busy || prompt.trim().length < 3} onClick={go}>{busy ? 'Making it… (up to a minute)' : 'Make a picture'}</button>
+        <span className="hint">Up to 10 a day, not kept. The same limits as every picture: invented adults only, no text, no real people.</span>
+      </div>
+      {error && <p className="hint" role="alert">✕ {error}</p>}
+      {img && <figure className="try-out"><img src={img} alt={`AI picture: ${prompt}`} /><a className="btn sm ghost" href={img} download="crosstalk-try.jpg">Download</a></figure>}
+    </div>
+  );
+}
+
 /** How the free image service is doing, so a missing photo or painting has a reason. */
 function ImagesSection({ config }: { config: AppConfig }) {
   const line = (h: AppConfig['images']['portraits']) => {
@@ -49,6 +78,7 @@ function ImagesSection({ config }: { config: AppConfig }) {
         {config.portraits && <><dt>Host photos</dt><dd>{line(config.images.portraits)}</dd></>}
         {config.irisPictures && <><dt>Iris's paintings</dt><dd>{line(config.images.pictures)}</dd></>}
       </dl>
+      <TryCamera />
     </section>
   );
 }

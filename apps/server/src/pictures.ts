@@ -19,9 +19,33 @@ const PLACE: Record<HomeStyle, string> = {
 
 const clean = (s: string, max: number) => s.replace(/[<>{}\[\]]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max);
 
-/** The prompt sent for her picture: her brief to the photographer, the feel of the hosts' homes, and firm limits. Never a host's name. */
-export function picturePrompt(brief: { imagePrompt: string; caption: string }, topic: string, homes: HomeStyle[]) {
+/** Her styles an AI image model makes: a photograph, a dreamscape, a pencil sketch. */
+export const AI_STYLES = ['picture', 'dreamscape', 'sketch'] as const;
+export type AiStyle = typeof AI_STYLES[number];
+
+/** Camera words in her brief, which only make sense for a photograph. */
+const CAMERA = /,?\s*\b(\d{2,3}\s?mm( lens| film)?|shallow depth of field|film (grain|look)|bokeh|lens)\b/gi;
+
+/** The prompt sent for her picture: her brief, the feel of the hosts' homes, and firm limits. Never a host's name. */
+export function picturePrompt(brief: { imagePrompt: string; caption: string }, topic: string, homes: HomeStyle[], style: AiStyle = 'picture') {
   const scene = clean(brief.imagePrompt, 600) || `A scene about the question "${clean(topic, 160)}", showing this moment: ${clean(brief.caption, 160)}`;
+  const limits = 'invented adults only: no children, no text, no words, no letters, no captions, no logos, no watermark, no real or famous people';
+  if (style === 'dreamscape') {
+    return [
+      `A surreal, dreamlike fine-art image of the idea behind this scene: ${scene.replace(CAMERA, '')}`,
+      'reimagined as a dream: impossible scale, floating forms, symbolic objects, a luminous night sky with aurora light, soft glowing mist, deep blues and violets with warm points of light',
+      'painterly, ethereal, cinematic composition, museum-quality digital painting',
+      limits,
+    ].join('. ');
+  }
+  if (style === 'sketch') {
+    return [
+      `A detailed graphite pencil sketch on textured cream paper of this scene: ${scene.replace(CAMERA, '')}`,
+      "confident hand-drawn lines, careful cross-hatching and shading, a few loose construction lines, light watercolour wash accents, an artist's sketchbook page",
+      'black and grey pencil with soft touches of colour, no photograph, no digital look',
+      limits,
+    ].join('. ');
+  }
   return [
     `A real-looking cinematic photograph: ${scene}`,
     // A host's home shows in the setting, not as a painting style.
@@ -31,30 +55,30 @@ export function picturePrompt(brief: { imagePrompt: string; caption: string }, t
   ].filter(Boolean).join('. ');
 }
 
-export const pictureKey = (conversationId: string, version: number) => `${conversationId}:${version}`;
+export const pictureKey = (conversationId: string, version: number, style: AiStyle = 'picture') => `${conversationId}:${version}${style === 'picture' ? '' : `:${style}`}`;
 
 export class IrisPictures {
   private maker: FreeImages;
   constructor(repo: Repo, f: typeof fetch, queue: SerialQueue, now: () => Date = () => new Date(), busyWaitMs?: number, service?: ImageService) {
     const parse = (key: string) => {
-      const m = /^([0-9a-f-]{36}):([1-9]\d{0,3})$/.exec(key);
-      return m ? { id: m[1], version: Number(m[2]) } : null;
+      const m = /^([0-9a-f-]{36}):([1-9]\d{0,3})(?::(dreamscape|sketch))?$/.exec(key);
+      return m ? { id: m[1], version: Number(m[2]), style: (m[3] ?? 'picture') as AiStyle } : null;
     };
     this.maker = new FreeImages({
       f, now, queue, perDay: PICTURES_PER_DAY, busyWaitMs, maxBytes: 5_000_000, service,
       job: key => {
         const k = parse(key);
         const c = k && repo.getConversation(k.id);
-        // Only drawings that are (or were) shown as a Picture: nobody can spend the day's paintings on the rest.
-        const brief = k && c && repo.pictureWanted(k.id, k.version) && repo.artworkBrief(k.id, k.version);
-        return brief ? { prompt: picturePrompt(brief, c!.topic, homeStylesFor(c!.speakers)), width: 1024, height: 614, seedText: key } : null;
+        // Only drawings that are (or were) shown in that style: nobody can spend the day's pictures on the rest.
+        const brief = k && c && repo.pictureWanted(k.id, k.version, k.style) && repo.artworkBrief(k.id, k.version);
+        return brief ? { prompt: picturePrompt(brief, c!.topic, homeStylesFor(c!.speakers), k!.style), width: 1024, height: 614, seedText: key } : null;
       },
-      saved: key => { const k = parse(key); return k ? repo.getPicture(k.id, k.version) : null; },
-      save: (key, img, at) => { const k = parse(key)!; repo.savePicture(k.id, k.version, img.mime, img.data, at); },
+      saved: key => { const k = parse(key); return k ? repo.getPicture(k.id, k.version, k.style) : null; },
+      save: (key, img, at) => { const k = parse(key)!; repo.savePicture(k.id, k.version, img.mime, img.data, at, k.style); },
       madeOn: day => repo.picturesMadeOn(day),
     });
   }
-  check(conversationId: string, version: number): Img | 'pending' | null { return this.maker.check(pictureKey(conversationId, version)); }
+  check(conversationId: string, version: number, style: AiStyle = 'picture'): Img | 'pending' | null { return this.maker.check(pictureKey(conversationId, version, style)); }
   get health() { return this.maker.health; }
-  get(conversationId: string, version: number): Promise<Img | null> { return this.maker.get(pictureKey(conversationId, version)); }
+  get(conversationId: string, version: number, style: AiStyle = 'picture'): Promise<Img | null> { return this.maker.get(pictureKey(conversationId, version, style)); }
 }

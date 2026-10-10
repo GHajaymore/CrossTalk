@@ -58,6 +58,37 @@ describe("Iris's real paintings", () => {
     } finally { await t.app.close(); }
   });
 
+  it('also makes her Dreamscape and Sketch as AI art, each kept apart, only once she shows them in that style', async () => {
+    const asked: string[] = [];
+    const f = (async (url: string) => { asked.push(decodeURIComponent(String(url))); return new Response(jpeg, { headers: { 'content-type': 'image/jpeg' } }); }) as unknown as typeof fetch;
+    const t = buildApp(mockConfig({ dbPath: ':memory:', dailyLimit: 500 }), { timing: INSTANT, fetch: f });
+    try {
+      const id = (await t.app.inject({ method: 'POST', url: '/api/conversations', payload: { ...draft(), length: 'short' } })).json().id;
+      await t.controller.start(id); await t.controller.settled(id); await t.iris.settled(id);
+      const v = t.repo.view(id)!.artist!.version;
+      const dream = `/api/iris/picture/${id}/${v}.jpg?style=dreamscape`;
+      // Not shown as a dreamscape yet: nothing is asked for.
+      expect((await t.app.inject({ url: dream })).statusCode).toBe(404);
+      expect((await t.app.inject({ method: 'PUT', url: `/api/conversations/${id}/artist/style`, payload: { style: 'dreamscape' } })).statusCode).toBe(200);
+      expect((await t.app.inject({ url: dream })).statusCode).toBe(202);
+      expect(((await settle(t.app, dream)) as Awaited<ReturnType<typeof t.app.inject>>).statusCode).toBe(200);
+      const prompt = asked.find(u => u.includes('surreal, dreamlike'))!;
+      expect(prompt).toBeTruthy();
+      // Camera words from her photo brief don't belong in a dream.
+      expect(prompt.split('?')[0]).not.toMatch(/\b35mm\b|shallow depth of field/);
+      expect(prompt).toContain('no children');
+      // The sketch is its own picture.
+      await t.app.inject({ method: 'PUT', url: `/api/conversations/${id}/artist/style`, payload: { style: 'sketch' } });
+      const sketch = `/api/iris/picture/${id}/${v}.jpg?style=sketch`;
+      expect(((await settle(t.app, sketch)) as Awaited<ReturnType<typeof t.app.inject>>).statusCode).toBe(200);
+      expect(asked.some(u => u.includes('graphite pencil sketch'))).toBe(true);
+      expect(t.repo.getPicture(id, v, 'dreamscape')).not.toBeNull();
+      expect(t.repo.getPicture(id, v, 'sketch')).not.toBeNull();
+      // A style that isn't AI art is never asked for.
+      expect((await t.app.inject({ url: `/api/iris/picture/${id}/${v}.jpg?style=painting` })).statusCode).toBe(404);
+    } finally { await t.app.close(); }
+  });
+
   it('IRIS_PICTURES=off: no Picture style, nothing sent, and the restyle refuses it', async () => {
     const asked: string[] = [];
     const f = (async (url: string) => { asked.push(String(url)); return new Response(jpeg, { headers: { 'content-type': 'image/jpeg' } }); }) as unknown as typeof fetch;
@@ -172,5 +203,27 @@ describe('a mistyped Cloudflare Account ID', () => {
     const cfg = (await built.app.inject({ url: '/api/config' })).json();
     expect(cfg.images.portraits.lastError).toMatch(/CLOUDFLARE_ACCOUNT_ID should be 32 letters and numbers, but it has 31/);
     await built.app.close();
+  });
+});
+
+describe('try the camera', () => {
+  it('makes one picture from your words, with the usual limits, never kept, at most 10 a day', async () => {
+    const asked: string[] = [];
+    const f = (async (url: string) => { asked.push(decodeURIComponent(String(url))); return new Response(jpeg, { headers: { 'content-type': 'image/jpeg' } }); }) as unknown as typeof fetch;
+    const t = buildApp(mockConfig({ dbPath: ':memory:' }), { fetch: f });
+    try {
+      const res = await t.app.inject({ method: 'POST', url: '/api/images/try', payload: { prompt: 'A wooden door open onto snowy mountains <b>' } });
+      expect(res.statusCode).toBe(200);
+      expect(res.headers['content-type']).toBe('image/jpeg');
+      expect(res.rawPayload).toEqual(jpeg);
+      expect(asked[0]).toContain('A wooden door open onto snowy mountains');
+      expect(asked[0]).not.toContain('<b>');
+      expect(asked[0]).toContain('no real or famous people');
+      expect((await t.app.inject({ method: 'POST', url: '/api/images/try', payload: { prompt: '' } })).statusCode).toBe(400);
+      for (let i = 0; i < 9; i++) await t.app.inject({ method: 'POST', url: '/api/images/try', payload: { prompt: `try ${i}` } });
+      const over = await t.app.inject({ method: 'POST', url: '/api/images/try', payload: { prompt: 'one more' } });
+      expect(over.statusCode).toBe(429);
+      expect(over.json().error).toMatch(/today's 10 tries/);
+    } finally { await t.app.close(); }
   });
 });

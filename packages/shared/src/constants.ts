@@ -9,6 +9,78 @@ export const PRESETS = [
 ] as const;
 
 /**
+ * Topic ideas on Create, by theme. Every one is a real two-sided question: reasonable people land on
+ * both sides, nothing names a real person, nothing leans on a side, and each suits any audience.
+ * The five sample episodes (PRESETS) sit in their themes.
+ */
+export const TOPIC_IDEAS = {
+  work: { label: 'Work & money', icon: '💼', questions: [
+    PRESETS[2], PRESETS[0],
+    'Should every job ad show the salary?',
+    'Is working from home better for careers in the long run?',
+    'Should tipping be replaced by higher menu prices?',
+    'Is a side hustle worth the extra hours?',
+  ] },
+  tech: { label: 'Tech & AI', icon: '🤖', questions: [
+    'Will AI tutors make classrooms better or lonelier?',
+    'Should phones be put away for the whole school day?',
+    'Is it worth paying for privacy online?',
+    'Are self-driving cars ready for busy city streets?',
+    'Are smart homes making life easier or more fragile?',
+    'Should everyone learn to code?',
+  ] },
+  nature: { label: 'Nature & outdoors', icon: '🏔️', questions: [
+    'Should popular hiking trails need a permit?',
+    'Should the busiest mountains limit how many climbers go up each season?',
+    'Should wild places stay out of phone signal?',
+    'Should national parks cap daily visitors?',
+    'Should more places bring back wolves and beavers?',
+    'Is it better to explore close to home than to fly somewhere wild?',
+  ] },
+  sports: { label: 'Sports & fitness', icon: '⚽', questions: [
+    PRESETS[4],
+    'Should video review decide every close call?',
+    'Should kids\' sports keep score?',
+    'Should esports count as sports?',
+    'Is running a marathon good for most people\'s health?',
+    'Should the Olympics stay in a few permanent host cities?',
+  ] },
+  city: { label: 'Cities & society', icon: '🏙️', questions: [
+    PRESETS[1],
+    'Should public transport be free?',
+    'Is a city centre or a suburb the better place to raise a family?',
+    'Should every neighbourhood allow small apartment buildings?',
+    'Should cities trade parking spaces for trees?',
+    'Is a quieter city worth fewer late-night venues?',
+  ] },
+  food: { label: 'Food & culture', icon: '🍜', questions: [
+    PRESETS[3],
+    'Should menus show the climate footprint of each dish?',
+    'Is cooking at home worth the time for busy people?',
+    'Should museums let visitors touch more of the collection?',
+    'Is streaming good or bad for new music?',
+    'Should libraries open every day of the week?',
+  ] },
+  science: { label: 'Science & health', icon: '🔬', questions: [
+    'Should we spend more exploring the ocean than space?',
+    'Should schools start later so teenagers can sleep more?',
+    'Is it worth trying to live to 120?',
+    'Are standing desks worth it?',
+    'Should cities add green space for mental health before new roads?',
+    'Is a daily step goal good advice for everyone?',
+  ] },
+  life: { label: 'Everyday life', icon: '🏡', questions: [
+    'Is it better to rent or to buy a home?',
+    'Should more people take a gap year?',
+    'Are group chats making friendships closer or shallower?',
+    'Should pets be welcome in more offices and shops?',
+    'Is a tidy home worth the effort?',
+    'Should grandparents help raise the grandkids?',
+  ] },
+} as const;
+export type TopicTheme = keyof typeof TOPIC_IDEAS;
+
+/**
  * The job of each turn, shown on the turn rail. Index 0 is turn 1; Speaker A takes odd turns.
  * Sixteen short turns so an episode flows like two friends talking, not two speeches.
  */
@@ -154,7 +226,7 @@ export const SCOUT_NOTICE = 'Brief from the linked sources; discussion AI-genera
 /** Topic Scout (docs/PLAN.md, "Topic Scout and Autopilot"). */
 export const SCOUT_CATS = {
   politics: 'Politics', tech: 'Technology', economy: 'Economy', business: 'Business', scandals: 'Scandals',
-  global: 'Global affairs', science: 'Science', sports: 'Sports', culture: 'Culture & food', society: 'Cities & society',
+  global: 'Global affairs', science: 'Science', sports: 'Sports', nature: 'Nature & outdoors', culture: 'Culture & food', society: 'Cities & society',
 } as const;
 /** Where the Scout looks. All free, no accounts or keys. Social ones are opinions, never facts. */
 export const SCOUT_SOURCES = {

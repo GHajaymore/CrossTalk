@@ -98,7 +98,7 @@ export function ArtistCard({ notes: a, speakers, conversationId, onAgain, onJump
           <figcaption><span className="art-title">“{a.artTitle}”</span>Iris · {styleName.toLowerCase()} of turn {a.momentSeq}
             {a.sketchSvg && <button className="link-btn full-size" onClick={() => setViewing(true)}>⤢ Full size</button>}</figcaption>
           {viewing && a.sketchSvg && <ArtViewer onClose={() => setViewing(false)} art={{
-            src: sketchSrc(artworkSvg(a)!), picture: style === 'picture' && pictures ? { conversationId, version: a.version } : null,
+            src: sketchSrc(artworkSvg(a)!), picture: (style === 'picture' && pictures) || engineStyleOf(style) ? { conversationId, version: a.version } : null,
             title: a.artTitle, caption: a.caption, styleName, brief: style === 'picture' ? a.imagePrompt : undefined, where: `turn ${a.momentSeq}`,
             engine: (style === 'picture' && pictures) || engineStyleOf(style) ? { sketch: a.sketchSvg, seed: artSeed(conversationId, a.version), brief: a.imagePrompt, style: engineStyleOf(style) ?? 'picture' } : undefined,
           }} />}

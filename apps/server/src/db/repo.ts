@@ -319,16 +319,17 @@ export class Repo {
     return current ? { imagePrompt: current.imagePrompt, title: current.artTitle, caption: current.caption } : null;
   }
   /** Whether a drawing version is, or was, shown as a Picture (only those are painted). */
-  pictureWanted(conversationId: string, version: number): boolean {
-    if (this.db.prepare(`SELECT 1 FROM artworks WHERE conversation_id = ? AND version = ? AND art_style = 'picture'`).get(conversationId, version)) return true;
+  /** Whether this drawing is (or was) shown in this style, so an AI picture of it may be made. */
+  pictureWanted(conversationId: string, version: number, style = 'picture'): boolean {
+    if (this.db.prepare(`SELECT 1 FROM artworks WHERE conversation_id = ? AND version = ? AND art_style = ?`).get(conversationId, version, style)) return true;
     const a = this.getArtist(conversationId);
-    return !!a && a.state === 'done' && a.version === version && a.artStyle === 'picture';
+    return !!a && a.state === 'done' && a.version === version && a.artStyle === style;
   }
-  getPicture(conversationId: string, version: number): { mime: string; data: Buffer } | null {
-    return (this.db.prepare('SELECT mime, data FROM iris_pictures WHERE conversation_id = ? AND version = ?').get(conversationId, version) as { mime: string; data: Buffer } | undefined) ?? null;
+  getPicture(conversationId: string, version: number, style = 'picture'): { mime: string; data: Buffer } | null {
+    return (this.db.prepare('SELECT mime, data FROM iris_pictures WHERE conversation_id = ? AND version = ? AND style = ?').get(conversationId, version, style) as { mime: string; data: Buffer } | undefined) ?? null;
   }
-  savePicture(conversationId: string, version: number, mime: string, data: Buffer, at: string) {
-    this.db.prepare('INSERT OR REPLACE INTO iris_pictures (conversation_id, version, mime, data, created_at) VALUES (?, ?, ?, ?, ?)').run(conversationId, version, mime, data, at);
+  savePicture(conversationId: string, version: number, mime: string, data: Buffer, at: string, style = 'picture') {
+    this.db.prepare('INSERT OR REPLACE INTO iris_pictures (conversation_id, version, style, mime, data, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(conversationId, version, style, mime, data, at);
   }
   picturesMadeOn(day: string): number {
     return (this.db.prepare("SELECT COUNT(*) AS n FROM iris_pictures WHERE substr(created_at, 1, 10) = ?").get(day) as { n: number }).n;

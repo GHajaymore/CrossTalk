@@ -64,7 +64,7 @@ export function ArtViewer({ art, onClose }: { art: ViewedArt; onClose: () => voi
 async function downloadPicture(art: ViewedArt, file: string) {
   let href: string | null = null;
   try {
-    const r = await fetch(pictureUrl(art.picture!.conversationId, art.picture!.version));
+    const r = await fetch(pictureUrl(art.picture!.conversationId, art.picture!.version, art.engine?.style ?? 'picture'));
     if (r.status === 200 && (r.headers.get('content-type') ?? '').startsWith('image/')) href = URL.createObjectURL(await r.blob());
   } catch { /* offline: use hers */ }
   href ??= art.engine ? irisArtCached(art.engine) : null;

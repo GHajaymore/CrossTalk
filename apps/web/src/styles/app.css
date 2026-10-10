@@ -681,3 +681,15 @@ span.ss-art .iris-picture>img,span.ss-art .iris-picture>canvas{object-fit:contai
 .lw-text h2{font-family:var(--f-say);font-style:italic;font-size:clamp(24px,3vw,34px);margin:6px 0}
 .lw-quote{font-style:italic;color:var(--muted);margin:0 0 6px}
 @media (max-width:720px){.latest-work{grid-template-columns:1fr}}
+
+/* Topic ideas on Create: themes in a row (scrolling sideways on phones), then that theme's questions. */
+.topic-ideas{display:grid;gap:8px;margin-top:4px}
+.ti-head{display:flex;align-items:center;justify-content:space-between}
+.ti-themes{display:flex;gap:6px;flex-wrap:wrap}
+@media (max-width:640px){.ti-themes{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}.ti-themes .chip{flex:none}}
+
+/* Settings → Pictures: try the camera. */
+.try-camera{display:grid;gap:8px;margin-top:12px}
+.try-camera textarea{min-height:64px}
+.try-out{margin:4px 0 0;display:grid;gap:8px;justify-items:start}
+.try-out img{width:100%;max-width:720px;border-radius:10px;display:block}

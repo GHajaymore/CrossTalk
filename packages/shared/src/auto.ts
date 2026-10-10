@@ -142,12 +142,13 @@ const ROLE_RULES: [RegExp, [string, string]][] = [
   [/restaurant|chef|menu|food|cook|tipping|\btip/, ['Chef who runs a neighbourhood restaurant', 'Food writer who reviews restaurants']],
   [/pedestrian|\bcars?\b|street|traffic|cities|city|transit|transport|bike|parking/, ['City transport planner', 'Shop owner on a busy high street']],
   [/\bai\b|artificial intelligence|automation|independent business|small business|\bshops?\b|retail/, ['Owner of a small bakery and café', 'Consultant who sets up digital tools for small firms']],
+  [/hik(e|ing)|trails?\b|mountain|climb|national park|wild|wolves|beavers?|outdoor|nature|camping/, ['Mountain guide who leads hiking trips', 'Ecologist who studies wild places']],
   [/school|homework|teacher|education|student|exam/, ['Secondary-school teacher', 'Parent who sits on a school board']],
   [/health|sleep|doctor|medical|diet|fitness/, ['Family doctor', 'Researcher who studies everyday health habits']],
   [/climate|energy|environment|carbon|solar|electric/, ['Energy engineer', 'Researcher who studies climate policy']],
   [/money|price|tax|econom|rent|housing|interest rate|inflation/, ['Small-business accountant', 'Economist who studies household budgets']],
   [/software|coding|developer|\bapps?\b|tech|robot|startup/, ['Software engineer at a startup', 'Technology journalist']],
-  [/sport|football|soccer|tennis|basketball|olympic/, ['Coach at a community sports club', 'Sports journalist']],
+  [/sport|football|soccer|tennis|basketball|olympic|marathon|referee|video review|close call|athlete/, ['Coach at a community sports club', 'Sports journalist']],
   [/music|film|movie|art|book|game/, ['Working musician and teacher', 'Culture critic']],
   [/travel|tourism|holiday|flight|airline/, ['Owner of a small travel agency', 'Travel writer']],
 ];
@@ -160,6 +161,7 @@ const YOUTH_RULES: [RegExp, string][] = [
   [/music|film|movie|art|book|social media|tiktok|instagram/, 'Student and part-time video creator'],
   [/money|price|rent|housing|job|work|econom/, 'University student working a part-time job to cover rent'],
   [/climate|energy|environment/, 'Environmental science student and youth climate organiser'],
+  [/hik(e|ing)|trails?\b|mountain|climb|national park|wild|outdoor|nature|camping/, 'Geography student who leads weekend hikes for the university hiking club'],
 ];
 export const youthRole = (topic: string) => YOUTH_RULES.find(([re]) => re.test(topic.toLowerCase()))?.[1] ?? 'First-year university student with a part-time job';
 

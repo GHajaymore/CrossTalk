@@ -306,4 +306,21 @@ export const MIGRATIONS: string[] = [
   -- A line the host meant as a joke: their co-host laughs along.
   ALTER TABLE turns ADD COLUMN funny INTEGER NOT NULL DEFAULT 0;
   `,
+  `
+  -- Iris's AI pictures in more than one style (a photograph, a dreamscape, a pencil sketch):
+  -- the style joins the key. Rebuilt to widen the primary key; existing ones are photographs.
+  CREATE TABLE iris_pictures_v2 (
+    conversation_id  TEXT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+    version          INTEGER NOT NULL,
+    style            TEXT NOT NULL DEFAULT 'picture',
+    mime             TEXT NOT NULL,
+    data             BLOB NOT NULL,
+    created_at       TEXT NOT NULL,
+    PRIMARY KEY (conversation_id, version, style)
+  );
+  INSERT INTO iris_pictures_v2 (conversation_id, version, style, mime, data, created_at)
+    SELECT conversation_id, version, 'picture', mime, data, created_at FROM iris_pictures;
+  DROP TABLE iris_pictures;
+  ALTER TABLE iris_pictures_v2 RENAME TO iris_pictures;
+  `,
 ];
