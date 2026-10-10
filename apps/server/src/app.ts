@@ -335,6 +335,8 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
   // every picture has.
   const TRY_PER_DAY = 10;
   let tries = { day: '', n: 0 };
+  const triesLeft = () => { const day = new Date().toISOString().slice(0, 10); return tries.day === day ? Math.max(0, TRY_PER_DAY - tries.n) : TRY_PER_DAY; };
+  app.get('/api/images/try', async () => ({ left: triesLeft(), perDay: TRY_PER_DAY }));
   app.post<{ Body: { prompt?: unknown } }>('/api/images/try', async (req, reply) => {
     const prompt = typeof req.body?.prompt === 'string' ? req.body.prompt.replace(/[<>{}\[\]]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 400) : '';
     if (prompt.length < 3) throw new ControllerError('Describe the picture in a few words.', 400);
@@ -347,7 +349,7 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
       width: 1024, height: 614, seedText: `${day}:${tries.n}`,
     }, f, AbortSignal.timeout(90_000)).catch((e: Error) => ({ ok: false as const, busy: false, reason: `Couldn't reach ${imageService.name} (${e.message}).` })));
     if (!made.ok) throw new ControllerError(made.reason, 502);
-    return reply.header('Cache-Control', 'no-store').type(made.img.mime).send(made.img.data);
+    return reply.header('Cache-Control', 'no-store').header('X-Tries-Left', String(triesLeft())).type(made.img.mime).send(made.img.data);
   });
 
   app.get<{ Params: { id: string; version: string }; Querystring: { style?: string; ready?: string } }>('/api/iris/picture/:id/:version', async (req, reply) => {

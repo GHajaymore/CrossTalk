@@ -7,3 +7,4 @@ export * from './paint';
 export * from './host';
 export * from './homes';
 export * from './lang';
+export * from './photoThemes';

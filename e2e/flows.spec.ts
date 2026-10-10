@@ -651,3 +651,19 @@ test('Call in by voice: talk, check the words, go on air', async ({ page }) => {
   await expect(page.locator('.set-tile.G')).toBeVisible();
   await expect(page.locator('.set-cap')).toContainText('homework steals family time');
 });
+
+test("Photo of the day: today's eight ideas, a brief you can change, or your own words", async ({ page }) => {
+  await page.goto('/#/iris');
+  const ideas = page.getByRole('group', { name: "Today's photo ideas" });
+  await expect(ideas.getByRole('button')).toHaveCount(8);
+  await ideas.getByRole('button').nth(2).click();
+  await expect(ideas.getByRole('button').nth(2)).toHaveAttribute('aria-pressed', 'true');
+  const brief = page.getByLabel('The brief (change any words)');
+  await expect(brief).toHaveValue(/^A real photograph /);
+  // Your own words: the idea lets go and the box says so.
+  await brief.fill('A red kayak on a still lake at sunrise, mist, 35mm');
+  await expect(page.getByLabel('Your own picture')).toHaveValue(/red kayak/);
+  await expect(ideas.locator('[aria-pressed="true"]')).toHaveCount(0);
+  await expect(page.getByText(/of 10 left today/)).toBeVisible();
+  await expect(page.getByRole('button', { name: '📷 Make the photo' })).toBeEnabled();
+});
