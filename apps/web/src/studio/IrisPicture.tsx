@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { irisArtCached, paintIris, rememberIrisArt } from '../lib/irisEngine';
+import { irisArtCached, paintIris, rememberIrisArt, type EngineInput, type EngineStyle } from '../lib/irisEngine';
 import { pictureUrl, usePolledImage } from '../lib/usePolledImage';
 
-export type EngineArt = { sketch: string; seed: string; brief?: string };
+export type EngineArt = EngineInput;
+/** The styles her own engine paints on its own (no AI photo behind them). */
+export const engineStyleOf = (style: string): EngineStyle | null => (style === 'dreamscape' || style === 'sketch' ? style : null);
 
 /**
  * Iris's picture of a drawing. With `engine`, she paints it right here, stroke by stroke, with her own
@@ -10,7 +12,8 @@ export type EngineArt = { sketch: string; seed: string; brief?: string };
  * has also made a full painting, it fades in over it. Without `engine`, her line art stands in.
  */
 export function IrisPicture({ conversationId, version, fallback, alt, className = '', engine }: { conversationId: string; version: number; fallback: string; alt: string; className?: string; engine?: EngineArt }) {
-  const p = usePolledImage(pictureUrl(conversationId, version));
+  // Only a Picture can also have an AI photo; her Dreamscapes and Sketches are hers alone.
+  const p = usePolledImage(!engine?.style || engine.style === 'picture' ? pictureUrl(conversationId, version) : null);
   const cached = engine ? irisArtCached(engine) : null;
   const [painting, setPainting] = useState(!!engine && !cached);
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -27,7 +30,7 @@ export function IrisPicture({ conversationId, version, fallback, alt, className 
       setPainting(false);
     });
     return () => stop.abort();
-  }, [engine?.seed, engine?.brief, engine?.sketch]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [engine?.seed, engine?.brief, engine?.sketch, engine?.style]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const base = !engine ? <img className={className} src={fallback} alt={p.src ? '' : alt} aria-hidden={p.src ? true : undefined} />
     : cached ? <img className={className} src={cached} alt={p.src ? '' : alt} aria-hidden={p.src ? true : undefined} />

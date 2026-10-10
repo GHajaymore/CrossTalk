@@ -40,6 +40,7 @@ export function ArtViewer({ art, onClose }: { art: ViewedArt; onClose: () => voi
       <figure>
         {art.picture
           ? <IrisPicture conversationId={art.picture.conversationId} version={art.picture.version} fallback={art.src} alt={alt} engine={art.engine} />
+          : art.engine ? <IrisPicture conversationId="" version={0} fallback={art.src} alt={alt} engine={art.engine} />
           : <img src={art.src} alt={alt} />}
         <figcaption>
           <span className="tag">{ARTIST.name}, {ARTIST.role} · {art.styleName}{art.where ? ` · ${art.where}` : ''}</span>
@@ -47,7 +48,8 @@ export function ArtViewer({ art, onClose }: { art: ViewedArt; onClose: () => voi
           {art.caption && <p className="av-quote">“{art.caption}”</p>}
           {art.brief && <p className="av-brief"><span className="tag">From her sketchbook</span> {art.brief}</p>}
           <div className="dock-row">
-            {!art.picture && <a className="btn sm" href={art.src} download={`${file}.svg`}>Download</a>}
+            {!art.picture && !art.engine && <a className="btn sm" href={art.src} download={`${file}.svg`}>Download</a>}
+            {!art.picture && art.engine && <button className="btn sm" onClick={() => { const u = irisArtCached(art.engine!); if (u) save(u, `${file}.jpg`); }}>Download</button>}
             {art.picture && <button className="btn sm" onClick={() => void downloadPicture(art, file)}>Download picture</button>}
             <button ref={close} className="btn sm ghost" onClick={onClose}>Close</button>
           </div>
@@ -66,8 +68,11 @@ async function downloadPicture(art: ViewedArt, file: string) {
     if (r.status === 200 && (r.headers.get('content-type') ?? '').startsWith('image/')) href = URL.createObjectURL(await r.blob());
   } catch { /* offline: use hers */ }
   href ??= art.engine ? irisArtCached(art.engine) : null;
-  if (!href) return;
+  if (href) save(href, `${file}.jpg`);
+}
+
+function save(href: string, name: string) {
   const a = document.createElement('a');
-  a.href = href; a.download = `${file}.jpg`;
+  a.href = href; a.download = name;
   document.body.appendChild(a); a.click(); a.remove();
 }
