@@ -371,9 +371,10 @@ export type AppConfig = {
   /** Whether the Control room needs its admin code here (online), and whether this device has it. */
   admin: { required: boolean; ok: boolean; configured: boolean };
   /** Where episodes and Iris's sketches are kept: this computer's disk, a disk with a cloud backup, or a disk the host wipes. */
-  storage: 'local' | 'backed-up' | 'forgets';
+  /** 'paused': a backup is set up, but the bucket couldn't be read at start, so nothing is backed up this run. */
+  storage: 'local' | 'backed-up' | 'forgets' | 'paused';
   /** Whether copies really reach the backup bucket, and when the last one landed. */
-  backup: { state: 'off' | 'checking' | 'ok' | 'failing'; lastAt: string | null; detail: string | null; restore: 'restored' | 'empty' | null; checkedAt: string | null };
+  backup: { state: 'off' | 'checking' | 'ok' | 'failing'; lastAt: string | null; detail: string | null; restore: 'restored' | 'empty' | 'failed' | null; checkedAt: string | null };
   /** How the free image service did lately, for the hosts' photos and Iris's paintings. */
   images: { service: string } & Record<'portraits' | 'pictures', { lastOkAt: string | null; lastError: string | null; lastErrorAt: string | null }>;
   /** Whether hosts get photo portraits (otherwise the drawn ones). */

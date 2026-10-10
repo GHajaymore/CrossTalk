@@ -64,7 +64,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
     /** Set by scripts/start.sh while Litestream is backing up the database. */
     backup: str(env.CROSSTALK_BACKUP) === 'on',
     /** Set by scripts/start.sh: whether this run was brought back from the bucket or started empty. */
-    backupRestore: (['restored', 'empty'] as const).find(x => x === str(env.CROSSTALK_RESTORE)) ?? null,
+    backupRestore: (['restored', 'empty', 'failed'] as const).find(x => x === str(env.CROSSTALK_RESTORE)) ?? null,
+    /** Litestream's last line when the bucket couldn't be read at start (secrets are blanked before it's shown). */
+    backupRestoreError: str(env.CROSSTALK_RESTORE_ERROR) || null,
     adminCode,
     // The built web app, served by this server when it exists (one process to host).
     webDir: str(env.WEB_DIR) || new URL('../../web/dist', import.meta.url).pathname,

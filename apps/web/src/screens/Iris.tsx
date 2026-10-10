@@ -66,6 +66,7 @@ export function IrisPage({ config }: { config: AppConfig | null }) {
           {config?.storage === 'backed-up' && config.backup.state === 'ok' && <p className="hint">☁ Her drawings and notes are backed up (last copy {config.backup.lastAt ? ago(config.backup.lastAt) : 'just now'}), so they stay when the server restarts.</p>}
           {config?.storage === 'backed-up' && config.backup.state === 'checking' && <p className="hint">☁ Backup is set up; checking that copies reach the bucket…</p>}
           {config?.storage === 'backed-up' && config.backup.state === 'failing' && <p className="hint">⚠ The backup isn't reaching the bucket, so new drawings could be lost at the next restart. See Settings → Backup.</p>}
+          {config?.storage === 'paused' && <p className="hint">⏸ Backup paused: her earlier drawings are safe in the bucket but not loaded right now. Settings → Backup says what to do.</p>}
           {config?.storage === 'forgets' && <p className="hint">⚠ Online without a backup, her drawings are forgotten when the server restarts or updates. docs/DEPLOY.md → Keep episodes for good.</p>}
         </div>
       </header>

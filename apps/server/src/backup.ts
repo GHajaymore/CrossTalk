@@ -11,7 +11,7 @@ export type BackupStatus = {
   /** In plain words, when something's wrong. Never contains a key. */
   detail: string | null;
   /** How this run started: brought back from the bucket, or started empty because the bucket had nothing. */
-  restore: 'restored' | 'empty' | null;
+  restore: 'restored' | 'empty' | 'failed' | null;
   checkedAt: string | null;
 };
 
@@ -28,7 +28,9 @@ export function newestCopy(stdout: string): string | null {
 
 /** Litestream's error text, with anything that looks like the key or secret taken out. */
 export function plainError(text: string, secrets: string[]) {
-  let t = text.split('\n').filter(Boolean).slice(-2).join(' ').slice(0, 240);
+  // Litestream's log line: keep just its error="…", up to the first escaped newline.
+  const logged = /error="((?:[^"\\]|\\.)*)"/.exec(text)?.[1].split('\\n')[0];
+  let t = (logged ?? text.split('\n').filter(Boolean).slice(-2).join(' ')).slice(0, 240);
   for (const s of secrets) if (s && s.length >= 4) t = t.split(s).join('…');
   return t || 'Litestream gave no reason.';
 }
@@ -41,14 +43,17 @@ export class BackupWatch {
   constructor(
     private opts: {
       on: boolean;
-      restore: 'restored' | 'empty' | null;
+      restore: 'restored' | 'empty' | 'failed' | null;
+      /** Why the bucket couldn't be read at start, when it couldn't. */
+      restoreError?: string | null;
       /** Runs `litestream generations`; resolves with stdout, rejects with stderr. */
       list: () => Promise<string>;
       secrets: string[];
       now?: () => Date;
     },
   ) {
-    this.status = { state: opts.on ? 'checking' : 'off', lastAt: null, detail: null, restore: opts.restore, checkedAt: null };
+    const detail = opts.restore === 'failed' && opts.restoreError ? plainError(opts.restoreError, opts.secrets) : null;
+    this.status = { state: opts.on ? 'checking' : 'off', lastAt: null, detail, restore: opts.restore, checkedAt: null };
   }
 
   /** Ask the bucket now (one call at a time). */
@@ -68,8 +73,8 @@ export class BackupWatch {
     return this.busy;
   }
 
-  /** Check soon after start (Litestream needs a moment to send the first copy), then every 30 minutes. */
-  start(firstMs = 60_000, everyMs = 30 * 60_000) {
+  /** Check soon after start (Litestream needs a moment to send the first copy), then every 3 hours: each check spends bucket requests. */
+  start(firstMs = 90_000, everyMs = 3 * 3600_000) {
     if (!this.opts.on || this.timer) return;
     this.timer = setTimeout(() => { void this.check(); this.timer = setInterval(() => void this.check(), everyMs); }, firstMs);
     this.timer.unref?.();

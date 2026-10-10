@@ -152,7 +152,7 @@ CrossTalk is a prototype for one person. These are the honest gaps.
 - It sleeps after 15 idle minutes; the next visit takes about a minute.
 - Its disk is wiped on every restart or deploy. With the free Backblaze backup set up, episodes,
   Iris's sketches and settings come back on start-up. Without it, they're lost.
-- The backup copies changes about every 10 seconds, so a crash can lose the last few seconds.
+- The backup copies changes about once a minute (a full copy every hour), so a crash can lose the last minute. A normal restart or update sends everything first.
   Rendered recordings are files and aren't backed up.
 
 ## Before opening it to the public

@@ -22,6 +22,14 @@ export function StorageBanner({ config }: { config: AppConfig | null }) {
       </div>
     );
   }
+  if (config.storage === 'paused') {
+    return (
+      <div className="banner" role="alert">
+        <span><b>Backup paused: your saved episodes aren't loaded.</b> The bucket couldn't be read when the server started, so they're safe in it but not shown, and anything new isn't backed up. Restart the server once the bucket is reachable.</span>
+        <a className="btn sm" href="#/settings">What to do</a>
+      </div>
+    );
+  }
   if (config.backup.state !== 'failing') return null;
   return (
     <div className="banner" role="alert">
