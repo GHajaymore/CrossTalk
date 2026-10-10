@@ -374,6 +374,8 @@ export type AppConfig = {
   storage: 'local' | 'backed-up' | 'forgets';
   /** Whether copies really reach the backup bucket, and when the last one landed. */
   backup: { state: 'off' | 'checking' | 'ok' | 'failing'; lastAt: string | null; detail: string | null; restore: 'restored' | 'empty' | null; checkedAt: string | null };
+  /** How the free image service did lately, for the hosts' photos and Iris's paintings. */
+  images: Record<'portraits' | 'pictures', { lastOkAt: string | null; lastError: string | null; lastErrorAt: string | null }>;
   /** Whether hosts get photo portraits (otherwise the drawn ones). */
   portraits: boolean;
   /** Iris paints full pictures with the free image service (IRIS_PICTURES=off keeps her to line art). */

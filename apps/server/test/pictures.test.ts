@@ -105,3 +105,20 @@ describe('painting guards from review', () => {
     } finally { await t.app.close(); }
   });
 });
+
+describe('when the image service fails', () => {
+  it('keeps the reason, for Settings', async () => {
+    const { FreeImages, SerialQueue } = await import('../src/freeImages');
+    const store = new Map<string, { mime: string; data: Buffer }>();
+    let answer = () => new Response('Too many requests from this IP', { status: 402, headers: { 'content-type': 'text/plain' } });
+    const maker = new FreeImages({
+      f: (async () => answer()) as unknown as typeof fetch, now: () => new Date('2026-10-10T10:00:00Z'), queue: new SerialQueue(), perDay: 10, maxBytes: 1_000_000,
+      url: k => `https://example.test/${k}`, saved: k => store.get(k) ?? null, save: (k, img) => { store.set(k, img); }, madeOn: () => 0, busyWaitMs: 1,
+    });
+    expect(await maker.get('a')).toBeNull();
+    expect(maker.health).toMatchObject({ lastOkAt: null, lastError: 'The image service answered 402: Too many requests from this IP', lastErrorAt: '2026-10-10T10:00:00.000Z' });
+    answer = () => new Response(new Uint8Array([1, 2, 3]), { status: 200, headers: { 'content-type': 'image/jpeg' } });
+    expect(await maker.get('b')).not.toBeNull();
+    expect(maker.health.lastOkAt).toBe('2026-10-10T10:00:00.000Z');
+  });
+});

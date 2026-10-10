@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ARTIST, artworkSvg, homeStylesFor, PAINT_STYLE_INFO, PAINT_STYLES, paintStyleOf, type ArtistNotes, type ConversationView, type Language, type PaintStyle, type Speakers } from '@crosstalk/shared';
+import { ARTIST, artSeed, artworkSvg, homeStylesFor, PAINT_STYLE_INFO, PAINT_STYLES, paintStyleOf, type ArtistNotes, type ConversationView, type Language, type PaintStyle, type Speakers } from '@crosstalk/shared';
 import { speakAsIris } from '../speech/BrowserSpeech';
 import { api } from '../api/client';
 import { LivingSketch, useDrawReplay } from './LivingSketch';
@@ -84,7 +84,7 @@ export function ArtistCard({ notes: a, speakers, conversationId, onAgain, onJump
                 {painted && !replay.playing
                   ? <button className="art-open" onClick={() => setViewing(true)} aria-label={`Open “${a.artTitle}” full size`}>
                       {style === 'picture' && pictures
-                        ? <IrisPicture key={`${a.version}`} conversationId={conversationId} version={a.version} className="living paint-in" fallback={sketchSrc(artworkSvg(a)!)} alt={`Iris's picture: ${a.artTitle}`} />
+                        ? <IrisPicture key={`${a.version}`} conversationId={conversationId} version={a.version} className="living paint-in" fallback={sketchSrc(artworkSvg(a)!)} alt={`Iris's picture: ${a.artTitle}`} engine={{ sketch: a.sketchSvg, seed: artSeed(conversationId, a.version), brief: a.imagePrompt }} />
                         : <img key={style} className="living paint-in" src={sketchSrc(artworkSvg(a)!)} alt={`Iris's ${styleName.toLowerCase()}: ${a.artTitle}`} />}
                       <span className="expand-hint" aria-hidden="true">⤢</span>
                     </button>
@@ -97,6 +97,7 @@ export function ArtistCard({ notes: a, speakers, conversationId, onAgain, onJump
           {viewing && a.sketchSvg && <ArtViewer onClose={() => setViewing(false)} art={{
             src: sketchSrc(artworkSvg(a)!), picture: style === 'picture' && pictures ? { conversationId, version: a.version } : null,
             title: a.artTitle, caption: a.caption, styleName, brief: style === 'picture' ? a.imagePrompt : undefined, where: `turn ${a.momentSeq}`,
+            engine: style === 'picture' && pictures ? { sketch: a.sketchSvg, seed: artSeed(conversationId, a.version), brief: a.imagePrompt } : undefined,
           }} />}
           {a.imagePrompt && style === 'picture' && pictures && (
             <aside className="sketchbook" aria-label="From her sketchbook"><span className="tag">From her sketchbook</span><p>{a.imagePrompt}</p></aside>

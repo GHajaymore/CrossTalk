@@ -54,5 +54,6 @@ export class IrisPictures {
     });
   }
   check(conversationId: string, version: number): Img | 'pending' | null { return this.maker.check(pictureKey(conversationId, version)); }
+  get health() { return this.maker.health; }
   get(conversationId: string, version: number): Promise<Img | null> { return this.maker.get(pictureKey(conversationId, version)); }
 }

@@ -43,7 +43,11 @@ export type MakerOptions = {
   maxBytes: number;
 };
 
+/** How the image service did last time: for Settings, so a failure has a reason. */
+export type ImageHealth = { lastOkAt: string | null; lastError: string | null; lastErrorAt: string | null };
+
 export class FreeImages {
+  health: ImageHealth = { lastOkAt: null, lastError: null, lastErrorAt: null };
   private inFlight = new Map<string, Promise<Img | null>>();
   private failed = new Map<string, number>();
   constructor(private o: MakerOptions) {}
@@ -91,11 +95,24 @@ export class FreeImages {
         return this.fetchOne(key, url, false);
       }
       const mime = (res.headers.get('content-type') ?? '').split(';')[0].trim();
-      if (!res.ok || !/^image\/(jpeg|png|webp)$/.test(mime)) return null;
+      if (!res.ok) {
+        const body = (await res.text().catch(() => '')).replace(/\s+/g, ' ').slice(0, 160);
+        return this.failure(`The image service answered ${res.status}${body ? `: ${body}` : ''}`);
+      }
+      if (!/^image\/(jpeg|png|webp)$/.test(mime)) return this.failure(`The image service sent ${mime || 'something'} instead of a picture.`);
       const data = Buffer.from(await res.arrayBuffer());
-      if (!data.length || data.length > this.o.maxBytes) return null;
+      if (!data.length || data.length > this.o.maxBytes) return this.failure(data.length ? 'The picture was too large.' : 'The picture was empty.');
       this.o.save(key, { mime, data }, this.o.now().toISOString());
+      this.health = { ...this.health, lastOkAt: this.o.now().toISOString() };
       return { mime, data };
-    } catch { return null; }
+    } catch (e) {
+      return this.failure((e as Error).name === 'TimeoutError' ? 'The image service took over 90 seconds.' : `Couldn't reach the image service (${(e as Error).message}).`);
+    }
+  }
+
+  private failure(reason: string): null {
+    this.health = { ...this.health, lastError: reason, lastErrorAt: this.o.now().toISOString() };
+    console.warn(`Free images: ${reason}`);
+    return null;
   }
 }

@@ -369,7 +369,7 @@ export class Repo {
         byEpisode.set(id, g);
       }
       g.artworks.push({ id: r.id as number, version: r.version as number, style: paintStyleOf(r.art_style as string), title: r.art_title as string,
-        caption: r.caption as string, momentSeq: r.moment_seq as number, svg: r.sketch_svg as string, createdAt: r.created_at as string });
+        caption: r.caption as string, momentSeq: r.moment_seq as number, svg: r.sketch_svg as string, createdAt: r.created_at as string, brief: (r.image_prompt as string | null) ?? '' });
     }
     return [...byEpisode.values()];
   }
