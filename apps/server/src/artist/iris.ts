@@ -37,8 +37,10 @@ export function favouriteStyle(chosen: PaintStyle[]): PaintStyle | null {
 const words = (t: string) => t.split(/\s+/).filter(Boolean);
 const wordsOf = wordsIn;
 const norm = (t: string) => t.toLowerCase().replace(/[‘’“”"'.,!?;:—–-]/g, ' ').replace(/\s+/g, ' ').trim();
+/** A quote reads as something said, so a spoken label in front ("Takeaway:", "Bottom line:") is dropped. */
+export const unlabel = (t: string) => t.replace(/^\s*(takeaway|my takeaway|the takeaway|bottom line|in short|tl;?dr|curveball|my curveball)\s*[:—–-]\s*/i, '').replace(/^\p{Ll}/u, c => c.toUpperCase());
 const firstSentence = (t: string) => {
-  const s = sentencesOf(t)[0] ?? t.trim();
+  const s = unlabel(sentencesOf(t)[0] ?? t.trim());
   if (wordsOf(s) <= 20) return s;
   // Spaced languages keep 20 words; Chinese and Japanese keep about 40 characters.
   return words(s).length > 1 ? words(s).slice(0, 20).join(' ') + '…' : [...s].slice(0, 40).join('') + '…';
@@ -135,7 +137,7 @@ export class Iris {
     const turn = view.turns.find(t => t.seq === reply.momentSeq) ?? view.turns[Math.floor(view.turns.length / 2)];
     // The caption must be a real quote from that turn, 20 words or fewer.
     const caption = reply.caption && wordsOf(reply.caption) <= 20 && norm(turn.text).includes(norm(reply.caption.replace(/…$/, '')))
-      ? reply.caption : firstSentence(turn.text);
+      ? unlabel(reply.caption) : firstSentence(turn.text);
     const svg = safeSvg(reply.sketchSvg);
 
     this.repo.saveArtist({

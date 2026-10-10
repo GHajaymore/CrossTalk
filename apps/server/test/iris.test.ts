@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Iris, mockArtist, type ArtistBackend } from '../src/artist/iris';
+import { Iris, mockArtist, unlabel, type ArtistBackend } from '../src/artist/iris';
 import { mockSketch } from '../src/artist/mockSketches';
 import { buildIrisPrompt } from '../src/artist/prompt';
 import { safeSvg } from '../src/artist/svgSafety';
@@ -103,7 +103,9 @@ describe('Iris, the Artist', () => {
     const { repo, id } = await finishedEpisode();
     repo.addFeedback({ id: 'f1', conversationId: id, rating: 'down', note: 'Draw people, not objects', artTitle: 'The Empty Friday', createdAt: new Date().toISOString() });
     repo.addFeedback({ id: 'f2', conversationId: id, rating: 'up', note: 'Loved the warm colours', artTitle: null, createdAt: new Date().toISOString() });
-    const { user } = buildIrisPrompt(repo.view(id)!, repo.listFeedback());
+    const { system, user } = buildIrisPrompt(repo.view(id)!, repo.listFeedback());
+    // A photographer's craft note: what free AI cameras get wrong stays out of close-up.
+    expect(system).toContain('Keep hands and faces out of close-up');
     expect(user).toContain('<listener_notes>');
     expect(user).toContain('Wants something different (about "The Empty Friday"): Draw people, not objects');
     expect(user).toContain('Liked: Loved the warm colours');
@@ -159,5 +161,14 @@ describe('Iris remembers her own work', () => {
       await t.iris.settled(first);
       expect(t.repo.view(first)!.artist!.perspective).toMatch(/“Room to Walk”/);
     } finally { await t.app.close(); }
+  });
+});
+
+describe('her quotes read as something said', () => {
+  it('drops a spoken label in front, and keeps everything else as it was', () => {
+    expect(unlabel('Takeaway: keep the tech small and optional.')).toBe('Keep the tech small and optional.');
+    expect(unlabel('Bottom line — start small.')).toBe('Start small.');
+    expect(unlabel('My takeaway is simple: start small.')).toBe('My takeaway is simple: start small.');
+    expect(unlabel('Yeah, good point.')).toBe('Yeah, good point.');
   });
 });
