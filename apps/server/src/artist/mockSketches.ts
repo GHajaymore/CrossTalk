@@ -59,28 +59,28 @@ const SCENES: Record<string, { title: string; draw: () => string }> = {
 /** Mock Iris's art brief for each scene's full painting: subject, setting, composition, light, palette, medium. */
 export const SCENE_BRIEFS: Record<string, string[]> = {
   week: [
-    'An office floor on a Friday afternoon, rows of empty desks bathed in low golden light, one coat left over a chair and a wall calendar with Friday circled, seen from the open doorway, quiet and hopeful, amber and deep teal, gouache with soft edges',
-    'A woman on a park bench on a weekday morning, a laptop closed beside her and a coffee in her hands, the city waking behind her, wide shot from slightly below, early blue light warming to gold, oil painting with loose brushwork',
+    'An office floor on a Friday afternoon, rows of empty desks bathed in low golden light, one coat left over a chair and a wall calendar with Friday circled, seen from the open doorway, quiet and hopeful, amber and deep teal, 35mm film, soft focus at the edges',
+    'A woman on a park bench on a weekday morning, a laptop closed beside her and a coffee in her hands, the city waking behind her, wide shot from slightly below, early blue light warming to gold, 50mm lens, rich film grain',
   ],
   golf: [
-    'A golfer at dawn on a short, rolling course, the ball arcing high over mist towards a tiny flag, long shadows on wet grass, seen from behind the tee, cool green and pale gold, watercolour with granulating washes',
+    'A golfer at dawn on a short, rolling course, the ball arcing high over mist towards a tiny flag, long shadows on wet grass, seen from behind the tee, cool green and pale gold, soft overcast light, gentle film grain',
     'An old clubhouse at dusk with a single caddie cart outside, flags lowering, a long fairway fading into the hills, low wide composition, violet and amber, oil on linen',
   ],
   city: [
-    'A city street on a Sunday with no cars, families, cyclists and a street musician spilling across the painted road, café umbrellas and trees in bloom, high wide angle, bright midday light, coral, teal and cream, gouache illustration',
-    'A lone bus waiting at a crossing on a pedestrian street at twilight, people walking past lit shop windows, reflections on wet stone, eye level, deep blue and warm lamplight, oil painting',
+    'A city street on a Sunday with no cars, families, cyclists and a street musician spilling across the painted road, café umbrellas and trees in bloom, high wide angle, bright midday light, coral, teal and cream, 35mm documentary photograph',
+    'A lone bus waiting at a crossing on a pedestrian street at twilight, people walking past lit shop windows, reflections on wet stone, eye level, deep blue and warm lamplight, 85mm portrait lens, warm film look',
   ],
   food: [
-    'A small restaurant table seen from above, two plates, a folded bill and a coin dish, a hand hovering over the tip line, warm candlelight across white linen, close and intimate, ochre and wine red, gouache',
+    'A small restaurant table seen from above, two plates, a folded bill and a coin dish, a hand hovering over the tip line, warm candlelight across white linen, close and intimate, ochre and wine red, 35mm, natural light',
     'A busy kitchen pass at night, a waiter carrying plates out into a glowing dining room, steam and copper pans, low angle through the doorway, amber and charcoal, expressive oil',
   ],
   shop: [
-    'A tiny bakery at dawn with an OPEN sign glowing in the window, the baker shaping loaves while a tablet on the counter quietly sorts orders, flour in the air, seen from the street, peach and teal light, gouache with soft grain',
-    'A row of small shops on a high street in the rain, one window lit and full of handmade goods, a passer-by pausing under an umbrella, eye level, blue-grey and warm gold, watercolour',
+    'A tiny bakery at dawn with an OPEN sign glowing in the window, the baker shaping loaves while a tablet on the counter quietly sorts orders, flour in the air, seen from the street, peach and teal light, 35mm, soft grain',
+    'A row of small shops on a high street in the rain, one window lit and full of handmade goods, a passer-by pausing under an umbrella, eye level, blue-grey and warm gold, misty natural light, 35mm',
   ],
   table: [
-    'Two empty chairs facing each other across a small round table in a pool of lamplight, two cups of tea still steaming, a window of night city behind, a quiet conversation just ended, centred composition, amber, plum and midnight blue, oil painting',
-    'Two people in silhouette walking and talking along a river path at sunset, one gesturing, the other listening, long reflections on the water, wide shot, rose gold and slate blue, watercolour',
+    'Two empty chairs facing each other across a small round table in a pool of lamplight, two cups of tea still steaming, a window of night city behind, a quiet conversation just ended, centred composition, amber, plum and midnight blue, 85mm portrait lens, warm film look',
+    'Two people in silhouette walking and talking along a river path at sunset, one gesturing, the other listening, long reflections on the water, wide shot, rose gold and slate blue, misty natural light, 35mm',
   ],
 };
 

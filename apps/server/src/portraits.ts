@@ -3,7 +3,7 @@
 // shows the drawn portrait instead.
 import { parseLookCode, portraitPrompt } from '@crosstalk/shared';
 import type { Repo } from './db/repo';
-import { FreeImages, pollinationsUrl, SerialQueue, type Img } from './freeImages';
+import { FreeImages, pollinationsUrl, SerialQueue, type Img, type ImageService } from './freeImages';
 
 /** New looks made per day at most: a guard against anyone asking for every combination. */
 export const PORTRAITS_PER_DAY = 24;
@@ -13,10 +13,10 @@ export const portraitUrl = (code: string, prompt: string) => pollinationsUrl(pro
 
 export class Portraits {
   private maker: FreeImages;
-  constructor(repo: Repo, f: typeof fetch, now: () => Date = () => new Date(), busyWaitMs?: number, queue = new SerialQueue()) {
+  constructor(repo: Repo, f: typeof fetch, now: () => Date = () => new Date(), busyWaitMs?: number, queue = new SerialQueue(), service?: ImageService) {
     this.maker = new FreeImages({
-      f, now, queue, perDay: PORTRAITS_PER_DAY, busyWaitMs, maxBytes: 3_000_000,
-      url: code => { const t = parseLookCode(code); return t ? portraitUrl(code, portraitPrompt(t)) : null; },
+      f, now, queue, perDay: PORTRAITS_PER_DAY, busyWaitMs, maxBytes: 3_000_000, service,
+      job: code => { const t = parseLookCode(code); return t ? { prompt: portraitPrompt(t), width: 512, height: 512, seedText: code } : null; },
       saved: code => repo.getPortrait(code),
       save: (code, img, at) => repo.savePortrait(code, img.mime, img.data, at),
       madeOn: day => repo.portraitsMadeOn(day),

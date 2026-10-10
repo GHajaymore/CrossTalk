@@ -32,7 +32,7 @@ describe('an episode in another language', () => {
       expect(en.language).toBe('en');
       expect(buildPrompt({ conversation: en, seq: 1, speaker: en.speakers.A, objective: 'Hello', history: [] }).system).not.toContain('Language:');
       expect(rolesPrompt('Is remote work here to stay?', 'general').system).not.toContain('Language:');
-      expect(buildIrisPrompt({ ...t.repo.view(id)! }, []).system).toContain('write perspective, caption and artTitle (keep imagePrompt in English for the painter) only in Hindi');
+      expect(buildIrisPrompt({ ...t.repo.view(id)! }, []).system).toContain('write perspective, caption and artTitle (keep imagePrompt in English for the photographer) only in Hindi');
       // The app still reads the tag, whatever language the line is in.
       expect(extractStance('मुझे लगता है सत्तर प्रतिशत हाँ। [stance: 70]')).toEqual({ text: 'मुझे लगता है सत्तर प्रतिशत हाँ।', stance: 70 });
     } finally { void t.app.close(); }

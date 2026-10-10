@@ -85,6 +85,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
     // Photo portraits of the hosts (a free image service). PORTRAITS=off keeps the drawn ones only.
     portraits: str(env.PORTRAITS).toLowerCase() !== 'off',
     irisPictures: str(env.IRIS_PICTURES).toLowerCase() !== 'off',
+    // Real AI photos from Cloudflare Workers AI on a free account (no card), or Pollinations without one.
+    // Like Groq, Cloudflare is used only once the owner confirms the free plan (CLOUDFLARE_PLAN=free).
+    imageService: (str(env.CLOUDFLARE_ACCOUNT_ID) && str(env.CLOUDFLARE_API_TOKEN)
+      ? (str(env.CLOUDFLARE_PLAN).toLowerCase() === 'free' ? 'cloudflare' : 'blocked') : 'pollinations') as 'cloudflare' | 'pollinations' | 'blocked',
+    cloudflare: { accountId: str(env.CLOUDFLARE_ACCOUNT_ID), token: str(env.CLOUDFLARE_API_TOKEN) },
     problems,
   };
 }

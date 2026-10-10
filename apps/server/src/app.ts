@@ -16,7 +16,7 @@ import type { ServerConfig } from './config';
 import { registerAccess, registerAdmin, registerWeb } from './access';
 import { exportJson, exportMarkdown, exportName } from './export';
 import { exportHtml } from './episodePage';
-import { SerialQueue } from './freeImages';
+import { cloudflare, pollinations, SerialQueue, type ImageService } from './freeImages';
 import { IrisPictures } from './pictures';
 import { Portraits } from './portraits';
 import { SAMPLE_HN, SAMPLE_NEWS, SAMPLE_RANKING, SAMPLE_REDDIT, SAMPLE_RSS, SAMPLE_SOCIAL, SAMPLE_TRENDS, SAMPLE_WIKIPEDIA } from './scout/samples';
@@ -195,7 +195,7 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
     admin: admin.state(cookie),
     storage: !cfg.hosted ? 'local' : cfg.backup ? 'backed-up' : 'forgets',
     backup: backup.status,
-    images: { portraits: portraits.health, pictures: pictures.health },
+    images: { service: imageService.name, portraits: portraits.health, pictures: pictures.health },
     portraits: cfg.portraits,
     irisPictures: cfg.irisPictures,
   });
@@ -320,8 +320,12 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
   // Photo portraits of the invented hosts: fetched once per look, then served from the database.
   // The hosts' photos and Iris's paintings come from the same free service, one picture at a time.
   const imageQueue = new SerialQueue();
-  const portraits = new Portraits(repo, f, undefined, undefined, imageQueue);
-  const pictures = new IrisPictures(repo, f, imageQueue);
+  // Cloudflare's real AI photos once it's set up (and confirmed free); otherwise Pollinations.
+  const imageService: ImageService = cfg.imageService === 'cloudflare' ? cloudflare(cfg.cloudflare.accountId, cfg.cloudflare.token)
+    : cfg.imageService === 'blocked' ? { name: 'Cloudflare Workers AI', make: async () => ({ ok: false, busy: false, reason: 'Set CLOUDFLARE_PLAN=free to confirm your Cloudflare account is on the Free plan (no card), so no picture can ever be charged.' }) }
+    : pollinations;
+  const portraits = new Portraits(repo, f, undefined, undefined, imageQueue, imageService);
+  const pictures = new IrisPictures(repo, f, imageQueue, undefined, undefined, imageService);
   app.get<{ Params: { id: string; version: string } }>('/api/iris/picture/:id/:version', async (req, reply) => {
     const found = cfg.irisPictures && safeId(req.params.id) ? pictures.check(req.params.id, Number(req.params.version.replace(/\.(jpg|png|webp)$/, '')) || 0) : null;
     if (found === 'pending') return reply.status(202).header('Retry-After', '4').header('Cache-Control', 'no-store').send({ pending: true });

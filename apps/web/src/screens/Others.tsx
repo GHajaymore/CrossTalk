@@ -44,7 +44,7 @@ function ImagesSection({ config }: { config: AppConfig }) {
   };
   return (
     <section className="sec"><h2>Pictures</h2>
-      <p className="hint">The hosts' photos and Iris's full paintings come from a free image service. When it can't make one, Iris paints her own on your device instead.</p>
+      <p className="hint">The hosts' photos and Iris's pictures are made by a free AI image service: <b>{config.images.service}</b>. When it can't make one, Iris paints her own on your device instead.</p>
       <dl className="kv">
         {config.portraits && <><dt>Host photos</dt><dd>{line(config.images.portraits)}</dd></>}
         {config.irisPictures && <><dt>Iris's paintings</dt><dd>{line(config.images.pictures)}</dd></>}
