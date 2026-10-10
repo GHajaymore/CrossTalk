@@ -331,6 +331,19 @@ export class Repo {
   savePicture(conversationId: string, version: number, mime: string, data: Buffer, at: string, style = 'picture') {
     this.db.prepare('INSERT OR REPLACE INTO iris_pictures (conversation_id, version, style, mime, data, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(conversationId, version, style, mime, data, at);
   }
+  // My photos, newest first; the list never carries the image itself.
+  listPhotos(): { id: string; title: string; prompt: string; createdAt: string }[] {
+    return this.db.prepare('SELECT id, title, prompt, created_at AS createdAt FROM photos ORDER BY created_at DESC').all() as { id: string; title: string; prompt: string; createdAt: string }[];
+  }
+  getPhoto(id: string): { mime: string; data: Buffer } | null {
+    return (this.db.prepare('SELECT mime, data FROM photos WHERE id = ?').get(id) as { mime: string; data: Buffer } | undefined) ?? null;
+  }
+  savePhoto(p: { id: string; title: string; prompt: string; mime: string; data: Buffer; createdAt: string }) {
+    this.db.prepare('INSERT INTO photos (id, title, prompt, mime, data, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(p.id, p.title, p.prompt, p.mime, p.data, p.createdAt);
+  }
+  deletePhoto(id: string): boolean {
+    return this.db.prepare('DELETE FROM photos WHERE id = ?').run(id).changes > 0;
+  }
   picturesMadeOn(day: string): number {
     return (this.db.prepare("SELECT COUNT(*) AS n FROM iris_pictures WHERE substr(created_at, 1, 10) = ?").get(day) as { n: number }).n;
   }

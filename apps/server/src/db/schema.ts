@@ -323,4 +323,15 @@ export const MIGRATIONS: string[] = [
   DROP TABLE iris_pictures;
   ALTER TABLE iris_pictures_v2 RENAME TO iris_pictures;
   `,
+  `
+  -- My photos: the Photo of the day pictures the listener chose to keep.
+  CREATE TABLE photos (
+    id          TEXT PRIMARY KEY,
+    title       TEXT NOT NULL,
+    prompt      TEXT NOT NULL,
+    mime        TEXT NOT NULL,
+    data        BLOB NOT NULL,
+    created_at  TEXT NOT NULL
+  );
+  `,
 ];
