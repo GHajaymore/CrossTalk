@@ -232,6 +232,35 @@ describe('try the camera', () => {
   });
 });
 
+describe('My photos', () => {
+  it('keeps a photo just made (by its token, never an upload), lists it, serves it, and removes it', async () => {
+    const f = (async () => new Response(jpeg, { headers: { 'content-type': 'image/jpeg' } })) as unknown as typeof fetch;
+    const t = buildApp(mockConfig({ dbPath: ':memory:' }), { fetch: f });
+    try {
+      const made = await t.app.inject({ method: 'POST', url: '/api/images/try', payload: { prompt: 'A red kayak on a still lake at sunrise' } });
+      const token = made.headers['x-photo-token'] as string;
+      expect(token).toBeTruthy();
+      expect((await t.app.inject({ method: 'POST', url: '/api/photos', payload: { token: 'nope', title: 'x' } })).statusCode).toBe(404);
+      const kept = await t.app.inject({ method: 'POST', url: '/api/photos', payload: { token, title: 'Red <b>kayak</b>' } });
+      expect(kept.statusCode).toBe(201);
+      const { id, title, prompt } = kept.json();
+      expect(title).toBe('Red b kayak /b');
+      expect(prompt).toBe('A red kayak on a still lake at sunrise');
+      // Kept once: the token is spent.
+      expect((await t.app.inject({ method: 'POST', url: '/api/photos', payload: { token, title: 'again' } })).statusCode).toBe(404);
+      const list = (await t.app.inject({ method: 'GET', url: '/api/photos' })).json();
+      expect(list.photos).toHaveLength(1);
+      expect(list.photos[0]).not.toHaveProperty('data');
+      const img = await t.app.inject({ method: 'GET', url: `/api/photos/${id}.jpg` });
+      expect(img.headers['content-type']).toBe('image/jpeg');
+      expect(img.rawPayload).toEqual(jpeg);
+      expect((await t.app.inject({ method: 'DELETE', url: `/api/photos/${id}` })).statusCode).toBe(204);
+      expect((await t.app.inject({ method: 'GET', url: '/api/photos' })).json().photos).toHaveLength(0);
+      expect((await t.app.inject({ method: 'GET', url: `/api/photos/${id}.jpg` })).statusCode).toBe(404);
+    } finally { await t.app.close(); }
+  });
+});
+
 describe('thumbnails never spend the day', () => {
   it('?ready=1 only answers with a picture already made, and never asks the service', async () => {
     const asked: string[] = [];

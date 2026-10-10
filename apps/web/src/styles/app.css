@@ -690,8 +690,6 @@ span.ss-art .iris-picture>img,span.ss-art .iris-picture>canvas{object-fit:contai
 @media (max-width:640px){.ti-themes{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}.ti-themes .chip{flex:none}}
 
 /* Settings → Pictures: try the camera. */
-.try-camera{display:grid;gap:8px;margin-top:12px}
-.try-camera textarea{min-height:64px}
 .try-out{margin:4px 0 0;display:grid;gap:8px;justify-items:start}
 .try-out img{width:100%;max-width:720px;border-radius:10px;display:block}
 
@@ -720,3 +718,9 @@ span.ss-art .iris-picture>img,span.ss-art .iris-picture>canvas{object-fit:contai
 .potd-ideas{display:flex;flex-wrap:wrap;gap:8px}
 .potd-idea{display:inline-flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;padding:8px 12px;line-height:1.2}
 .potd-idea .tag{font-size:10px}
+/* My photos: the kept ones, as a contact sheet. */
+.my-photos{display:grid;gap:10px;margin-top:18px;border-top:1px solid var(--line);padding-top:16px}
+.my-photos h3{margin:0;font-size:16px}
+.photo-grid{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
+.photo-grid li{display:grid;gap:6px;align-content:start}
+.photo-grid img{width:100%;aspect-ratio:3/2;object-fit:cover;border-radius:8px;display:block;background:var(--surface)}

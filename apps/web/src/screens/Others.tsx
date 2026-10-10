@@ -7,7 +7,6 @@ import { useVoices } from '../speech/usePlayback';
 import { VoicePicker } from '../speech/VoicePicker';
 import { ago, SetupBanner, StorageBanner } from '../lib/Banners';
 import { Footer } from './Footer';
-import { PhotoOfTheDay } from '../studio/PhotoOfTheDay';
 
 /** Online only: is every episode really being kept? Asks the bucket itself, not just the settings. */
 function BackupSection({ config, refreshConfig }: { config: AppConfig; refreshConfig: () => void }) {
@@ -52,7 +51,7 @@ function ImagesSection({ config }: { config: AppConfig }) {
         {config.portraits && <><dt>Host photos</dt><dd>{line(config.images.portraits)}</dd></>}
         {config.irisPictures && <><dt>Iris's paintings</dt><dd>{line(config.images.pictures)}</dd></>}
       </dl>
-      <div className="try-camera"><span className="tag">Try the camera</span><PhotoOfTheDay compact /><p className="hint">The full set of today's ideas is on the <a href="#/iris">Iris page</a> → Photo of the day.</p></div>
+      <p className="hint">📷 To make a photo yourself, from today's ideas or your own words, go to the <a href="#/iris">Iris page → Photo of the day</a>.</p>
     </section>
   );
 }

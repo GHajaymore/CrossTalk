@@ -335,6 +335,7 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
   // every picture has.
   const TRY_PER_DAY = 10;
   let tries = { day: '', n: 0 };
+  const madeLately = new Map<string, { mime: string; data: Buffer; prompt: string; at: number }>();
   const triesLeft = () => { const day = new Date().toISOString().slice(0, 10); return tries.day === day ? Math.max(0, TRY_PER_DAY - tries.n) : TRY_PER_DAY; };
   app.get('/api/images/try', async () => ({ left: triesLeft(), perDay: TRY_PER_DAY }));
   app.post<{ Body: { prompt?: unknown } }>('/api/images/try', async (req, reply) => {
@@ -349,7 +350,34 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
       width: 1024, height: 614, seedText: `${day}:${tries.n}`,
     }, f, AbortSignal.timeout(90_000)).catch((e: Error) => ({ ok: false as const, busy: false, reason: `Couldn't reach ${imageService.name} (${e.message}).` })));
     if (!made.ok) throw new ControllerError(made.reason, 502);
-    return reply.header('Cache-Control', 'no-store').header('X-Tries-Left', String(triesLeft())).type(made.img.mime).send(made.img.data);
+    // Held for an hour (the last 10 only), so the listener can keep it in My photos without sending it back.
+    const token = randomUUID();
+    madeLately.set(token, { mime: made.img.mime, data: made.img.data, prompt, at: Date.now() });
+    for (const [k, v] of madeLately) if (madeLately.size > 10 || Date.now() - v.at > 3600_000) madeLately.delete(k); else break;
+    return reply.header('Cache-Control', 'no-store').header('X-Tries-Left', String(triesLeft())).header('X-Photo-Token', token).type(made.img.mime).send(made.img.data);
+  });
+
+  // My photos: the Photo of the day pictures worth keeping, saved with the episodes (and backed up with them).
+  const PHOTOS_MAX = 200;
+  app.get('/api/photos', async () => ({ photos: repo.listPhotos(), max: PHOTOS_MAX }));
+  app.post<{ Body: { token?: unknown; title?: unknown } }>('/api/photos', async (req, reply) => {
+    const made = typeof req.body?.token === 'string' ? madeLately.get(req.body.token) : undefined;
+    if (!made || Date.now() - made.at > 3600_000) throw new ControllerError('That photo is no longer held (they wait an hour). Download it, or make it again.', 404);
+    if (repo.listPhotos().length >= PHOTOS_MAX) throw new ControllerError(`My photos is full (${PHOTOS_MAX}). Remove a few first.`, 409);
+    const title = (typeof req.body?.title === 'string' ? req.body.title : '').replace(/[<>{}\[\]]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 60) || 'Untitled';
+    const photo = { id: randomUUID(), title, prompt: made.prompt, mime: made.mime, data: made.data, createdAt: new Date().toISOString() };
+    repo.savePhoto(photo);
+    madeLately.delete(req.body.token as string);
+    return reply.status(201).send({ id: photo.id, title, prompt: photo.prompt, createdAt: photo.createdAt });
+  });
+  app.get<{ Params: { id: string } }>('/api/photos/:id', async (req, reply) => {
+    const p = repo.getPhoto(req.params.id.replace(/\.(jpg|png|webp)$/, ''));
+    if (!p) return reply.status(404).send({ error: 'No such photo.' });
+    return reply.header('Cache-Control', 'private, max-age=31536000, immutable').type(p.mime).send(p.data);
+  });
+  app.delete<{ Params: { id: string } }>('/api/photos/:id', async (req, reply) => {
+    if (!repo.deletePhoto(req.params.id)) return reply.status(404).send({ error: 'No such photo.' });
+    return reply.status(204).send();
   });
 
   app.get<{ Params: { id: string; version: string }; Querystring: { style?: string; ready?: string } }>('/api/iris/picture/:id/:version', async (req, reply) => {

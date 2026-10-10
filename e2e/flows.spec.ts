@@ -666,4 +666,7 @@ test("Photo of the day: today's eight ideas, a brief you can change, or your own
   await expect(ideas.locator('[aria-pressed="true"]')).toHaveCount(0);
   await expect(page.getByText(/of 10 left today/)).toBeVisible();
   await expect(page.getByRole('button', { name: '📷 Make the photo' })).toBeEnabled();
+  // The ones you keep live just below, in My photos.
+  await expect(page.getByRole('heading', { name: 'My photos' })).toBeVisible();
+  await expect(page.getByText('None yet. Make a photo above')).toBeVisible();
 });

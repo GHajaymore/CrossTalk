@@ -7,6 +7,7 @@ import { Footer } from './Footer';
 import { ArtViewer } from '../studio/ArtViewer';
 import { engineStyleOf, IrisPicture } from '../studio/IrisPicture';
 import { Slideshow } from '../studio/Slideshow';
+import { MyPhotos } from '../studio/MyPhotos';
 import { PhotoOfTheDay } from '../studio/PhotoOfTheDay';
 
 // A tiny scene to show each home style: two figures at a table under a lamp.
@@ -26,6 +27,7 @@ const AI_LOOK: Partial<Record<string, string>> = {
 
 export function IrisPage({ config }: { config: AppConfig | null }) {
   const [gallery, setGallery] = useState<GalleryEpisode[] | null>(null);
+  const [kept, setKept] = useState(0);
   const [notes, setNotes] = useState<IrisFeedback[] | null>(null);
   const [styles, setStyles] = useState<PaintStyle[] | null>(null);
   const [styleMsg, setStyleMsg] = useState('');
@@ -84,7 +86,8 @@ export function IrisPage({ config }: { config: AppConfig | null }) {
       </section>
 
       <section className="sec potd-sec"><h2>Photo of the day</h2>
-        <PhotoOfTheDay />
+        <PhotoOfTheDay onKept={() => setKept(k => k + 1)} />
+        <MyPhotos config={config} refresh={kept} />
       </section>
 
       <section className="sec"><h2>Her styles</h2>
