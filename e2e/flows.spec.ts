@@ -269,6 +269,9 @@ test("Iris's card shows her sketch, perspective, and learns from feedback", asyn
   await card.getByRole('button', { name: /Watch her draw/ }).click();
   await expect(card.getByRole('button', { name: /Drawing/ })).toBeDisabled();
   await expect(card.locator('.persp')).not.toBeEmpty();
+  // Save the piece straight from her card, named after its title.
+  const [art] = await Promise.all([page.waitForEvent('download'), card.getByRole('button', { name: '⤓ Download' }).click()]);
+  expect(art.suggestedFilename()).toMatch(/^iris-[a-z0-9-]+\.(jpg|svg)$/);
   await card.getByRole('button', { name: /Got it right/ }).click();
   await card.getByRole('textbox').fill('Love the warm colours');
   await card.getByRole('button', { name: 'Tell Iris' }).click();

@@ -3,7 +3,7 @@ import { ARTIST, artSeed, artworkSvg, homeStylesFor, PAINT_STYLE_INFO, PAINT_STY
 import { speakAsIris } from '../speech/BrowserSpeech';
 import { api } from '../api/client';
 import { LivingSketch, useDrawReplay } from './LivingSketch';
-import { ArtViewer } from './ArtViewer';
+import { ArtViewer, downloadArt, type ViewedArt } from './ArtViewer';
 import { engineStyleOf, IrisPicture } from './IrisPicture';
 
 /** Her sketch is shown as an image, never as live markup, so even a checked SVG can't run anything. */
@@ -34,6 +34,13 @@ export function ArtistCard({ notes: a, speakers, conversationId, onAgain, onJump
   const [restyling, setRestyling] = useState(false);
   const style = paintStyleOf(a.artStyle);
   const styleName = PAINT_STYLE_INFO[style].name;
+  // The piece as the full-size viewer and the download see it: the AI picture when there is one.
+  const ai = (style === 'picture' && pictures) || !!engineStyleOf(style);
+  const viewed: ViewedArt | null = a.sketchSvg ? {
+    src: sketchSrc(artworkSvg(a)!), picture: ai ? { conversationId, version: a.version } : null,
+    title: a.artTitle, caption: a.caption, styleName, brief: style === 'picture' ? a.imagePrompt : undefined, where: `turn ${a.momentSeq}`,
+    engine: ai ? { sketch: a.sketchSvg, seed: artSeed(conversationId, a.version), brief: a.imagePrompt, style: engineStyleOf(style) ?? 'picture' } : undefined,
+  } : null;
   // Every style is a finished piece now (her Sketch is drawn in pencil on paper); her plain lines show while she redraws.
   const painted = true;
 
@@ -96,12 +103,9 @@ export function ArtistCard({ notes: a, speakers, conversationId, onAgain, onJump
               </div>
             : <div className="sketch-missing"><p className="hint">{a.error}</p><button className="btn sm" onClick={onAgain}>Sketch again</button></div>}
           <figcaption><span className="art-title">“{a.artTitle}”</span>Iris · {styleName.toLowerCase()} of turn {a.momentSeq}
-            {a.sketchSvg && <button className="link-btn full-size" onClick={() => setViewing(true)}>⤢ Full size</button>}</figcaption>
-          {viewing && a.sketchSvg && <ArtViewer onClose={() => setViewing(false)} art={{
-            src: sketchSrc(artworkSvg(a)!), picture: (style === 'picture' && pictures) || engineStyleOf(style) ? { conversationId, version: a.version } : null,
-            title: a.artTitle, caption: a.caption, styleName, brief: style === 'picture' ? a.imagePrompt : undefined, where: `turn ${a.momentSeq}`,
-            engine: (style === 'picture' && pictures) || engineStyleOf(style) ? { sketch: a.sketchSvg, seed: artSeed(conversationId, a.version), brief: a.imagePrompt, style: engineStyleOf(style) ?? 'picture' } : undefined,
-          }} />}
+            {viewed && <span className="art-actions"><button className="link-btn full-size" onClick={() => setViewing(true)}>⤢ Full size</button>
+              <button className="link-btn full-size" onClick={() => void downloadArt(viewed)}>⤓ Download</button></span>}</figcaption>
+          {viewing && viewed && <ArtViewer onClose={() => setViewing(false)} art={viewed} />}
           {a.imagePrompt && style === 'picture' && pictures && (
             <aside className="sketchbook" aria-label="From her sketchbook"><span className="tag">From her sketchbook</span><p>{a.imagePrompt}</p></aside>
           )}
