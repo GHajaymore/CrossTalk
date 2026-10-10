@@ -147,7 +147,12 @@ function ScoutSettings({ real }: { real: boolean }) {
   const [place, setPlace] = useState('');
   useEffect(() => { api.scout().then(v => { setData(v); setPlace(v.prefs.place); }).catch(() => {}); }, []);
   if (!data) return null;
-  const save = async (p: ScoutView['prefs']) => { setData({ ...data, prefs: p }); try { setData(await api.setScoutPrefs(p)); } catch { /* kept as typed */ } };
+  // A refused change (say, a private link) puts the old settings back and tells the editor why.
+  const save = async (p: ScoutView['prefs']) => {
+    const before = data.prefs;
+    setData({ ...data, prefs: p });
+    try { setData(await api.setScoutPrefs(p)); } catch (e) { setData({ ...data, prefs: before }); throw e; }
+  };
   const last = data.status.lastRun;
   return (
     <section className="sec"><h2>Topic Scout</h2>

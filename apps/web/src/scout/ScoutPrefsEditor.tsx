@@ -12,13 +12,17 @@ const toggle = <T,>(list: T[], v: T) => (list.includes(v) ? list.filter(x => x !
 export function ScoutPrefsEditor({ prefs, onChange, audience, allowPolitics = true }: Props) {
   const [interests, setInterests] = useState(prefs.interests);
   const [feed, setFeed] = useState('');
+  // Why a site wasn't added (e.g. a private link), shown right here wherever the editor is.
+  const [feedMsg, setFeedMsg] = useState<string | null>(null);
   useEffect(() => setInterests(prefs.interests), [prefs.interests]);
   const saveInterests = () => { if (interests.trim() !== prefs.interests) void onChange({ ...prefs, interests: interests.trim() }); };
   const addFeed = async () => {
     const url = feed.trim();
     if (!url || prefs.feeds.includes(url)) return;
-    await onChange({ ...prefs, feeds: [...prefs.feeds, url] });
-    setFeed('');
+    try {
+      await onChange({ ...prefs, feeds: [...prefs.feeds, url] });
+      setFeed(''); setFeedMsg(null);
+    } catch (e) { setFeedMsg((e as Error).message); }
   };
   const sensitive = prefs.cats.some(c => (SENSITIVE_CATS as readonly string[]).includes(c));
   return (
@@ -74,6 +78,7 @@ export function ScoutPrefsEditor({ prefs, onChange, audience, allowPolitics = tr
           <button className="btn sm" disabled={!feed.trim()} onClick={() => void addFeed()}>Add</button>
         </>}
       </div>
+      {feedMsg && <p className="hint" role="status">✕ {feedMsg}</p>}
       <p className="hint">Each region reads several outlets that lean different ways, and briefs cite more than one where they can.{prefs.sources.some(s => s === 'reddit' || s === 'social') ? ' Reddit, Bluesky and Mastodon are what people are saying: the brief reports them as opinions, never as facts.' : ''}</p>
       <div className="pref-row" role="group" aria-label="Rank by">
         <span className="tag">Rank by</span>

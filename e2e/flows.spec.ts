@@ -58,6 +58,7 @@ test('hosts from somewhere: the name bar, the style hint, and their first lines'
 
 test('language: a host from Mexico puts Spanish first; the episode greets in Spanish', async ({ page }) => {
   await page.goto('/#/create');
+  await page.locator('.hosts-fold > summary').click();
   await page.getByRole('region', { name: 'Speaker B' }).getByLabel('Home').selectOption('MX');
   const lang = page.getByLabel('Language');
   await expect(lang.locator('optgroup').first()).toHaveAttribute('label', 'For these hosts');
