@@ -151,7 +151,7 @@ function LatestWork({ g, pictures, onPlay }: { g: GalleryEpisode; pictures: bool
         </div>
       </div>
       {viewing && <ArtViewer onClose={() => setViewing(false)} art={{
-        src: art(g, a), picture: picture ? { conversationId: g.conversationId, version: a.version } : null,
+        src: art(g, a), picture: picture || engineStyleOf(a.style) ? { conversationId: g.conversationId, version: a.version } : null,
         title: a.title, caption: a.caption, styleName: PAINT_STYLE_INFO[a.style].name, where: `${episodeLabel(g.episode)} · ${g.title}`,
         brief: picture ? a.brief : undefined, engine: picture || engineStyleOf(a.style) ? engineOf(g, a) : undefined,
       }} />}
@@ -169,7 +169,7 @@ function GalleryCard({ g, pictures }: { g: GalleryEpisode; pictures: boolean }) 
     <li className="g-card">
       <button className="g-expand" onClick={() => setViewing(true)} aria-label={`Open “${shown.title}” full size`}>⤢</button>
       {viewing && <ArtViewer onClose={() => setViewing(false)} art={{
-        src: art(g, shown), picture: shown.style === 'picture' && pictures ? { conversationId: g.conversationId, version: shown.version } : null,
+        src: art(g, shown), picture: (shown.style === 'picture' && pictures) || engineStyleOf(shown.style) ? { conversationId: g.conversationId, version: shown.version } : null,
         title: shown.title, caption: shown.caption, styleName: PAINT_STYLE_INFO[shown.style].name, where: `${episodeLabel(g.episode)} · ${g.title}`,
         brief: shown.style === 'picture' && pictures ? shown.brief : undefined, engine: (shown.style === 'picture' && pictures) || engineStyleOf(shown.style) ? engineOf(g, shown) : undefined,
       }} />}

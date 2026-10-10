@@ -47,7 +47,7 @@ export function cloudflare(accountId: string, token: string): ImageService {
       const res = await f(`https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(accountId)}/ai/run/${CLOUDFLARE_MODEL}`, {
         method: 'POST', signal,
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: job.prompt.slice(0, 2048), steps: 6 }),
+        body: JSON.stringify({ prompt: job.prompt.slice(0, 2048), steps: 8 }),
       });
       let body: { success?: boolean; result?: { image?: string }; errors?: { message?: string }[] } = {};
       try { body = await res.json() as typeof body; } catch { /* not JSON */ }

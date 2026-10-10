@@ -40,8 +40,9 @@ export function usePolledImage(url: string | null, delayMs = 0, tries = 30, retr
   return img;
 }
 
-/** Where Iris's full painting of one drawing version lives. */
-export const pictureUrl = (conversationId: string, version: number) => `/api/iris/picture/${conversationId}/${version}.jpg`;
+/** Where Iris's AI picture of one drawing version lives: her photograph, or her dreamscape or sketch. */
+export const pictureUrl = (conversationId: string, version: number, style: 'picture' | 'dreamscape' | 'sketch' = 'picture') =>
+  `/api/iris/picture/${conversationId}/${version}.jpg${style === 'picture' ? '' : `?style=${style}`}`;
 
 /** Iris's finished painting for an episode's current drawing, if it's ready now (no waiting). */
 export async function readyPicture(v: { id: string; artist?: { artStyle: string; version: number } | null }): Promise<Blob | null> {

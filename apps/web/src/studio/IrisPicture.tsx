@@ -8,12 +8,13 @@ export const engineStyleOf = (style: string): EngineStyle | null => (style === '
 
 /**
  * Iris's picture of a drawing. With `engine`, she paints it right here, stroke by stroke, with her own
- * engine (from her sketch and brief: free, on this device, always there). When the free image service
- * has also made a full painting, it fades in over it. Without `engine`, her line art stands in.
+ * engine (from her sketch and brief: free, on this device, always there). When the AI image service
+ * has made the real thing in that style (a photograph, a dreamscape, a pencil sketch), it fades in
+ * over it. Without `engine`, her line art stands in.
  */
 export function IrisPicture({ conversationId, version, fallback, alt, className = '', engine }: { conversationId: string; version: number; fallback: string; alt: string; className?: string; engine?: EngineArt }) {
-  // Only a Picture can also have an AI photo; her Dreamscapes and Sketches are hers alone.
-  const p = usePolledImage(!engine?.style || engine.style === 'picture' ? pictureUrl(conversationId, version) : null);
+  // The AI image for her style (a photograph, a dreamscape or a sketch) fades in over what she paints here.
+  const p = usePolledImage(conversationId ? pictureUrl(conversationId, version, engine?.style ?? 'picture') : null);
   const cached = engine ? irisArtCached(engine) : null;
   const [painting, setPainting] = useState(!!engine && !cached);
   const canvas = useRef<HTMLCanvasElement>(null);

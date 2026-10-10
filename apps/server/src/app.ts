@@ -17,7 +17,7 @@ import { registerAccess, registerAdmin, registerWeb } from './access';
 import { exportJson, exportMarkdown, exportName } from './export';
 import { exportHtml } from './episodePage';
 import { cloudflare, pollinations, SerialQueue, type ImageService } from './freeImages';
-import { IrisPictures } from './pictures';
+import { IrisPictures, AI_STYLES, type AiStyle } from './pictures';
 import { Portraits } from './portraits';
 import { SAMPLE_HN, SAMPLE_NEWS, SAMPLE_RANKING, SAMPLE_REDDIT, SAMPLE_RSS, SAMPLE_SOCIAL, SAMPLE_TRENDS, SAMPLE_WIKIPEDIA } from './scout/samples';
 import { Scout, ScoutError } from './scout/scout';
@@ -330,8 +330,10 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
     : pollinations;
   const portraits = new Portraits(repo, f, undefined, undefined, imageQueue, imageService);
   const pictures = new IrisPictures(repo, f, imageQueue, undefined, undefined, imageService);
-  app.get<{ Params: { id: string; version: string } }>('/api/iris/picture/:id/:version', async (req, reply) => {
-    const found = cfg.irisPictures && safeId(req.params.id) ? pictures.check(req.params.id, Number(req.params.version.replace(/\.(jpg|png|webp)$/, '')) || 0) : null;
+  app.get<{ Params: { id: string; version: string }; Querystring: { style?: string } }>('/api/iris/picture/:id/:version', async (req, reply) => {
+    // Her photograph by default; ?style=dreamscape or ?style=sketch for those.
+    const style = (AI_STYLES as readonly string[]).includes(req.query.style ?? 'picture') ? (req.query.style ?? 'picture') as AiStyle : null;
+    const found = cfg.irisPictures && style && safeId(req.params.id) ? pictures.check(req.params.id, Number(req.params.version.replace(/\.(jpg|png|webp)$/, '')) || 0, style) : null;
     if (found === 'pending') return reply.status(202).header('Retry-After', '4').header('Cache-Control', 'no-store').send({ pending: true });
     if (!found) return reply.status(404).send({ error: 'No painting for this drawing; her line art is shown.' });
     return reply.header('Cache-Control', 'public, max-age=31536000, immutable').type(found.mime).send(found.data);
