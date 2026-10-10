@@ -50,7 +50,7 @@ export function picturePrompt(brief: { imagePrompt: string; caption: string }, t
     `A real-looking cinematic photograph: ${scene}`,
     // A host's home shows in the setting, not as a painting style.
     homes[0] ? `set somewhere with the feel of ${PLACE[homes[0]]}` : '',
-    'natural light, true-to-life colour and detail, shallow depth of field, 35mm, documentary style, one clear focal point',
+    'an editorial photograph with natural, motivated light, true-to-life colour and fine detail, shallow depth of field, 35mm, one clear focal point, considered composition',
     'a fictional scene with invented adults only: no children, no text, no words, no letters, no captions, no logos, no watermark, no real or famous people',
   ].filter(Boolean).join('. ');
 }
