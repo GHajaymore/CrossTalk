@@ -26,6 +26,19 @@ describe('is the backup really working?', () => {
     expect(t).not.toContain('K005SECRETVALUE');
   });
 
+  it('keeps just the reason from a Litestream log line, e.g. a used-up daily cap', () => {
+    const line = 'time=2026-10-10T11:48:54.780-04:00 level=ERROR msg="failed to run" error="cannot fetch generations: AccessDenied: Transaction cap exceeded, see the Caps & Alerts page to increase your cap\\n\\tstatus code: 403, request id: 04fb"';
+    expect(plainError(line, [])).toBe('cannot fetch generations: AccessDenied: Transaction cap exceeded, see the Caps & Alerts page to increase your cap');
+  });
+
+  it('a start that could not read the bucket says so, with the reason, and never checks it', async () => {
+    let asked = 0;
+    const w = new BackupWatch({ on: false, restore: 'failed', restoreError: 'level=ERROR error="AccessDenied: Transaction cap exceeded"', list: async () => { asked++; return OUT; }, secrets: [] });
+    expect(w.status).toMatchObject({ state: 'off', restore: 'failed', detail: 'AccessDenied: Transaction cap exceeded' });
+    await w.check();
+    expect(asked).toBe(0);
+  });
+
   it('starts as "checking", then says ok with the time, or failing with why', async () => {
     let next: () => Promise<string> = async () => OUT;
     const w = new BackupWatch({ on: true, restore: 'restored', list: () => next(), secrets: [], now: () => new Date('2026-10-09T21:41:00Z') });

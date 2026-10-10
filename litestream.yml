@@ -10,5 +10,9 @@ dbs:
         region: ${BACKUP_REGION}
         access-key-id: ${BACKUP_KEY_ID}
         secret-access-key: ${BACKUP_SECRET}
-        sync-interval: 10s
-        retention: 168h
+        # One upload a minute at most, and a fresh full copy every hour, so bringing the episodes back
+        # after a restart reads one copy plus under an hour of changes, not days of them. That keeps
+        # Backblaze's free daily request allowance (2,500) out of reach.
+        sync-interval: 1m
+        snapshot-interval: 1h
+        retention: 24h

@@ -17,6 +17,7 @@ function BackupSection({ config, refreshConfig }: { config: AppConfig; refreshCo
     try { await api.checkBackup(); } finally { setChecking(false); refreshConfig(); }
   };
   const state = config.storage === 'forgets' ? '✕ Not set up: everything is forgotten when the server restarts.'
+    : config.storage === 'paused' ? `⏸ Paused. The bucket couldn't be read when the server started${b.detail ? ` (${b.detail})` : ''}. Your saved episodes are still safe in it, but they aren't loaded, and nothing new is backed up until a restart reaches it.`
     : b.state === 'ok' ? `✓ Working. The bucket's newest copy is from ${b.lastAt ? ago(b.lastAt) : 'just now'}.`
     : b.state === 'failing' ? `✕ Not reaching the bucket${b.detail ? `: ${b.detail}` : '.'}`
     : '… Checking the bucket (about a minute after the server starts).';
@@ -24,12 +25,13 @@ function BackupSection({ config, refreshConfig }: { config: AppConfig; refreshCo
     <section className="sec"><h2>Backup</h2>
       <dl className="kv">
         <dt>Episodes and art</dt><dd>{state}</dd>
-        {b.restore && <><dt>This start</dt><dd>{b.restore === 'restored' ? 'Brought back from the bucket.' : 'The bucket had nothing to bring back, so it started empty.'}</dd></>}
+        {b.restore && <><dt>This start</dt><dd>{b.restore === 'restored' ? 'Brought back from the bucket.' : b.restore === 'failed' ? 'Couldn\u2019t read the bucket, so it started without the saved episodes.' : 'The bucket had nothing to bring back, so it started empty.'}</dd></>}
+        {config.storage === 'paused' && <><dt>What to do</dt><dd>If the reason mentions a cap, Backblaze's free daily allowance is used up; it resets at midnight UTC. Then restart: Render → crosstalk → Manual Deploy → Restart service. Your episodes come back.</dd></>}
         {b.checkedAt && <><dt>Last checked</dt><dd>{ago(b.checkedAt)}</dd></>}
       </dl>
       {config.storage === 'backed-up' && <div className="dock-row">
         <button className="btn sm" disabled={checking} onClick={check}>{checking ? 'Checking…' : 'Check backup now'}</button>
-        <span className="hint">Asks the bucket what it holds. Copies go up about 10 seconds after each change.</span>
+        <span className="hint">Asks the bucket what it holds. Copies go up within a minute of each change.</span>
       </div>}
     </section>
   );

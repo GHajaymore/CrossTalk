@@ -63,7 +63,7 @@ added; the existing `@` and `www` records stay as they are.
 
 CrossTalk keeps everything in one database: episodes, transcripts, **Iris's sketches**, her
 listener notes, the Scout's topics and the Control room's rules. With a backup set up, a small free
-tool (Litestream) copies every change to your own private cloud bucket within about 10 seconds.
+tool (Litestream) copies every change to your own private cloud bucket within about a minute.
 When Render wakes or redeploys the app, it copies everything back before it opens.
 
 **1. Make a free Backblaze B2 bucket** (10 GB free)
@@ -95,16 +95,22 @@ In Render's **Logs** you'll see `restoring snapshot` at start-up and `wal segmen
 make episodes.
 
 **Settings → Backup** asks the bucket itself and shows when its newest copy landed, or what
-Litestream says is wrong (it re-checks every 30 minutes; **Check backup now** asks at once). It also
+Litestream says is wrong (it re-checks every 3 hours; **Check backup now** asks at once). It also
 says whether this start brought episodes back or found the bucket empty. If copies aren't arriving,
 a warning shows on Create and Episodes too.
 
 Good to know:
 
 - If one of the five settings is missing, the app starts without a backup and says so in the logs.
-- If the bucket can't be reached at start-up, the app doesn't start empty (an empty start could
-  overwrite your backup). Render tries again, and the log says why.
-- Litestream keeps 7 days of history. Even busy use stays far inside the free 10 GB.
+- If the bucket can't be read at start-up, the app still opens, with **Backup paused** in a banner
+  and in Settings → Backup, and the reason. Your saved episodes stay safe in the bucket but aren't
+  loaded, and nothing is backed up in that run, so an empty start can never overwrite them. Once the
+  bucket is reachable again, use **Manual Deploy → Restart service** and they come back.
+- Backblaze's free plan allows about 2,500 downloads and 2,500 listings a day. If the reason says
+  **Transaction cap exceeded**, that allowance is used up; it resets at midnight UTC. CrossTalk keeps
+  well inside it: a fresh full copy every hour, changes sent once a minute at most, and the backup
+  check every 3 hours. Leave **Caps & Alerts** at $0 so it can never cost anything.
+- Litestream keeps 24 hours of history. Even busy use stays far inside the free 10 GB.
 - Rendered recordings (`tools/voice`) are files, not database rows, so they aren't backed up. Online,
   episodes play with the phone's own voices anyway.
 

@@ -45,7 +45,7 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
   const f = opts.fetch ?? fetch;
   // Whether the backup really reaches the bucket, not just whether it's set up.
   const backup = new BackupWatch({
-    on: cfg.backup, restore: cfg.backupRestore, list: opts.backupList ?? litestreamList(cfg.dbPath),
+    on: cfg.backup, restore: cfg.backupRestore, restoreError: cfg.backupRestoreError, list: opts.backupList ?? litestreamList(cfg.dbPath),
     secrets: [process.env.BACKUP_KEY_ID ?? '', process.env.BACKUP_SECRET ?? ''],
   });
 
@@ -193,7 +193,7 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
     usageToday: repo.usageOn(controller.today()),
     rules: rules(),
     admin: admin.state(cookie),
-    storage: !cfg.hosted ? 'local' : cfg.backup ? 'backed-up' : 'forgets',
+    storage: !cfg.hosted ? 'local' : cfg.backup ? 'backed-up' : cfg.backupRestore === 'failed' ? 'paused' : 'forgets',
     backup: backup.status,
     images: { service: imageService.name, portraits: portraits.health, pictures: pictures.health },
     portraits: cfg.portraits,

@@ -13,7 +13,19 @@ if [ -n "${BACKUP_BUCKET:-}" ]; then
   export BACKUP_REGION="${BACKUP_REGION:-us-east-1}"
   mkdir -p "$(dirname "$DB_PATH")"
   if [ ! -f "$DB_PATH" ]; then
-    bin/litestream restore -config litestream.yml -if-replica-exists "$DB_PATH"
+    err="$(mktemp)"
+    if ! bin/litestream restore -config litestream.yml -if-replica-exists "$DB_PATH" >"$err" 2>&1; then
+      # The bucket can't be read right now (e.g. its free daily cap is used up). Start anyway so the
+      # app stays up, but don't back up: an empty copy must never go up over the saved episodes.
+      cat "$err" >&2
+      rm -f "$DB_PATH" "$DB_PATH-wal" "$DB_PATH-shm"
+      export CROSSTALK_RESTORE=failed
+      CROSSTALK_RESTORE_ERROR="$( (grep -v '^$' "$err" || true) | tail -n 1 | cut -c1-400)"
+      export CROSSTALK_RESTORE_ERROR
+      echo "Backup: couldn't read the bucket, so starting without the saved episodes and without backing up. Restart once it's reachable." >&2
+      exec npm start
+    fi
+    cat "$err"
     # Tell the app how it started, so Settings can say "brought back" or "the bucket was empty".
     if [ -f "$DB_PATH" ]; then export CROSSTALK_RESTORE=restored; echo "Backup: brought the saved episodes back."; else export CROSSTALK_RESTORE=empty; echo "Backup: the bucket had nothing to bring back, starting empty." >&2; fi
   fi
