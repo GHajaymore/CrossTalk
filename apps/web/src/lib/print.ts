@@ -3,7 +3,7 @@
 // is posted or sold automatically, and the listing always says the art is AI-made.
 import { ARTIST, artworkSvg, episodeLabel, PAINT_STYLE_INFO, paintStyleOf, type ConversationView } from '@crosstalk/shared';
 import { loadImage, SAY, TAG, UI, wrap } from './poster';
-import { readyPicture } from './usePolledImage';
+import { bestArt } from './irisArt';
 
 const W = 2480, H = 3508, M = 220;
 const MAT = '#F3EEE4', INK = '#1E1C1A', SOFT = '#6E675E';
@@ -33,11 +33,11 @@ export async function makePrint(v: ConversationView): Promise<Blob> {
   }
   // Lay the words out first, so the whole piece can sit in the middle of the page.
   const artW = W - M * 2;
-  // Her full painting when it's ready; her line art (drawn at print size) otherwise.
-  const pic = await readyPicture(v);
-  const painted = pic ? await loadImage(URL.createObjectURL(pic)).catch(() => null) : null;
+  // Her AI picture when it's ready, otherwise the one she paints here; her line art (drawn at print size) for line styles.
+  const best = await bestArt(v).catch(() => null);
+  const painted = best ? await loadImage(best).catch(() => null) : null;
   const { img, h } = painted ? { img: painted, h: Math.round(artW * (painted.height / painted.width)) } : await artAt(svg, artW);
-  if (painted) URL.revokeObjectURL(painted.src);
+  if (painted?.src.startsWith('blob:')) URL.revokeObjectURL(painted.src);
   ctx.font = `italic 600 120px ${SAY}`; const title = wrap(ctx, `“${a.artTitle}”`, W - M * 2, 2);
   ctx.font = `italic 64px ${SAY}`; const quote = wrap(ctx, `“${a.caption}”`, W - M * 2.6, 3);
   ctx.font = `40px ${UI}`; const from = wrap(ctx, `CrossTalk ${episodeLabel(v.episode)} · ${v.topic}`, W - M * 2, 2);

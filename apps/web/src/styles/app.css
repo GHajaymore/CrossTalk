@@ -251,7 +251,7 @@ label.fld{display:grid;gap:6px}
 .kit-tile p{margin:0;font-size:13.5px;color:var(--muted);flex:1}
 .badge{align-self:flex-start;font-family:var(--f-tag);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--line);border-radius:4px;padding:1px 6px}
 .badge.ok{color:var(--b);border-color:rgba(var(--b-rgb),.45)}.badge.later{color:var(--muted)}
-.thumb{width:132px;border-radius:6px;border:1px solid var(--line);display:block}
+.thumb{width:132px;aspect-ratio:5/3;object-fit:cover;border-radius:6px;border:1px solid var(--line);display:block}
 .lib-row{display:flex;gap:14px;align-items:center;min-width:0}
 .learned{list-style:none;margin:0;padding:0;display:grid;gap:6px}
 .learned li{display:flex;gap:10px;align-items:baseline;justify-content:space-between;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:14px}

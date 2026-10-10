@@ -350,10 +350,14 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
     return reply.header('Cache-Control', 'no-store').type(made.img.mime).send(made.img.data);
   });
 
-  app.get<{ Params: { id: string; version: string }; Querystring: { style?: string } }>('/api/iris/picture/:id/:version', async (req, reply) => {
-    // Her photograph by default; ?style=dreamscape or ?style=sketch for those.
+  app.get<{ Params: { id: string; version: string }; Querystring: { style?: string; ready?: string } }>('/api/iris/picture/:id/:version', async (req, reply) => {
+    // Her photograph by default; ?style=dreamscape or ?style=sketch for those. ?ready=1 only answers
+    // with one already made (for thumbnails: browsing never spends the day's pictures).
     const style = (AI_STYLES as readonly string[]).includes(req.query.style ?? 'picture') ? (req.query.style ?? 'picture') as AiStyle : null;
-    const found = cfg.irisPictures && style && safeId(req.params.id) ? pictures.check(req.params.id, Number(req.params.version.replace(/\.(jpg|png|webp)$/, '')) || 0, style) : null;
+    const version = Number(req.params.version.replace(/\.(jpg|png|webp)$/, '')) || 0;
+    const found = !cfg.irisPictures || !style || !safeId(req.params.id) ? null
+      : req.query.ready === '1' ? repo.getPicture(req.params.id, version, style)
+      : pictures.check(req.params.id, version, style);
     if (found === 'pending') return reply.status(202).header('Retry-After', '4').header('Cache-Control', 'no-store').send({ pending: true });
     if (!found) return reply.status(404).send({ error: 'No painting for this drawing; her line art is shown.' });
     return reply.header('Cache-Control', 'public, max-age=31536000, immutable').type(found.mime).send(found.data);

@@ -5,6 +5,7 @@ import { api, type ConversationSummary } from '../api/client';
 import { sketchSrc } from '../studio/ArtistCard';
 import { Footer } from './Footer';
 import { RecapPanel } from './Recap';
+import { bestArtQueued } from '../lib/irisArt';
 
 const STATUS: Record<string, string> = { idle: 'ready', generating: 'recording', paused: 'paused', completed: 'finished', cancelled: 'stopped', failed: 'failed' };
 /** Stopped, failed or paused before the end. Hidden by default; still there to retry. */
@@ -112,7 +113,7 @@ function EpisodeRow({ c, depth, onChanged, toast }: { c: ConversationSummary; de
     <div className={`lib-item${depth ? ' branch' : ''}`}>
       <div className="lib-row">
         {c.artist?.sketchSvg
-          ? <img className="thumb" src={sketchSrc(artworkSvg(c.artist)!)} alt="" />
+          ? <Thumb c={c} />
           : <span className="thumb thumb-empty" aria-hidden="true">{depth ? '✂' : <small>{st === 'failed' ? 'No art: it didn\'t finish' : c.artist?.state === 'listening' ? 'Iris is drawing…' : c.artist?.state === 'failed' ? 'Iris couldn\'t draw this one' : st === 'completed' ? 'No art yet' : 'Art comes at the end'}</small>}</span>}
         <div style={{ minWidth: 0 }}>
           {mode === 'rename' ? (
@@ -160,4 +161,16 @@ function EpisodeRow({ c, depth, onChanged, toast }: { c: ConversationSummary; de
       )}
     </div>
   );
+}
+
+/** An episode's thumbnail: her AI picture if it's already made, else the one she paints here (one at a time); her line art meanwhile. */
+function Thumb({ c }: { c: ConversationSummary }) {
+  const lines = sketchSrc(artworkSvg(c.artist)!);
+  const [src, setSrc] = useState(lines);
+  useEffect(() => {
+    let live = true;
+    void bestArtQueued(c).then(url => { if (live && url) setSrc(url); });
+    return () => { live = false; };
+  }, [c.id, c.artist?.version, c.artist?.artStyle]); // eslint-disable-line react-hooks/exhaustive-deps
+  return <img className="thumb" src={src} alt="" />;
 }
