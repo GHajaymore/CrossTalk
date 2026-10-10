@@ -156,9 +156,12 @@ async function sketchLayer(svg: string): Promise<HTMLCanvasElement | null> {
 }
 
 export type PaintOptions = { animate?: boolean; signal?: AbortSignal; onDone?: () => void };
+/** Her three engine styles: a Picture (painted light), a Dreamscape (night sky and aurora), a Sketch (pencil on paper). */
+export type EngineStyle = 'picture' | 'dreamscape' | 'sketch';
+export type EngineInput = { sketch: string; seed: string; brief?: string; style?: EngineStyle };
 
 /** Paints one piece onto `canvas` (1024×614). Resolves when it's finished (or stopped). */
-export async function paintIris(canvas: HTMLCanvasElement, input: { sketch: string; seed: string; brief?: string }, o: PaintOptions = {}) {
+export async function paintIris(canvas: HTMLCanvasElement, input: EngineInput, o: PaintOptions = {}) {
   canvas.width = ART_W; canvas.height = ART_H;
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
@@ -260,6 +263,9 @@ export async function paintIris(canvas: HTMLCanvasElement, input: { sketch: stri
     return id > 0 && regionColour[id] !== pal.dark ? id : 0;
   };
   if (o.signal?.aborted) return;
+  const env: Env = { ctx, canvas, r, pal, mood, n, pick, sk, near, subjectPts, regionPts, regionColour, regionAt, o };
+  if (input.style === 'dreamscape') return paintDreamscape(env);
+  if (input.style === 'sketch') return paintSketch(env);
 
   // 1. The ground: a lit gradient and pools of light.
   const g = ctx.createLinearGradient(0, 0, 0, ART_H);
@@ -374,23 +380,248 @@ export async function paintIris(canvas: HTMLCanvasElement, input: { sketch: stri
     o.onDone?.();
   };
 
+  return runStrokes(strokes, finish, o);
+}
+
+/** Draws the strokes all at once, or (animated) a batch a frame so the piece appears in front of you, then finishes it. */
+function runStrokes(strokes: (() => void)[], finish: () => void, o: PaintOptions, perFrame = 90): Promise<void> {
   if (!o.animate) {
     for (const s of strokes) s();
     finish();
-    return;
+    return Promise.resolve();
   }
-  // Painted in front of you: a few hundred strokes a frame, about two seconds in all.
-  await new Promise<void>(resolve => {
+  return new Promise<void>(resolve => {
     let i = 0;
     const frame = () => {
       if (o.signal?.aborted) return resolve();
-      const end = Math.min(strokes.length, i + 90);
+      const end = Math.min(strokes.length, i + perFrame);
       for (; i < end; i++) strokes[i]();
       if (i < strokes.length) requestAnimationFrame(frame);
       else { finish(); resolve(); }
     };
     requestAnimationFrame(frame);
   });
+}
+
+type Env = {
+  ctx: CanvasRenderingContext2D; canvas: HTMLCanvasElement; r: () => number; pal: Palette; mood: Mood;
+  n: (x: number, y: number) => number; pick: <T>(xs: T[]) => T; sk: HTMLCanvasElement | null;
+  near: (x: number, y: number) => number; subjectPts: [number, number][]; regionPts: [number, number, number][];
+  regionColour: RGB[]; regionAt: (x: number, y: number) => number; o: PaintOptions;
+};
+
+/** The direction along her lines at a point (or null away from them), for strokes that trace a form. */
+function along(env: Env, x: number, y: number, prev: number) {
+  const gx = env.near(x + 3, y) - env.near(x - 3, y), gy = env.near(x, y + 3) - env.near(x, y - 3);
+  if (Math.abs(gx) + Math.abs(gy) < 0.02) return null;
+  let t = Math.atan2(gx, -gy);
+  if (!Number.isNaN(prev) && Math.cos(t - prev) < 0) t += Math.PI;
+  return t;
+}
+
+/**
+ * Dreamscape: a deep night sky with aurora ribbons and nebula clouds, stars, her subject glowing like
+ * a constellation, a band of luminous mist below, and sparks drifting upward.
+ */
+function paintDreamscape(env: Env): Promise<void> {
+  const { ctx, canvas, r, n, sk } = env;
+  // A dreamscape is always night: her brief's colours become the lights in it, made luminous.
+  const night: RGB = [6, 8, 22];
+  const glow = (c: RGB): RGB => {
+    const m = Math.max(...c, 1);
+    const bright: RGB = [c[0] / m * 255, c[1] / m * 255, c[2] / m * 255];
+    return mix(bright, [255, 255, 255], 0.12);
+  };
+  const lights = [...env.pal.mids, env.pal.accent].map(glow).filter(c => Math.max(...c) - Math.min(...c) > 60);
+  const auroraHues: RGB[] = lights.length ? lights : [[90, 255, 190], [120, 160, 255], [200, 120, 255]];
+  const pal = { ...env.pal, deep: night, dark: [14, 16, 40] as RGB, light: [236, 240, 255] as RGB, accent: auroraHues[0], mids: auroraHues };
+  const g = ctx.createLinearGradient(0, 0, 0, ART_H);
+  g.addColorStop(0, css(night)); g.addColorStop(0.55, css([18, 20, 52])); g.addColorStop(0.85, css(mix([30, 26, 70], auroraHues[auroraHues.length - 1], 0.2))); g.addColorStop(1, css([22, 24, 58]));
+  ctx.fillStyle = g; ctx.fillRect(0, 0, ART_W, ART_H);
+  // Nebula: soft clouds of colour.
+  ctx.globalCompositeOperation = 'screen';
+  for (let i = 0; i < 240; i++) {
+    const x = r() * ART_W, y = r() * ART_H * 0.75, rad = 40 + r() * 160;
+    const c = env.pick([...pal.mids, pal.accent]);
+    const b = ctx.createRadialGradient(x, y, 0, x, y, rad);
+    b.addColorStop(0, css(c, 0.035 + r() * 0.045)); b.addColorStop(1, css(c, 0));
+    ctx.fillStyle = b; ctx.fillRect(x - rad, y - rad, rad * 2, rad * 2);
+  }
+  ctx.globalCompositeOperation = 'source-over';
+  // Stars, a few of them bright with glints.
+  for (let i = 0; i < 420; i++) {
+    const x = r() * ART_W, y = r() * ART_H * 0.8;
+    ctx.fillStyle = css(pal.light, 0.15 + r() * 0.6);
+    ctx.beginPath(); ctx.arc(x, y, r() * 1.2, 0, Math.PI * 2); ctx.fill();
+  }
+
+  const strokes: (() => void)[] = [];
+  // Aurora: ribbons of light, each a curtain of fine vertical rays.
+  const ribbons = 3 + Math.floor(r() * 2);
+  for (let k = 0; k < ribbons; k++) {
+    const base = ART_H * (0.16 + r() * 0.3), amp = 30 + r() * 60, freq = 0.004 + r() * 0.004, phase = r() * 6;
+    const c1 = env.pick([pal.accent, ...pal.mids]), c2 = mix(pal.light, c1, 0.35);
+    for (let x = -20; x < ART_W + 20; x += 3) {
+      strokes.push(() => {
+        const y = base + Math.sin(x * freq + phase) * amp + (n(x * 0.01, k * 7) - 0.5) * 40;
+        const len = 50 + n(x * 0.006 + k * 3, 3) * 170;
+        const grad = ctx.createLinearGradient(0, y, 0, y - len);
+        grad.addColorStop(0, css(c1, 0.16)); grad.addColorStop(0.3, css(c2, 0.09)); grad.addColorStop(1, css(c2, 0));
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.strokeStyle = grad; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + (n(x * 0.02, k) - 0.5) * 12, y - len); ctx.stroke();
+        ctx.globalCompositeOperation = 'source-over';
+      });
+    }
+  }
+  // Her subject traced in light, like a constellation being drawn.
+  for (let i = 0; i < Math.min(1400, env.subjectPts.length * 2); i++) {
+    const [sx, sy] = env.pick(env.subjectPts);
+    strokes.push(() => {
+      let x = sx, y = sy, prev = NaN;
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.strokeStyle = css(mix(pal.light, pal.accent, r() * 0.5), 0.08 + r() * 0.16);
+      ctx.lineWidth = 0.6 + r() * 1.6;
+      ctx.beginPath(); ctx.moveTo(x, y);
+      for (let s = 0; s < 8 + r() * 10; s++) {
+        const a = along(env, x, y, prev) ?? n(x * 0.003, y * 0.003) * Math.PI * 4;
+        prev = a; x += Math.cos(a) * 2; y += Math.sin(a) * 2; ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+      ctx.globalCompositeOperation = 'source-over';
+    });
+  }
+  // Sparks drifting up.
+  for (let i = 0; i < 70; i++) {
+    const x = r() * ART_W, y = ART_H * (0.45 + r() * 0.55), len = 2 + r() * 7;
+    strokes.push(() => {
+      const gr = ctx.createLinearGradient(0, y, 0, y - len);
+      gr.addColorStop(0, css(pal.light, 0.5)); gr.addColorStop(1, css(pal.light, 0));
+      ctx.strokeStyle = gr; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + (r() - 0.5) * 6, y - len); ctx.stroke();
+    });
+  }
+  // Shuffled a little, so sky, subject and sparks come in together.
+  for (let i = strokes.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); if (r() < 0.5) [strokes[i], strokes[j]] = [strokes[j], strokes[i]]; }
+
+  const finish = () => {
+    if (sk) {
+      ctx.globalCompositeOperation = 'screen';
+      ctx.globalAlpha = 0.6; ctx.drawImage(tint(softened(sk, 16), pal.accent), 0, 0);
+      ctx.globalAlpha = 0.75; ctx.drawImage(tint(softened(sk, 6), pal.light), 0, 0);
+      ctx.globalAlpha = 0.85; ctx.drawImage(tint(sk, mix(pal.light, [255, 255, 255], 0.5)), 0, 0);
+      ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+    }
+    // Luminous mist along the bottom.
+    const mist = ctx.createLinearGradient(0, ART_H * 0.62, 0, ART_H);
+    mist.addColorStop(0, css(pal.light, 0)); mist.addColorStop(0.6, css(mix(pal.light, pal.accent, 0.4), 0.22)); mist.addColorStop(1, css(mix(pal.light, pal.accent, 0.5), 0.32));
+    ctx.fillStyle = mist; ctx.fillRect(0, 0, ART_W, ART_H);
+    ctx.globalCompositeOperation = 'screen'; ctx.globalAlpha = 0.4;
+    ctx.drawImage(softened(canvas, 12), 0, 0);
+    ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+    const v = ctx.createRadialGradient(ART_W / 2, ART_H / 2, ART_H * 0.3, ART_W / 2, ART_H / 2, ART_W * 0.72);
+    v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, css(night, 0.7));
+    ctx.fillStyle = v; ctx.fillRect(0, 0, ART_W, ART_H);
+    grain(ctx, r);
+    env.o.onDone?.();
+  };
+  return runStrokes(strokes, finish, { ...env.o }, 120);
+}
+
+/**
+ * Sketch: warm paper, faint construction lines, her subject drawn in pencil with several loose
+ * passes, cross-hatching in the shapes she closed, a touch of watercolour, and a soft smudge of shadow.
+ */
+function paintSketch(env: Env): Promise<void> {
+  const { ctx, r, pal, sk } = env;
+  const paper: RGB = mix([239, 231, 216], pal.light, 0.15);
+  const graphite: RGB = [52, 48, 46];
+  ctx.fillStyle = css(paper); ctx.fillRect(0, 0, ART_W, ART_H);
+  // Paper: a slow tone across the sheet and its fibres.
+  const tone = ctx.createRadialGradient(ART_W * 0.45, ART_H * 0.45, ART_H * 0.2, ART_W / 2, ART_H / 2, ART_W * 0.75);
+  tone.addColorStop(0, 'rgba(255,255,255,0.25)'); tone.addColorStop(1, 'rgba(120,100,70,0.22)');
+  ctx.fillStyle = tone; ctx.fillRect(0, 0, ART_W, ART_H);
+  for (let i = 0; i < 500; i++) {
+    const x = r() * ART_W, y = r() * ART_H, a = r() * Math.PI, l = 4 + r() * 14;
+    ctx.strokeStyle = `rgba(120,105,80,${(0.04 + r() * 0.06).toFixed(3)})`; ctx.lineWidth = 0.5;
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x + Math.cos(a) * l * 0.5 + (r() - 0.5) * 3, y + Math.sin(a) * l * 0.5, x + Math.cos(a) * l, y + Math.sin(a) * l); ctx.stroke();
+  }
+
+  const strokes: (() => void)[] = [];
+  // Construction lines first, faint, the way a drawing is planned.
+  for (let i = 0; i < 7; i++) {
+    const [x, y] = env.subjectPts.length ? env.pick(env.subjectPts) : [r() * ART_W, r() * ART_H];
+    const a = env.pick([0, Math.PI / 2, (r() - 0.5) * 0.6]), l = 200 + r() * 400;
+    strokes.push(() => {
+      ctx.strokeStyle = css(graphite, 0.07); ctx.lineWidth = 0.7;
+      ctx.beginPath(); ctx.moveTo(x - Math.cos(a) * l / 2, y - Math.sin(a) * l / 2); ctx.lineTo(x + Math.cos(a) * l / 2, y + Math.sin(a) * l / 2); ctx.stroke();
+    });
+  }
+  // Loose pencil strokes feeling out her lines.
+  for (let i = 0; i < Math.min(2200, env.subjectPts.length * 3); i++) {
+    const [sx, sy] = env.pick(env.subjectPts);
+    strokes.push(() => {
+      let x = sx + (r() - 0.5) * 3, y = sy + (r() - 0.5) * 3, prev = NaN;
+      ctx.strokeStyle = css(graphite, 0.1 + r() * 0.22); ctx.lineWidth = 0.5 + r() * 0.9;
+      ctx.beginPath(); ctx.moveTo(x, y);
+      for (let s = 0; s < 5 + r() * 9; s++) {
+        const a = along(env, x, y, prev) ?? r() * Math.PI * 2;
+        prev = a; x += Math.cos(a) * 2.2; y += Math.sin(a) * 2.2; ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    });
+  }
+  // Cross-hatching inside the shapes she closed (a few of them), and a little watercolour in some.
+  const ids = [...new Set(env.regionPts.map(p => p[2]))].slice(0, 8);
+  ids.forEach((id, k) => {
+    const pts = env.regionPts.filter(p => p[2] === id);
+    const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+    const x0 = Math.min(...xs) - 8, x1 = Math.max(...xs) + 8, y0 = Math.min(...ys) - 8, y1 = Math.max(...ys) + 8;
+    const slope = k % 2 ? 1 : -1, gap = 5 + r() * 3;
+    if (k % 3 === 2) {
+      // A watercolour wash: soft, uneven, a little darker at the edges where pigment gathers.
+      const c = mix(env.regionColour[id], paper, 0.35);
+      for (const [x, y] of pts.slice(0, 160)) strokes.push(() => {
+        const rad = 14 + r() * 18;
+        const b = ctx.createRadialGradient(x, y, 0, x, y, rad);
+        b.addColorStop(0, css(c, 0.045)); b.addColorStop(1, css(c, 0));
+        ctx.globalCompositeOperation = 'multiply';
+        ctx.fillStyle = b; ctx.fillRect(x - rad, y - rad, rad * 2, rad * 2);
+        ctx.globalCompositeOperation = 'source-over';
+      });
+      return;
+    }
+    for (let c = x0 - (y1 - y0); c < x1 + (y1 - y0); c += gap) strokes.push(() => {
+      ctx.strokeStyle = css(graphite, 0.18 + r() * 0.12); ctx.lineWidth = 0.6;
+      ctx.beginPath();
+      let drawing = false;
+      for (let y = y0; y <= y1; y += 2) {
+        const x = c + (y - y0) * slope;
+        const inside = env.regionAt(x, y) === id;
+        if (inside && !drawing) { ctx.moveTo(x + (r() - 0.5), y); drawing = true; }
+        else if (inside) ctx.lineTo(x + (r() - 0.5) * 0.8, y);
+        else drawing = false;
+      }
+      ctx.stroke();
+    });
+  });
+
+  const finish = () => {
+    if (sk) {
+      // A soft smudge of shadow, then her line in pencil: a few passes, never quite on top of each other.
+      ctx.globalCompositeOperation = 'multiply';
+      ctx.globalAlpha = 0.18; ctx.drawImage(tint(softened(sk, 7), graphite), 4, 5);
+      ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+      const ink = tint(sk, graphite);
+      for (const [dx, dy, a] of [[0, 0, 0.55], [1.2, -0.8, 0.3], [-0.9, 1, 0.25]] as const) {
+        ctx.globalAlpha = a; ctx.drawImage(ink, dx, dy);
+      }
+      ctx.globalAlpha = 1;
+    }
+    grain(ctx, r);
+    env.o.onDone?.();
+  };
+  return runStrokes(strokes, finish, env.o, 110);
 }
 
 /** A layer's shapes, recoloured in one colour (keeping their alpha). */
@@ -424,17 +655,16 @@ function grain(ctx: CanvasRenderingContext2D, r: () => number) {
 }
 
 const done = new Map<string, string>();
-/** A finished piece as an image, painted once per seed and kept for this visit. */
-export async function irisArtUrl(input: { sketch: string; seed: string; brief?: string }): Promise<string> {
-  const key = irisArtKey(input);
-  const hit = done.get(key);
+export const irisArtKey = (input: EngineInput) => `${input.style ?? 'picture'}|${input.seed}|${hashText(input.brief ?? '')}|${hashText(input.sketch)}`;
+/** A finished piece as an image, painted once per seed and style and kept for this visit. */
+export async function irisArtUrl(input: EngineInput): Promise<string> {
+  const hit = done.get(irisArtKey(input));
   if (hit) return hit;
   const c = document.createElement('canvas');
   await paintIris(c, input);
   const url = c.toDataURL('image/jpeg', 0.9);
-  done.set(key, url);
+  done.set(irisArtKey(input), url);
   return url;
 }
-export const irisArtKey = (input: { sketch: string; seed: string; brief?: string }) => `${input.seed}|${hashText(input.brief ?? '')}|${hashText(input.sketch)}`;
-export const irisArtCached = (input: { sketch: string; seed: string; brief?: string }) => done.get(irisArtKey(input)) ?? null;
-export const rememberIrisArt = (input: { sketch: string; seed: string; brief?: string }, url: string) => { done.set(irisArtKey(input), url); };
+export const irisArtCached = (input: EngineInput) => done.get(irisArtKey(input)) ?? null;
+export const rememberIrisArt = (input: EngineInput, url: string) => { done.set(irisArtKey(input), url); };

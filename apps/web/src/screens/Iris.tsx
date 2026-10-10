@@ -5,7 +5,7 @@ import { api } from '../api/client';
 import { sketchSrc } from '../studio/ArtistCard';
 import { Footer } from './Footer';
 import { ArtViewer } from '../studio/ArtViewer';
-import { IrisPicture } from '../studio/IrisPicture';
+import { engineStyleOf, IrisPicture } from '../studio/IrisPicture';
 import { Slideshow } from '../studio/Slideshow';
 
 // A tiny scene to show each home style: two figures at a table under a lamp.
@@ -13,7 +13,7 @@ const SAMPLE = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 360"><g
 
 const art = (g: GalleryEpisode, a: Artwork) => sketchSrc(paintSvg(a.svg, a.style, artSeed(g.conversationId, a.version)));
 /** What her own engine paints a Picture from. */
-const engineOf = (g: GalleryEpisode, a: Artwork) => ({ sketch: a.svg, seed: artSeed(g.conversationId, a.version), brief: a.brief });
+const engineOf = (g: GalleryEpisode, a: Artwork) => ({ sketch: a.svg, seed: artSeed(g.conversationId, a.version), brief: a.brief, style: engineStyleOf(a.style) ?? 'picture' as const });
 
 /** Iris, the Artist: everything she has drawn, and everything she has learned from you. */
 export function IrisPage({ config }: { config: AppConfig | null }) {
@@ -135,7 +135,9 @@ function LatestWork({ g, pictures, onPlay }: { g: GalleryEpisode; pictures: bool
       <button className="art-open lw-art" onClick={() => setViewing(true)} aria-label={`Open “${a.title}” full size`}>
         {picture
           ? <IrisPicture conversationId={g.conversationId} version={a.version} fallback={art(g, a)} alt={`Iris's picture: ${a.title}`} engine={engineOf(g, a)} />
-          : <img src={art(g, a)} alt={`Iris's ${PAINT_STYLE_INFO[a.style].name.toLowerCase()}: ${a.title}`} />}
+          : engineStyleOf(a.style)
+            ? <IrisPicture conversationId={g.conversationId} version={a.version} fallback={art(g, a)} alt={`Iris's ${PAINT_STYLE_INFO[a.style].name.toLowerCase()}: ${a.title}`} engine={engineOf(g, a)} />
+            : <img src={art(g, a)} alt={`Iris's ${PAINT_STYLE_INFO[a.style].name.toLowerCase()}: ${a.title}`} />}
         <span className="expand-hint" aria-hidden="true">⤢</span>
       </button>
       <div className="lw-text">
@@ -151,7 +153,7 @@ function LatestWork({ g, pictures, onPlay }: { g: GalleryEpisode; pictures: bool
       {viewing && <ArtViewer onClose={() => setViewing(false)} art={{
         src: art(g, a), picture: picture ? { conversationId: g.conversationId, version: a.version } : null,
         title: a.title, caption: a.caption, styleName: PAINT_STYLE_INFO[a.style].name, where: `${episodeLabel(g.episode)} · ${g.title}`,
-        brief: picture ? a.brief : undefined, engine: picture ? engineOf(g, a) : undefined,
+        brief: picture ? a.brief : undefined, engine: picture || engineStyleOf(a.style) ? engineOf(g, a) : undefined,
       }} />}
     </section>
   );
@@ -169,12 +171,14 @@ function GalleryCard({ g, pictures }: { g: GalleryEpisode; pictures: boolean }) 
       {viewing && <ArtViewer onClose={() => setViewing(false)} art={{
         src: art(g, shown), picture: shown.style === 'picture' && pictures ? { conversationId: g.conversationId, version: shown.version } : null,
         title: shown.title, caption: shown.caption, styleName: PAINT_STYLE_INFO[shown.style].name, where: `${episodeLabel(g.episode)} · ${g.title}`,
-        brief: shown.style === 'picture' && pictures ? shown.brief : undefined, engine: shown.style === 'picture' && pictures ? engineOf(g, shown) : undefined,
+        brief: shown.style === 'picture' && pictures ? shown.brief : undefined, engine: (shown.style === 'picture' && pictures) || engineStyleOf(shown.style) ? engineOf(g, shown) : undefined,
       }} />}
       <a className="g-link" href={`#/studio/${g.conversationId}/read`}>
         {shown.style === 'picture' && pictures
           ? <IrisPicture key={shown.id} conversationId={g.conversationId} version={shown.version} fallback={art(g, shown)} alt={`Iris's picture: ${shown.title}`} engine={engineOf(g, shown)} />
-          : <img src={art(g, shown)} alt={`Iris's ${PAINT_STYLE_INFO[shown.style].name.toLowerCase()}: ${shown.title}`} />}
+          : engineStyleOf(shown.style)
+            ? <IrisPicture key={shown.id} conversationId={g.conversationId} version={shown.version} fallback={art(g, shown)} alt={`Iris's ${PAINT_STYLE_INFO[shown.style].name.toLowerCase()}: ${shown.title}`} engine={engineOf(g, shown)} />
+            : <img src={art(g, shown)} alt={`Iris's ${PAINT_STYLE_INFO[shown.style].name.toLowerCase()}: ${shown.title}`} />}
         <span className="g-title">“{shown.title}”</span>
         <span className="g-quote">“{shown.caption}”</span>
         <span className="tag">{episodeLabel(g.episode)}{g.round > 1 ? ` · round ${g.round}` : ''} · turn {shown.momentSeq} · {label(shown)}</span>

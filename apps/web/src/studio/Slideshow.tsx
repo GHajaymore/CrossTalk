@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ARTIST, artSeed, episodeLabel, PAINT_STYLE_INFO, paintSvg, type Artwork, type GalleryEpisode } from '@crosstalk/shared';
 import { musicPlan, playMusic } from '../lib/clipMusic';
 import { sketchSrc } from './ArtistCard';
-import { IrisPicture } from './IrisPicture';
+import { engineStyleOf, IrisPicture } from './IrisPicture';
 
 const SLIDE_S = 8;
 
@@ -74,6 +74,8 @@ export function Slideshow({ gallery, onClose, pictures = false }: { gallery: Gal
           const cls = `ss-art${k === i ? ' on' : ''}${paused ? ' still' : ''}`;
           const alt = k === i ? `${ARTIST.name}'s ${PAINT_STYLE_INFO[x.a.style].name.toLowerCase()}: ${x.a.title}` : '';
           // Her full painting where there is one (fetched only once its slide is near).
+          const own = engineStyleOf(x.a.style);
+          if (own && Math.abs(k - i) <= 1) return <span key={x.a.id} className={cls} aria-hidden={k !== i}><IrisPicture conversationId={x.g.conversationId} version={x.a.version} fallback={x.src} alt={alt} engine={{ sketch: x.a.svg, seed: artSeed(x.g.conversationId, x.a.version), brief: x.a.brief, style: own }} /></span>;
           return x.a.style === 'picture' && pictures && Math.abs(k - i) <= 1
             ? <span key={x.a.id} className={cls} aria-hidden={k !== i}><IrisPicture conversationId={x.g.conversationId} version={x.a.version} fallback={x.src} alt={alt} engine={{ sketch: x.a.svg, seed: artSeed(x.g.conversationId, x.a.version), brief: x.a.brief }} /></span>
             : <img key={x.a.id} src={x.src} alt={alt} className={cls} aria-hidden={k !== i} />;
