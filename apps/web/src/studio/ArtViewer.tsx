@@ -33,7 +33,6 @@ export function ArtViewer({ art, onClose }: { art: ViewedArt; onClose: () => voi
     return () => { window.removeEventListener('keydown', onKey); before?.focus?.(); };
   }, []);
   const alt = `${ARTIST.name}'s ${art.styleName.toLowerCase()}: ${art.title}`;
-  const file = `iris-${art.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'art'}`;
   // Drawn at the top of the page, so nothing around the art it was opened from can shape it.
   return createPortal(
     <div className="art-viewer" role="dialog" aria-modal="true" aria-label={`${art.title}, full size`} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
@@ -48,9 +47,7 @@ export function ArtViewer({ art, onClose }: { art: ViewedArt; onClose: () => voi
           {art.caption && <p className="av-quote">“{art.caption}”</p>}
           {art.brief && <p className="av-brief"><span className="tag">From her sketchbook</span> {art.brief}</p>}
           <div className="dock-row">
-            {!art.picture && !art.engine && <a className="btn sm" href={art.src} download={`${file}.svg`}>Download</a>}
-            {!art.picture && art.engine && <button className="btn sm" onClick={() => { const u = irisArtCached(art.engine!); if (u) save(u, `${file}.jpg`); }}>Download</button>}
-            {art.picture && <button className="btn sm" onClick={() => void downloadPicture(art, file)}>Download picture</button>}
+            <button className="btn sm" onClick={() => void downloadArt(art)}>{art.picture ? 'Download picture' : 'Download'}</button>
             <button ref={close} className="btn sm ghost" onClick={onClose}>Close</button>
           </div>
         </figcaption>
@@ -60,15 +57,18 @@ export function ArtViewer({ art, onClose }: { art: ViewedArt; onClose: () => voi
   );
 }
 
-/** The full painting if the image service made one, otherwise the one she painted here. */
-async function downloadPicture(art: ViewedArt, file: string) {
+/** Saves the piece at full size: the AI picture if the image service made one, otherwise the one she painted here, or her line art. */
+export async function downloadArt(art: ViewedArt) {
+  const file = `iris-${art.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'art'}`;
+  if (!art.picture && !art.engine) { save(art.src, `${file}.svg`); return; }
   let href: string | null = null;
-  try {
+  if (art.picture) try {
     const r = await fetch(pictureUrl(art.picture!.conversationId, art.picture!.version, art.engine?.style ?? 'picture'));
     if (r.status === 200 && (r.headers.get('content-type') ?? '').startsWith('image/')) href = URL.createObjectURL(await r.blob());
   } catch { /* offline: use hers */ }
   href ??= art.engine ? irisArtCached(art.engine) : null;
-  if (href) save(href, `${file}.jpg`);
+  // Still being painted: her line art, so the button always gives something.
+  if (href) save(href, `${file}.jpg`); else save(art.src, `${file}.svg`);
 }
 
 function save(href: string, name: string) {
