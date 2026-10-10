@@ -146,6 +146,9 @@ test('Iris gallery as an exhibition: play, step with the keys, pause, close with
   await expect(page.getByRole('dialog', { name: /piece 2 of/ })).toBeVisible();
   await page.getByRole('button', { name: '❚❚ Pause' }).click();
   await expect(page.getByRole('button', { name: '▶ Play', exact: true })).toBeVisible();
+  // Keep the piece on show: the download is named after it.
+  const [art] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: '⤓ Download' }).click()]);
+  expect(art.suggestedFilename()).toMatch(/^iris-[a-z0-9-]+\.(jpg|svg)$/);
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toHaveCount(0);
 });

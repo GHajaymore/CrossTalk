@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ARTIST, artSeed, episodeLabel, PAINT_STYLE_INFO, paintSvg, type Artwork, type GalleryEpisode } from '@crosstalk/shared';
 import { musicPlan, playMusic } from '../lib/clipMusic';
 import { sketchSrc } from './ArtistCard';
+import { downloadArt } from './ArtViewer';
 import { engineStyleOf, IrisPicture } from './IrisPicture';
 
 const SLIDE_S = 8;
@@ -95,6 +96,14 @@ export function Slideshow({ gallery, onClose, pictures = false }: { gallery: Gal
         {typeof document.documentElement.requestFullscreen === 'function' && (
           <button className="btn sm ghost" onClick={() => (document.fullscreenElement ? document.exitFullscreen() : box.current?.requestFullscreen())?.catch(() => {})}>⛶ Full screen</button>
         )}
+        <button className="btn sm ghost" onClick={() => {
+          const own = engineStyleOf(s.a.style), ai = !!own || (s.a.style === 'picture' && pictures);
+          void downloadArt({
+            src: s.src, title: s.a.title, caption: s.a.caption, styleName: PAINT_STYLE_INFO[s.a.style].name,
+            picture: ai ? { conversationId: s.g.conversationId, version: s.a.version } : null,
+            engine: ai ? { sketch: s.a.svg, seed: artSeed(s.g.conversationId, s.a.version), brief: s.a.brief, style: own ?? 'picture' } : undefined,
+          });
+        }}>⤓ Download</button>
         <span className="tag ss-count">{i + 1} / {n}</span>
         <button ref={closeBtn} className="btn sm" onClick={onClose}>Close</button>
       </div>
