@@ -3,6 +3,18 @@ import { draft, fastMock, finishedEpisode } from './helpers';
 
 test.beforeEach(async ({ request }) => { await fastMock(request); });
 
+test('topic ideas: pick a theme, then a question, or be surprised', async ({ page }) => {
+  await page.goto('/#/create');
+  const themes = page.getByRole('group', { name: 'Topic themes' });
+  await themes.getByRole('button', { name: /Nature & outdoors/ }).click();
+  const q = page.getByRole('group', { name: 'Nature & outdoors topics' }).getByRole('button', { name: 'Should popular hiking trails need a permit?' });
+  await q.click();
+  await expect(page.locator('#topic')).toHaveValue('Should popular hiking trails need a permit?');
+  await expect(q).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('button', { name: /Surprise me/ }).click();
+  await expect(page.locator('#topic')).not.toHaveValue('Should popular hiking trails need a permit?');
+});
+
 test('length: a Short episode is 8 turns, chosen by listening time', async ({ page }) => {
   await page.goto('/#/create');
   const len = page.getByRole('group', { name: 'Length' });

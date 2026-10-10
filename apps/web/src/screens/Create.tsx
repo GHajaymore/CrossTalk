@@ -11,6 +11,7 @@ import { BriefBox } from '../scout/BriefBox';
 import { TodayTray } from '../scout/TodayTray';
 import { StudioSet } from '../studio/StudioSet';
 import { Footer } from './Footer';
+import { TopicIdeas } from './TopicIdeas';
 import { WhatsNew } from './WhatsNew';
 
 const seatDraft = (persona: PersonaKey): SpeakerDraft => ({ name: '', autoName: true, persona, autoPersona: true, lens: '', role: '', autoRole: true });
@@ -198,9 +199,7 @@ export function Create({ config, go, refreshConfig, toast }: Props) {
         {blockedWord && <p className="hint blocked-hint" role="alert">✕ “{blockedWord}” is on the Control room's blocked list, so this topic can't go on air.</p>}
         {kidsBlocked && <p className="hint">Politics and scandals aren't used for Kids episodes, so this topic's brief is off. Pick another topic or audience.</p>}
         {scoutTopic && !briefOn && !kidsBlocked && <p className="hint">You changed the question, so the Scout's brief won't be used. <button className="link-btn" onClick={() => setTopic(scoutTopic.question)}>Put it back</button></p>}
-        <div className="chips" role="group" aria-label="Preset topics">
-          {PRESETS.map(p => <button key={p} className="chip" aria-pressed={topic === p} onClick={() => setTopic(p)}>{p}</button>)}
-        </div>
+        <TopicIdeas topic={topic} onPick={setTopic} />
       </div>
 
       <div>
