@@ -183,6 +183,7 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
       clock={{ seconds: spokenSeconds(view.turns.map(t => t.text)), running: st === 'generating' }}
       iris={view.artist?.state === 'listening' ? { text: 'Iris · sketching…', active: true }
         : view.artist?.state === 'done' ? { text: 'Iris · notes ready', active: false }
+        : view.artist?.state === 'failed' ? { text: 'Iris · couldn\u2019t draw', active: false }
         : st === 'generating' ? { text: 'Iris · listening', active: true } : { text: 'Iris · in the booth', active: false }}
     />
   );
@@ -301,6 +302,14 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
           <TurnRail turns={view.turns} liveSeq={live?.seq ?? null} failedSeq={failedSeq} speakers={sp} length={view.length}
             branchSeq={view.branchSeq} cueSeqs={view.interventions.filter(c => c.status === 'queued').map(c => c.appliesBeforeSeq)} />
           <MindMeter turns={view.turns} speakers={sp} compact you={you} done={st === 'completed'} onYou={setYou} />
+          {/* Never a silent miss: if Iris couldn't draw this one, say why here, with one tap to ask again. */}
+          {st === 'completed' && view.artist?.state === 'failed' && (
+            <div className="banner iris-miss" role="status">
+              <span><b>Iris couldn't draw this episode.</b> {view.artist.error}</span>
+              <button className="btn sm" onClick={() => { api.askIris(id).catch(e => toast((e as Error).message)); }}>Ask Iris again</button>
+            </div>
+          )}
+          {st === 'completed' && view.artist?.state === 'listening' && <p className="hint iris-miss">Iris is listening back and drawing; her art appears here and on Read in a moment.</p>}
         </>}
         <div className="status-line" aria-live="polite">
           <span><b>{statusWord}</b>{view.run?.pauseRequested ? ' · pausing after this turn' : ''}</span>
