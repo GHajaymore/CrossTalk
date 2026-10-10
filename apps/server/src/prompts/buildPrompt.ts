@@ -19,7 +19,7 @@ const OBJECTIVES: Record<string, string> = {
   Curveball: 'Bring in an angle neither of you has touched yet.',
   'Common ground': 'Say plainly where the two of you actually agree.',
   'Still unsure': 'Say what is still genuinely open or uncertain for you.',
-  Takeaway: 'Give the listener one practical takeaway, in a sentence or two.',
+  Takeaway: 'Give the listener one practical takeaway, in a sentence or two, said the way a person would say it (don\'t start with a label like "Takeaway:").',
   'Sign-off': 'Add one last thought and sign off warmly. No recap of the episode.',
   // Long episodes: eight deeper beats between the curveball and common ground.
   'Dig in': 'Pick up the most interesting thread so far and dig into it: why it matters, with one concrete detail.',

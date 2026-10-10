@@ -59,8 +59,8 @@ export function IrisPage({ config }: { config: AppConfig | null }) {
           <h1>{ARTIST.name}, {ARTIST.role}</h1>
           <p className="hint">She listens to every finished episode, picks the one moment that stayed with her, says how it felt as a listener, and draws it. Before each drawing she reads your latest notes, so she gets better as the show does.</p>
           <div className="iris-stats">
-            <span><b>{gallery ? pieces : '…'}</b> pieces</span>
-            <span><b>{notes ? notes.length : '…'}</b> notes from you</span>
+            <span><b>{gallery ? pieces : '…'}</b> {pieces === 1 ? 'piece' : 'pieces'}</span>
+            <span><b>{notes ? notes.length : '…'}</b> {notes?.length === 1 ? 'note' : 'notes'} from you</span>
             <span><b>{notes ? liked : '…'}</b> she got right</span>
           </div>
           {config?.storage === 'backed-up' && config.backup.state === 'ok' && <p className="hint">☁ Her drawings and notes are backed up (last copy {config.backup.lastAt ? ago(config.backup.lastAt) : 'just now'}), so they stay when the server restarts.</p>}
