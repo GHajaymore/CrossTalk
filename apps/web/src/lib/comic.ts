@@ -39,6 +39,8 @@ export async function makeComic(v: ConversationView): Promise<Blob> {
   const canvas = document.createElement('canvas');
   canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext('2d')!;
+  // Art is drawn larger than it was made: the browser's best scaling keeps it sharp (its default is the softest).
+  ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
   ctx.textBaseline = 'top';
   ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H);
 

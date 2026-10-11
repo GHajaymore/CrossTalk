@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { printSizeLine } from '../lib/printSize';
 import type { AppConfig } from '@crosstalk/shared';
 
 type Photo = { id: string; title: string; prompt: string; createdAt: string };
@@ -66,6 +67,7 @@ function PhotoViewer({ photo, index, count, file, confirming, onConfirm, onRemov
   onConfirm: (v: boolean) => void; onRemove: () => void; onStep: (d: number) => void; onClose: () => void;
 }) {
   const close = useRef<HTMLButtonElement>(null);
+  const [size, setSize] = useState<{ w: number; h: number } | null>(null);
   const keys = useRef({ onStep, onClose });
   keys.current = { onStep, onClose };
   useEffect(() => {
@@ -82,10 +84,11 @@ function PhotoViewer({ photo, index, count, file, confirming, onConfirm, onRemov
   return createPortal(
     <div className="art-viewer" role="dialog" aria-modal="true" aria-label={`${photo.title}, full size, photo ${index + 1} of ${count}`} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <figure>
-        <img src={`/api/photos/${photo.id}.jpg`} alt={`${photo.title}: ${photo.prompt}`} />
+        <img src={`/api/photos/${photo.id}.jpg`} alt={`${photo.title}: ${photo.prompt}`} onLoad={e => setSize({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })} />
         <figcaption>
           <span className="tag">My photos · {index + 1} of {count} · {new Date(photo.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
           <h2>{photo.title}</h2>
+          {size && <p className="hint print-size">🖨 {printSizeLine(size)}</p>}
           <p className="av-brief"><span className="tag">The brief</span> {photo.prompt}</p>
           <div className="dock-row">
             {count > 1 && <button className="btn sm ghost" onClick={() => onStep(-1)} aria-label="Previous photo">←</button>}

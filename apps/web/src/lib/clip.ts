@@ -355,6 +355,7 @@ export async function recordFrames(r: FrameRecording) {
     if (r.signal?.aborted) throw new Error('Stopped.');
     r.canvas.width = CLIP_W; r.canvas.height = CLIP_H;
     const ctx = r.canvas.getContext('2d')!;
+    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
     r.draw(ctx, 0);
     const tracks = [...r.canvas.captureStream(CLIP_FPS).getVideoTracks()];
     // The music goes straight into the file: you hear it when you play the video, not while it records.

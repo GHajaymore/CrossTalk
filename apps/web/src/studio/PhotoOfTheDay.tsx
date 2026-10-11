@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { photoThemesFor } from '@crosstalk/shared';
+import { printSizeLine } from '../lib/printSize';
 
 /**
  * Photo of the day: today's ideas from Iris's camera (one of each kind, new every day), or your own
@@ -13,6 +14,7 @@ export function PhotoOfTheDay({ onKept }: { onKept?: () => void }) {
   const [img, setImg] = useState<{ url: string; name: string; title: string; token: string | null; kept: 'no' | 'saving' | 'yes' } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [left, setLeft] = useState<{ left: number; perDay: number } | null>(null);
+  const [size, setSize] = useState<{ w: number; h: number } | null>(null);
 
   useEffect(() => {
     fetch('/api/images/try').then(r => (r.ok ? r.json() : null)).then(setLeft).catch(() => {});
@@ -69,7 +71,8 @@ export function PhotoOfTheDay({ onKept }: { onKept?: () => void }) {
       {error && <p className="hint" role="alert">✕ {error}</p>}
       {img && (
         <figure className="try-out">
-          <img src={img.url} alt={`AI photo: ${prompt}`} />
+          <img src={img.url} alt={`AI photo: ${prompt}`} onLoad={e => setSize({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })} />
+          {size && <p className="hint print-size">🖨 {printSizeLine(size)}</p>}
           <div className="dock-row">
             <a className="btn sm" href={img.url} download={img.name}>⤓ Download</a>
             {onKept && img.token && (img.kept === 'yes'
