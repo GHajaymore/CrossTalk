@@ -1,13 +1,24 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import type { AppConfig } from '@crosstalk/shared';
 import { api, type Access } from './api/client';
 import { Lock } from './screens/Lock';
 import { Create } from './screens/Create';
-import { IrisPage } from './screens/Iris';
-import { Episodes } from './screens/Episodes';
-import { ControlRoom } from './screens/ControlRoom';
-import { Settings } from './screens/Others';
-import { Studio, STUDIO_TABS, type StudioTab } from './screens/Studio';
+import { STUDIO_TABS, type StudioTab } from './screens/studioTabs';
+
+// Create opens at once; every other screen loads the first time it's opened, so a phone downloads less up front.
+// After an update, a tab opened earlier may ask for a screen file that no longer exists: it reloads once
+// to pick up the new version (once only, so a real outage can't loop).
+const withReload = <T,>(load: () => Promise<T>) => () => load().then(m => { try { sessionStorage.removeItem('ct_reloaded'); } catch { /* fine */ } return m; }, (e: unknown) => {
+  let again = false;
+  try { again = !sessionStorage.getItem('ct_reloaded'); if (again) sessionStorage.setItem('ct_reloaded', '1'); } catch { /* storage blocked */ }
+  if (again) { location.reload(); return new Promise<T>(() => {}); }
+  throw e;
+});
+const Studio = lazy(withReload(() => import('./screens/Studio').then(m => ({ default: m.Studio }))));
+const IrisPage = lazy(withReload(() => import('./screens/Iris').then(m => ({ default: m.IrisPage }))));
+const Episodes = lazy(withReload(() => import('./screens/Episodes').then(m => ({ default: m.Episodes }))));
+const ControlRoom = lazy(withReload(() => import('./screens/ControlRoom').then(m => ({ default: m.ControlRoom }))));
+const Settings = lazy(withReload(() => import('./screens/Others').then(m => ({ default: m.Settings }))));
 
 // Routes live in the URL hash (#/studio/<id>/<tab>), so a refresh reopens the same discussion and view.
 const parse = (h: string) => {
@@ -89,7 +100,7 @@ export function App() {
           </div>
         </div>
       </header>
-      <main className="wrap">{screen}</main>
+      <main className="wrap"><Suspense fallback={<div className="empty-stage">Opening…</div>}>{screen}</Suspense></main>
       {toastMsg && <div className="toast" role="status">{toastMsg}</div>}
     </>
   );
