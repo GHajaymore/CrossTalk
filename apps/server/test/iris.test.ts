@@ -107,6 +107,8 @@ describe('Iris, the Artist', () => {
     const { system, user } = buildIrisPrompt(repo.view(id)!, repo.listFeedback());
     // A photographer's craft note: what free AI cameras get wrong stays out of close-up.
     expect(system).toContain('Keep hands and faces out of close-up');
+    // Her line art may become a print on a wall.
+    expect(system).toContain('printed as ink on paper');
     expect(user).toContain('<listener_notes>');
     expect(user).toContain('Wants something different (about "The Empty Friday"): Draw people, not objects');
     expect(user).toContain('Liked: Loved the warm colours');

@@ -35,7 +35,21 @@ async function artAt(svg: string, w: number) {
   return { img: await loadImage(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(sized)}`), h };
 }
 
-export type PrintArt = 'line' | 'picture';
+/**
+ * Ink on paper: her line drawing as a classic line-art print. Her dark panel goes, her pale ink becomes
+ * deep ink, and her colours become pigments that hold up on cream paper (gold → ochre, and so on).
+ */
+const PAPER_INK: Record<string, string> = {
+  '#ece8e1': '#1E1C1A', '#e8a55a': '#B5622A', '#5fb8b0': '#2E7D76', '#e9d36a': '#A3852A', '#b9a4e6': '#6A57A3',
+};
+export function inkOnPaper(svg: string): string {
+  return svg
+    // Her night-sky ground is a full-size rect; on paper, the paper is the ground.
+    .replace(/<rect\b[^>]*fill="#0F1013"[^>]*\/>/gi, '')
+    .replace(/#[0-9a-f]{6}\b/gi, c => PAPER_INK[c.toLowerCase()] ?? c);
+}
+
+export type PrintArt = 'ink' | 'line' | 'picture';
 /** The print file: her art matted on a page of the chosen size. 'line' draws her vector line art at full resolution; 'picture' uses her AI picture (sharp only up to its own size). */
 export async function makePrint(v: ConversationView, paper: PaperKey = 'a4', art: PrintArt = 'picture'): Promise<Blob> {
   const { w: W, h: H } = paperPixels(paper);
@@ -60,8 +74,9 @@ export async function makePrint(v: ConversationView, paper: PaperKey = 'a4', art
   const artW = W - M * 2;
   // Her AI picture when it's ready, otherwise the one she paints here; her line art (drawn at print size) for line styles.
   const best = art === 'picture' ? await bestArt(v).catch(() => null) : null;
+  const lines = art === 'ink' ? inkOnPaper(a.sketchSvg ?? svg) : svg;
   const painted = best ? await loadImage(best).catch(() => null) : null;
-  const { img, h } = painted ? { img: painted, h: Math.round(artW * (painted.height / painted.width)) } : await artAt(svg, artW);
+  const { img, h } = painted ? { img: painted, h: Math.round(artW * (painted.height / painted.width)) } : await artAt(lines, artW);
   if (painted?.src.startsWith('blob:')) URL.revokeObjectURL(painted.src);
   ctx.font = `italic 600 ${px(120)}px ${SAY}`; const title = wrap(ctx, `“${a.artTitle}”`, W - M * 2, 2);
   ctx.font = `italic ${px(64)}px ${SAY}`; const quote = wrap(ctx, `“${a.caption}”`, W - M * 2.6, 3);
@@ -70,9 +85,10 @@ export async function makePrint(v: ConversationView, paper: PaperKey = 'a4', art
   const top = Math.max(px(300), Math.round((H - px(260) - block) / 2));
 
   // The painting, with a fine keyline, like a window mat.
-  ctx.fillStyle = 'rgba(30,28,26,0.12)'; ctx.fillRect(M + px(14), top + px(18), artW, h);
+  // Ink is drawn straight onto the paper; a painted piece gets a shadow and a keyline, like a window mat.
+  if (art !== 'ink') { ctx.fillStyle = 'rgba(30,28,26,0.12)'; ctx.fillRect(M + px(14), top + px(18), artW, h); }
   ctx.drawImage(img, M, top, artW, h);
-  ctx.strokeStyle = INK; ctx.lineWidth = px(3) || 1; ctx.strokeRect(M - px(24), top - px(24), artW + px(48), h + px(48));
+  if (art !== 'ink') { ctx.strokeStyle = INK; ctx.lineWidth = px(3) || 1; ctx.strokeRect(M - px(24), top - px(24), artW + px(48), h + px(48)); }
 
   let y = top + h + px(260);
   ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
@@ -85,7 +101,7 @@ export async function makePrint(v: ConversationView, paper: PaperKey = 'a4', art
   ctx.fillStyle = INK; ctx.font = `${px(44)}px ${TAG}`;
   // Name the style actually on the page: without her AI picture, a Picture is shown as her Painting.
   const shown = paintStyleOf(a.artStyle) === 'picture' && !painted ? 'painting' : paintStyleOf(a.artStyle);
-  ctx.fillText(`${ARTIST.name.toUpperCase()}, ${ARTIST.role.toUpperCase()} · ${PAINT_STYLE_INFO[shown].name.toUpperCase()}`, W / 2, y);
+  ctx.fillText(`${ARTIST.name.toUpperCase()}, ${ARTIST.role.toUpperCase()} · ${art === 'ink' ? 'INK ON PAPER' : PAINT_STYLE_INFO[shown].name.toUpperCase()}`, W / 2, y);
   y += px(70);
   ctx.fillStyle = SOFT; ctx.font = `${px(40)}px ${UI}`;
   for (const l of from) { ctx.fillText(l, W / 2, y); y += px(56); }
@@ -98,8 +114,8 @@ export async function makePrint(v: ConversationView, paper: PaperKey = 'a4', art
 export const printName = (v: ConversationView, paper: PaperKey = 'a4') => `crosstalk-ep${String(v.episode).padStart(2, '0')}-iris-${paper}.png`;
 
 /** Her art alone as a vector file (SVG): no pixels, so it scales to any size a print shop needs. */
-export function vectorArt(v: ConversationView): Blob | null {
-  const svg = artworkSvg(v.artist);
+export function vectorArt(v: ConversationView, ink = false): Blob | null {
+  const svg = ink && v.artist?.sketchSvg ? inkOnPaper(v.artist.sketchSvg) : artworkSvg(v.artist);
   if (!svg) return null;
   // No fixed width or height: the file fills whatever size it's printed at.
   const scalable = svg.replace(/^<svg\b([^>]*?)\s(width|height)="[^"]*"/, '<svg$1').replace(/^<svg\b([^>]*?)\s(width|height)="[^"]*"/, '<svg$1');
@@ -120,3 +136,39 @@ export function printListing(v: ConversationView): string {
     'This artwork is AI-generated.',
   ].join('\n');
 }
+
+/** How much of the page's width the art fills (the mat takes the rest). */
+export const ART_FRACTION = 1 - (2 * 220) / 2480;
+/** How good a picture of this pixel width looks on this paper: its real dpi there, and a plain word for it. */
+export function photoQuality(imgW: number, paper: PaperKey) {
+  const dpi = Math.round(imgW / (PAPERS[paper].w * ART_FRACTION));
+  const word = dpi >= 300 ? 'sharp' : dpi >= 200 ? 'very good' : dpi >= 150 ? 'good' : 'soft';
+  return { dpi, word };
+}
+
+/** One of your kept photos as a print: matted on the page, its title under it, labelled as AI-made. */
+export async function makePhotoPrint(p: { src: string; title: string }, paper: PaperKey = '5x7'): Promise<Blob> {
+  const { w: W, h: H } = paperPixels(paper);
+  const k = W / 2480, M = Math.round(220 * k);
+  const px = (n: number) => Math.round(n * k);
+  await Promise.all([`italic 600 ${px(110)}px ${SAY}`, `${px(34)}px ${UI}`].map(f => document.fonts?.load(f).catch(() => {})));
+  const img = await loadImage(p.src);
+  const canvas = document.createElement('canvas');
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d')!;
+  ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+  ctx.fillStyle = MAT; ctx.fillRect(0, 0, W, H);
+  const artW = W - M * 2, h = Math.round(artW * (img.height / img.width));
+  ctx.font = `italic 600 ${px(110)}px ${SAY}`; const title = wrap(ctx, p.title, W - M * 2, 2);
+  const block = h + px(220) + title.length * px(130);
+  const top = Math.max(px(260), Math.round((H - px(200) - block) / 2));
+  ctx.fillStyle = 'rgba(30,28,26,0.12)'; ctx.fillRect(M + px(14), top + px(18), artW, h);
+  ctx.drawImage(img, M, top, artW, h);
+  let y = top + h + px(220);
+  ctx.textAlign = 'center'; ctx.fillStyle = INK; ctx.font = `italic 600 ${px(110)}px ${SAY}`;
+  for (const l of title) { ctx.fillText(l, W / 2, y); y += px(130); }
+  ctx.fillStyle = SOFT; ctx.font = `${px(34)}px ${UI}`;
+  ctx.fillText('AI-generated photograph, made with CrossTalk.', W / 2, H - px(170));
+  return await new Promise<Blob>((resolve, reject) => canvas.toBlob(b => (b ? resolve(b) : reject(new Error("Couldn't draw the print."))), 'image/png'));
+}
+

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { comicName, makeComic } from '../lib/comic';
 import { makePoster, posterName } from '../lib/poster';
-import { makePrint, PAPERS, paperPixels, printListing, printName, vectorArt, vectorName, type PaperKey, type PrintArt } from '../lib/print';
+import { makePrint, PAPERS, paperPixels, photoQuality, printListing, printName, vectorArt, vectorName, type PaperKey, type PrintArt } from '../lib/print';
 import { printSizeLine } from '../lib/printSize';
 import { bestArt } from '../lib/irisArt';
 import { PLATFORMS, postText, type Platform } from '../lib/publish';
@@ -154,7 +154,7 @@ function PostTile({ c, toast }: { c: ConversationView; toast: (m: string) => voi
  */
 function PrintTile({ c, toast }: { c: ConversationView; toast: (m: string) => void }) {
   const [paper, setPaper] = useState<PaperKey>('a4');
-  const [art, setArt] = useState<PrintArt>('line');
+  const [art, setArt] = useState<PrintArt>('ink');
   const [made, setMade] = useState<{ url: string; key: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [picSize, setPicSize] = useState<{ w: number; h: number } | null>(null);
@@ -166,7 +166,7 @@ function PrintTile({ c, toast }: { c: ConversationView; toast: (m: string) => vo
     catch (e) { toast((e as Error).message); } finally { setBusy(false); }
   };
   const vector = () => {
-    const b = vectorArt(c);
+    const b = vectorArt(c, art === 'ink');
     if (!b) return;
     const u = URL.createObjectURL(b);
     const a = document.createElement('a'); a.href = u; a.download = vectorName(c); document.body.appendChild(a); a.click(); a.remove();
@@ -178,21 +178,22 @@ function PrintTile({ c, toast }: { c: ConversationView; toast: (m: string) => vo
     <div className="kit-tile poster-tile print-tile"><b>Iris print</b>
       {current ? <img className="poster-preview" src={current.url} alt={`Iris print for ${c.topic}`} /> : <p>“{c.artist?.artTitle ?? 'Her drawing'}”, matted on a page, ready to print at home or at a print shop.</p>}
       <div className="seg sm" role="group" aria-label="Art">
-        <button aria-pressed={art === 'line'} onClick={() => setArt('line')}>Line art</button>
+        <button aria-pressed={art === 'ink'} onClick={() => setArt('ink')}>Ink on paper</button>
+        <button aria-pressed={art === 'line'} onClick={() => setArt('line')}>Her style</button>
         <button aria-pressed={art === 'picture'} onClick={() => setArt('picture')}>AI picture</button>
       </div>
       <label className="fld"><span className="tag">Paper</span>
         <select value={paper} onChange={e => setPaper(e.target.value as PaperKey)}>
-          {(Object.keys(PAPERS) as PaperKey[]).map(k => <option key={k} value={k}>{PAPERS[k].label}</option>)}
+          {(Object.keys(PAPERS) as PaperKey[]).map(k => <option key={k} value={k}>{PAPERS[k].label}{art === 'picture' && picSize ? ` · ${photoQuality(picSize.w, k).word}` : ''}</option>)}
         </select>
       </label>
-      <p className="hint print-size">🖨 {art === 'line'
+      <p className="hint print-size">🖨 {art !== 'picture'
         ? `Vector line art: sharp at ${PAPERS[paper].label}. File: ${px.w} × ${px.h} px at ${px.dpi} dpi.`
         : picSize ? `${printSizeLine(picSize)}. Bigger pages enlarge it and look softer; Line art stays sharp.` : 'Sharp only up to the picture\'s own size (shown once it\'s made); Line art stays sharp at any size.'}</p>
       <div className="dock-row">
         {!current && <button className="btn sm" disabled={busy} onClick={() => void make().then(() => { if (art === 'picture') void bestPictureSize(c).then(setPicSize); })}>{busy ? 'Drawing…' : 'Make print'}</button>}
         {current && <a className="btn sm" href={current.url} download={printName(c, paper)}>Download</a>}
-        {art === 'line' && <button className="btn sm ghost" onClick={vector}>⤓ Vector (SVG)</button>}
+        {art !== 'picture' && <button className="btn sm ghost" onClick={vector}>⤓ Vector (SVG)</button>}
         <button className="btn sm ghost" onClick={async () => { try { await navigator.clipboard.writeText(printListing(c)); toast('Listing text copied'); } catch { toast('Copying is blocked in this browser'); } }}>Copy listing text</button>
       </div>
     </div>

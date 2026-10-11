@@ -25,3 +25,27 @@ describe('print files at real paper sizes', () => {
     expect(paperPixels('18x24').dpi).toBe(192);
   });
 });
+
+describe('ink on paper', () => {
+  it('drops her dark panel and turns her screen colours into inks that hold up on cream paper', async () => {
+    const { inkOnPaper } = await import('../src/lib/print');
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 360"><rect x="0" y="0" width="600" height="360" fill="#0F1013" stroke="none"/><g fill="none"><path d="M0 0" stroke="#ECE8E1"/><circle r="4" stroke="#E9D36A"/><line stroke="#5FB8B0"/></g></svg>';
+    const ink = inkOnPaper(svg);
+    expect(ink).not.toContain('#0F1013');
+    expect(ink).toContain('stroke="#1E1C1A"');
+    expect(ink).toContain('stroke="#A3852A"');
+    expect(ink).toContain('stroke="#2E7D76"');
+    expect(ink).toContain('viewBox="0 0 600 360"');
+  });
+});
+
+describe('how good a camera photo looks on each paper', () => {
+  it('a 1024-pixel photo: very good at 5 × 7, good at 8 × 10 and A4, soft from 11 × 14 up', async () => {
+    const { photoQuality } = await import('../src/lib/print');
+    expect(photoQuality(1024, '5x7')).toEqual({ dpi: 249, word: 'very good' });
+    expect(photoQuality(1024, '8x10').word).toBe('good');
+    expect(photoQuality(1024, 'a4').word).toBe('good');
+    expect(photoQuality(1024, '11x14').word).toBe('soft');
+    expect(photoQuality(2048, '5x7').word).toBe('sharp');
+  });
+});

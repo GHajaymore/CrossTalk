@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { printSizeLine } from '../lib/printSize';
+import { makePhotoPrint, PAPERS, photoQuality, type PaperKey } from '../lib/print';
 import type { AppConfig } from '@crosstalk/shared';
 
 type Photo = { id: string; title: string; prompt: string; createdAt: string };
@@ -68,6 +69,18 @@ function PhotoViewer({ photo, index, count, file, confirming, onConfirm, onRemov
 }) {
   const close = useRef<HTMLButtonElement>(null);
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
+  const [paper, setPaper] = useState<PaperKey>('5x7');
+  const [print, setPrint] = useState<{ url: string; name: string } | null>(null);
+  const [printing, setPrinting] = useState(false);
+  useEffect(() => () => { if (print) URL.revokeObjectURL(print.url); }, [print]);
+  useEffect(() => { setPrint(null); }, [photo.id, paper]);
+  const makePrint = async () => {
+    setPrinting(true);
+    try {
+      const b = await makePhotoPrint({ src: `/api/photos/${photo.id}.jpg`, title: photo.title }, paper);
+      setPrint({ url: URL.createObjectURL(b), name: file.replace(/\.jpg$/, `-print-${paper}.png`) });
+    } catch { /* the image didn't load; the button stays for another try */ } finally { setPrinting(false); }
+  };
   const keys = useRef({ onStep, onClose });
   keys.current = { onStep, onClose };
   useEffect(() => {
@@ -89,6 +102,17 @@ function PhotoViewer({ photo, index, count, file, confirming, onConfirm, onRemov
           <span className="tag">My photos · {index + 1} of {count} · {new Date(photo.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
           <h2>{photo.title}</h2>
           {size && <p className="hint print-size">🖨 {printSizeLine(size)}</p>}
+          {size && (
+            <div className="dock-row photo-print">
+              <label className="fld"><span className="tag">Print on</span>
+                <select value={paper} onChange={e => setPaper(e.target.value as PaperKey)}>
+                  {(Object.keys(PAPERS) as PaperKey[]).map(k => { const q = photoQuality(size.w, k); return <option key={k} value={k}>{PAPERS[k].label} · {q.word} ({q.dpi} dpi)</option>; })}
+                </select>
+              </label>
+              {print ? <a className="btn sm" href={print.url} download={print.name}>⤓ Download print</a>
+                : <button className="btn sm" disabled={printing} onClick={() => void makePrint()}>{printing ? 'Drawing…' : '🖨 Make print'}</button>}
+            </div>
+          )}
           <p className="av-brief"><span className="tag">The brief</span> {photo.prompt}</p>
           <div className="dock-row">
             {count > 1 && <button className="btn sm ghost" onClick={() => onStep(-1)} aria-label="Previous photo">←</button>}
