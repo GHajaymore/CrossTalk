@@ -33,12 +33,8 @@ import { VoicePicker } from '../speech/VoicePicker';
 import { lastSentence, spokenSeconds, tail } from '../lib/text';
 import { Footer } from './Footer';
 
-export type StudioTab = 'watch' | 'listen' | 'read';
-export const STUDIO_TABS: [StudioTab, string, string][] = [
-  ['watch', 'Watch', 'The set, live'],
-  ['listen', 'Listen', 'Podcast player'],
-  ['read', 'Read', 'Transcript & Iris'],
-];
+import { STUDIO_TABS, type StudioTab } from './studioTabs';
+export { STUDIO_TABS, type StudioTab };
 
 type Props = { id: string; tab: StudioTab; config: AppConfig | null; refreshConfig: () => void; toast: (m: string) => void };
 
