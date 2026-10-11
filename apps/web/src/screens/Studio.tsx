@@ -313,7 +313,7 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
         </>}
         <div className="status-line" aria-live="polite">
           <span><b>{statusWord}</b>{view.run?.pauseRequested ? ' · pausing after this turn' : ''}</span>
-          <span>{view.interventions.filter(c => !c.fromOriginal && c.kind !== 'note').length} of {cueLimit} cues used</span>
+          {st !== 'completed' && <span>{view.interventions.filter(c => !c.fromOriginal && c.kind !== 'note').length} of {cueLimit} cues used</span>}
         </div>
         {/* Why it stopped, on every tab (Read also shows it on the failed turn's card). */}
         {st === 'failed' && reason && tab !== 'read' && <p className="fail-reason" role="alert">{reason}</p>}

@@ -188,9 +188,10 @@ label.fld{display:grid;gap:6px}
   .turn.B{margin-left:28px}
   .cue{width:auto;justify-self:stretch;margin-inline:0}
   .rail .tag{display:none}
-  .dock{grid-template-columns:1fr 1fr;gap:8px;padding-top:8px}
+  /* One compact row of buttons, so the bar covers as little of the show as possible. */
+  .dock{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding-top:8px}
+  .dock-group,.dock-row{display:contents}
   .dock .tag,.dock .state{display:none}
-  .dock-group.listen{padding-left:8px}
   .dock .btn{padding:7px 10px;font-size:13px}
   .dock-row{gap:6px}
   .kv{grid-template-columns:1fr}
@@ -519,7 +520,9 @@ img.living{object-fit:cover}
   .top-right{order:2;gap:6px}
   .top-right .pill{font-size:10px;padding:3px 7px}
   .pill .long{display:none}
-  .top nav{order:3;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;width:calc(100% + 32px);margin-inline:-16px;padding:0 56px 2px 12px}
+  .top nav{order:3;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;width:calc(100% + 32px);margin-inline:-16px;padding:0 56px 2px 12px;
+    /* A soft fade at the right edge says there's more to swipe to. */
+    -webkit-mask-image:linear-gradient(to right,#000 calc(100% - 64px),transparent);mask-image:linear-gradient(to right,#000 calc(100% - 64px),transparent)}
   .top nav::-webkit-scrollbar{display:none}
   .top nav a{white-space:nowrap;flex:none}
   .top nav{mask-image:linear-gradient(90deg,#000 85%,transparent);-webkit-mask-image:linear-gradient(90deg,#000 85%,transparent)}
