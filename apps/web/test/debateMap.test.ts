@@ -24,6 +24,11 @@ describe('the debate in a minute', () => {
     expect(beats[1]).toMatchObject({ seq: 8, speakerId: 'B' });
   });
 
+  it('an episode from before the crux turn shows no crux beat', () => {
+    const turns = [turn(4, 'Push back', 'But who covers Fridays?'), turn(8, 'Test', 'What would have to be true?'), turn(11, 'Rethink', 'Fair.'), turn(15, 'Takeaway', 'Try it.')];
+    expect(debateBeats(turns, false).map(b => b.label)).toEqual(['Strongest challenge', 'What changed a mind', 'Takeaway']);
+  });
+
   it('stays out of the way when an episode has no such shape', () => {
     expect(debateBeats([turn(1, 'Hello', 'Hi.'), turn(2, 'First take', 'Sure.')])).toHaveLength(0);
   });

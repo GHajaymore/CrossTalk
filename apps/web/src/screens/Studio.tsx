@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  artworkSvg, AUDIENCES, CUE_LIMIT, HAND_RAISED, LENGTHS, episodeLabel, hideStanceTag, homeOf, hostSubtitle, nameLook, voiceStyleOf, jobIn, MODES, paintStyleOf, speakerFor, TEMPERATURES, turnTotal,
+  artworkSvg, AUDIENCES, CUE_LIMIT, HAND_RAISED, LENGTHS, episodeLabel, hasCrux, hideStanceTag, homeOf, hostSubtitle, nameLook, voiceStyleOf, jobIn, jobLabel, MODES, paintStyleOf, speakerFor, TEMPERATURES, turnTotal,
   type AppConfig, type ConversationView, type Intervention, type Speaker,
 } from '@crosstalk/shared';
 import { api } from '../api/client';
@@ -217,7 +217,7 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
     <>
       {view.brief && <BriefBox brief={view.brief} note={view.brief.sources.join(', ')} />}
       <MindMeter turns={view.turns} speakers={sp} you={you} done={st === 'completed'} onYou={setYou} />
-      {st === 'completed' && <DebateMap turns={view.turns} names={{ A: sp.A.name, B: sp.B.name }} />}
+      {st === 'completed' && <DebateMap crux={hasCrux(view.createdAt)} turns={view.turns} names={{ A: sp.A.name, B: sp.B.name }} />}
       <div className="table" lang={language}>
         {!view.turns.length && !live && st === 'idle' && (
           <div className="empty-stage"><p>Both seats are ready. Press Start to hear {sp.A.name} open.</p></div>
@@ -225,7 +225,7 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
         {view.turns.map(t => (
           <div key={t.seq} className="turn-slot">
             {cuesBefore(t.seq)}
-            <TurnCard seq={t.seq} speakerId={t.speakerId} name={sp[t.speakerId].name} objective={t.objective}
+            <TurnCard seq={t.seq} speakerId={t.speakerId} name={sp[t.speakerId].name} objective={jobLabel(t.objective, view.createdAt)}
               modelId={t.modelId} text={t.text} state="completed" onCopy={() => copy(t.text)}
               laughedBy={t.funny ? sp[t.speakerId === 'A' ? 'B' : 'A'].name : undefined}
               speaking={play.state !== 'idle' && play.seq === t.seq} onPlayFrom={play.available ? () => play.playFrom(t.seq) : undefined}
@@ -239,12 +239,12 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
         ))}
         {live && !view.turns.some(t => t.seq === live.seq) && <>
           {cuesBefore(live.seq)}
-          <TurnCard seq={live.seq} speakerId={live.speakerId} name={sp[live.speakerId].name} objective={live.objective}
+          <TurnCard seq={live.seq} speakerId={live.speakerId} name={sp[live.speakerId].name} objective={jobLabel(live.objective, view.createdAt)}
             modelId={live.modelId} text={hideStanceTag(live.text)} state="streaming" />
         </>}
         {failedSeq && <>
           {cuesBefore(failedSeq)}
-          <TurnCard seq={failedSeq} speakerId={speakerFor(failedSeq)} name={sp[speakerFor(failedSeq)].name} objective={jobIn(view, failedSeq)}
+          <TurnCard seq={failedSeq} speakerId={speakerFor(failedSeq)} name={sp[speakerFor(failedSeq)].name} objective={jobLabel(jobIn(view, failedSeq), view.createdAt)}
             modelId={sp[speakerFor(failedSeq)].modelId} text={reason ?? 'This turn failed.'} state="failed" />
         </>}
         {view.interventions.filter(c => !shown.has(c.appliesBeforeSeq)).map(c => <CueCard key={c.id} cue={c} onCancel={canCancel(c) ? cancelCue(c) : undefined} />)}
@@ -299,7 +299,7 @@ export function Studio({ id, tab, config, refreshConfig, toast }: Props) {
           </div>
           {view.turns.length > 0 && <ReactionBar view={view} seq={reactSeq} onReactions={setReactions} toast={toast} />}
           {view.brief && <details className="brief stage-brief"><summary>Today's brief · {view.brief.sources.join(', ')}</summary><BriefBox brief={view.brief} /></details>}
-          <TurnRail turns={view.turns} liveSeq={live?.seq ?? null} failedSeq={failedSeq} speakers={sp} length={view.length}
+          <TurnRail createdAt={view.createdAt} turns={view.turns} liveSeq={live?.seq ?? null} failedSeq={failedSeq} speakers={sp} length={view.length}
             branchSeq={view.branchSeq} cueSeqs={view.interventions.filter(c => c.status === 'queued').map(c => c.appliesBeforeSeq)} />
           <MindMeter turns={view.turns} speakers={sp} compact you={you} done={st === 'completed'} onYou={setYou} />
           {/* Never a silent miss: if Iris couldn't draw this one, say why here, with one tap to ask again. */}

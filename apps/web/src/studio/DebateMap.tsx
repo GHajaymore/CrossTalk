@@ -20,16 +20,17 @@ export function pointOf(text: string) {
 }
 
 /** The beats found in an episode (each from its own turn), or fewer than three when it doesn't have the shape. */
-export function debateBeats(turns: Pick<Turn, 'seq' | 'speakerId' | 'objective' | 'text'>[]) {
-  return BEATS.flatMap(b => {
+export function debateBeats(turns: Pick<Turn, 'seq' | 'speakerId' | 'objective' | 'text'>[], crux = true) {
+  // Episodes from before the crux turn asked turn 8 something else, so they show no crux beat.
+  return BEATS.filter(b => crux || b.label !== 'The crux').flatMap(b => {
     const t = b.jobs.map(j => turns.find(x => x.objective === j)).find(Boolean);
     return t ? [{ label: b.label, seq: t.seq, speakerId: t.speakerId, point: pointOf(t.text) }] : [];
   });
 }
 
 /** "The debate in a minute": the arc of the episode in six lines, each one tap from its turn. */
-export function DebateMap({ turns, names }: { turns: Turn[]; names: Record<SpeakerId, string> }) {
-  const beats = debateBeats(turns);
+export function DebateMap({ turns, names, crux = true }: { turns: Turn[]; names: Record<SpeakerId, string>; crux?: boolean }) {
+  const beats = debateBeats(turns, crux);
   if (beats.length < 3) return null;
   return (
     <details className="debate-map" open>

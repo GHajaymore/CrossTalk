@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { jobLabel, type SpeakerId } from '@crosstalk/shared';
+import type { SpeakerId } from '@crosstalk/shared';
 import type { ReactionKind } from '@crosstalk/shared';
 import { ReactionChips } from './Reactions';
 
@@ -51,7 +51,7 @@ export function TurnCard(p: TurnCardProps) {
       <div className="card">
         <div className="card-head">
           <span className="nm">{p.name}</span>
-          <span className="tag">Turn {p.seq} · {jobLabel(p.objective)}</span>
+          <span className="tag">Turn {p.seq} · {p.objective}</span>
           {p.state === 'completed' && (
             <button className="menu-btn" aria-label={`Actions for turn ${p.seq}`} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(o => !o)}>⋯</button>
           )}
@@ -64,7 +64,8 @@ export function TurnCard(p: TurnCardProps) {
           <span>{p.modelId}</span>
           <ReactionChips counts={p.reactions} />
           {p.laughedBy && <span className="laughed"><span aria-hidden="true">😄</span> {p.laughedBy} laughed</span>}
-          <span>{p.state === 'streaming' ? 'streaming…' : p.state === 'failed' ? 'not saved' : p.inherited ? 'from the original' : 'saved'}</span>
+          {/* Saved is the normal state, so only the exceptions are said. */}
+          {(p.state === 'streaming' || p.state === 'failed' || p.inherited) && <span>{p.state === 'streaming' ? 'streaming…' : p.state === 'failed' ? 'not saved' : 'from the original'}</span>}
         </div>
         {p.splices?.map(b => (
           <a key={b.id} className="splice" href={`#/studio/${b.id}/read`}><span aria-hidden="true">✂</span> Branched here: {b.direction} →</a>

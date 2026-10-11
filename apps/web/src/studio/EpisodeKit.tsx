@@ -14,7 +14,7 @@ export function showNotes(c: ConversationView) {
     a?.state === 'done' ? `\nFrom the booth, ${ARTIST.name}: "${a.perspective}"\n\nCover art: "${a.artTitle}" by ${ARTIST.name}` : '',
     '',
     'Chapters',
-    ...c.turns.map(t => `${t.seq}. ${jobLabel(t.objective)}: ${sp[t.speakerId].name}`),
+    ...c.turns.map(t => `${t.seq}. ${jobLabel(t.objective, c.createdAt)}: ${sp[t.speakerId].name}`),
     '',
     `${NOTICE} Voices and hosts are AI: ${sp.A.modelId} and ${sp.B.modelId}.`,
   ].join('\n');
@@ -47,7 +47,6 @@ function ImageTile({ c, toast, title, blurb, button, alt, make: draw, name, extr
         {canShare && <button className="btn sm ghost" onClick={() => navigator.share({ files: [file!], title: c.topic }).catch(() => {})}>Share</button>}
         {extra}
       </div>
-      <span className="badge ok">Free · made on this device</span>
     </div>
   );
 }
@@ -93,7 +92,6 @@ function ClipTile({ c, toast, photos }: { c: ConversationView; toast: (m: string
         {canShare && <button className="btn sm ghost" onClick={() => navigator.share({ files: [video!.file], title: c.topic }).catch(() => {})}>Share</button>}
         {video && <button className="btn sm ghost" onClick={() => { setVideo(null); setState('idle'); }}>Make again</button>}
       </div>
-      <span className="badge ok">Free · made on this device · captions{music ? ' and music' : ''}</span>
     </div>
   );
 }
@@ -106,14 +104,13 @@ export function EpisodeKit({ c, toast, photos = false }: { c: ConversationView; 
   return (
     <section className="kit" aria-label="Episode kit">
       <div className="kit-head">
-        <div><span className="tag">{c.format === 'live' ? 'Live show replay' : 'Episode kit'} · {episodeLabel(c.episode)}</span><h3>Ready for your review</h3></div>
+        <div><span className="tag">{c.format === 'live' ? 'Live show replay' : 'Episode kit'} · {episodeLabel(c.episode)}</span><h3>Ready for your review</h3><p className="hint kit-free">Everything here is free and made on this device; nothing is uploaded.</p></div>
         <button className="btn sm" onClick={copy}>Copy show notes</button>
       </div>
       <div className="kit-grid">
         <div className="kit-tile"><b>Podcast episode</b><p>Show notes, {c.turns.length} chapters and the transcript. {c.audio ? 'Audio with natural voices too.' : 'Audio comes when it is voiced.'}</p><span className="badge ok">Text ready</span><span className={`badge ${c.audio ? 'ok' : 'later'}`}>{c.audio ? 'Audio ready' : 'Audio · later'}</span></div>
         <div className="kit-tile"><b>Episode page</b><p>One file with {c.artist?.state === 'done' ? "Iris's art, " : ''}the whole conversation and a Play button. Works offline.</p>
-          <div className="dock-row"><a className="btn sm" href={`/api/conversations/${c.id}/export.html`} download>Download page</a></div>
-          <span className="badge ok">Free · works offline</span></div>
+          <div className="dock-row"><a className="btn sm" href={`/api/conversations/${c.id}/export.html`} download>Download page</a></div></div>
         <ImageTile c={c} toast={toast} title="Episode poster" button="Make poster" alt="Poster for" make={makePoster} name={posterName}
           blurb="The question, the hosts, Iris's art and where each landed, in one image." />
         <ImageTile c={c} toast={toast} title="Comic strip" button="Make comic" alt="Comic strip of" make={makeComic} name={comicName}
