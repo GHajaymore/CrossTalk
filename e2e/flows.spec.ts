@@ -588,7 +588,15 @@ test('Hot seat: vote who moved you, then make the episode poster', async ({ page
   await print.getByRole('button', { name: 'Make print' }).click();
   await expect(page.getByRole('img', { name: /Iris print for/ })).toBeVisible();
   const [dl3] = await Promise.all([page.waitForEvent('download'), print.getByRole('link', { name: 'Download' }).click()]);
-  expect(dl3.suggestedFilename()).toMatch(/^crosstalk-ep\d+-iris-print\.png$/);
+  expect(dl3.suggestedFilename()).toMatch(/^crosstalk-ep\d+-iris-a4\.png$/);
+  // Line art is vector: any paper size is sharp, the tile says the file's real resolution, and the vector file itself downloads.
+  await print.getByLabel('Paper').selectOption('18x24');
+  await expect(print).toContainText('Vector line art: sharp at 18 × 24 in poster. File: 3456 × 4608 px at 192 dpi.');
+  const [svg] = await Promise.all([page.waitForEvent('download'), print.getByRole('button', { name: '⤓ Vector (SVG)' }).click()]);
+  expect(svg.suggestedFilename()).toMatch(/^crosstalk-ep\d+-iris-vector\.svg$/);
+  // Her AI picture is honest about its limit.
+  await print.getByRole('button', { name: 'AI picture' }).click();
+  await expect(print).toContainText('Line art stays sharp');
 });
 
 test('social clip: recorded on this device while you watch, then a real video to download', async ({ page }) => {

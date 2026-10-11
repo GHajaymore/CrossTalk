@@ -11,3 +11,17 @@ describe('how big a picture prints well', () => {
     expect(printSizeLine('vector')).toBe('Vector art: prints sharp at any size.');
   });
 });
+
+describe('print files at real paper sizes', () => {
+  it('300 dpi up to A4 and 11 × 14; the biggest sizes stay within what a phone can draw', async () => {
+    const { PAPERS, paperPixels } = await import('../src/lib/print');
+    expect(paperPixels('a4')).toEqual({ w: 2481, h: 3507, dpi: 300 });
+    expect(paperPixels('8x10')).toEqual({ w: 2400, h: 3000, dpi: 300 });
+    for (const k of Object.keys(PAPERS) as (keyof typeof PAPERS)[]) {
+      const p = paperPixels(k);
+      expect(p.w * p.h).toBeLessThanOrEqual(16_000_000);
+      expect(p.dpi).toBeGreaterThanOrEqual(190);
+    }
+    expect(paperPixels('18x24').dpi).toBe(192);
+  });
+});

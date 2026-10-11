@@ -60,7 +60,8 @@ describe('the Iris print', () => {
     expect(text).toContain('“Yeah, good point.”');
     expect(text).toContain('Style: Miniature.');
     expect(text).toContain('This artwork is AI-generated.');
-    expect(printName(v)).toBe('crosstalk-ep03-iris-print.png');
+    expect(printName(v)).toBe('crosstalk-ep03-iris-a4.png');
+    expect(printName(v, '18x24')).toBe('crosstalk-ep03-iris-18x24.png');
     expect(printListing({ ...v, artist: null } as unknown as ConversationView)).toBe('');
   });
 });
@@ -98,3 +99,18 @@ describe('this week on CrossTalk', () => {
     expect(planRecap([]).segments).toEqual([]);
   });
 });
+
+describe('the vector file', () => {
+  it('is her art with no fixed size, so it scales to any print', async () => {
+    const { vectorArt, vectorName } = await import('../src/lib/print');
+    const v = { ...episode(), artist: { ...episode().artist!, sketchSvg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 360" width="600" height="360"><path d="M0 0L10 10"/></svg>', artStyle: 'sketch' } } as unknown as ConversationView;
+    const svg = await vectorArt(v)!.text();
+    expect(svg).toMatch(/^<\?xml/);
+    expect(svg).toContain('viewBox="0 0 600 360"');
+    expect(svg).not.toMatch(/<svg[^>]*\swidth=/);
+    expect(svg).not.toMatch(/<svg[^>]*\sheight=/);
+    expect(vectorName(v)).toBe('crosstalk-ep03-iris-vector.svg');
+    expect(vectorArt({ ...v, artist: null } as unknown as ConversationView)).toBeNull();
+  });
+});
+
