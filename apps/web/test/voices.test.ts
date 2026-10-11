@@ -73,7 +73,7 @@ describe('a voice that fits each host', () => {
     (globalThis as { SpeechSynthesisUtterance?: unknown }).SpeechSynthesisUtterance = class { rate = 1; pitch = 1; voice = null; lang = ''; constructor(public text: string) {} };
     vi.useFakeTimers();
     new BrowserSpeech(() => ({ A: '', B: '', rate: 1.1 }), () => ({ A: { style: 'energetic' }, B: { style: 'calm' } }))
-      .speak([{ key: 'a', speakerId: 'A', text: 'Quick one.' }, { key: 'b', speakerId: 'B', text: 'Slowly now.' }], {});
+      .speak([{ key: 'a', speakerId: 'A', text: 'That changes the picture for me.' }, { key: 'b', speakerId: 'B', text: 'I see it a little differently now.' }], {});
     vi.runAllTimers(); // the beat before the other host speaks
     vi.useRealTimers();
     // Each sentence group varies its pace by up to 3%, as people do.
@@ -113,7 +113,17 @@ describe('speaking like people, not a reader', () => {
     expect(firstB.pauseMs).toBeGreaterThanOrEqual(260);
     expect(firstB.pauseMs).toBeLessThanOrEqual(520);
     expect(lines[lines.length - 1].pauseMs).toBe(0);
-    for (const p of lines) { expect(p.rate).toBeGreaterThanOrEqual(0.97); expect(p.rate).toBeLessThanOrEqual(1.03); }
+    for (const p of lines) { expect(p.rate).toBeGreaterThanOrEqual(0.93); expect(p.rate).toBeLessThanOrEqual(1.09); }
+  });
+
+  it('says each sentence the way it reads: questions lift, quick reactions come fast, long points slow a touch', async () => {
+    const { delivery } = await import('../src/speech/BrowserSpeech');
+    const mid = () => 0.5;
+    expect(delivery('Would that really work for everyone?', mid)).toEqual({ rate: 1, pitch: 1.04 });
+    expect(delivery('No way!', mid).pitch).toBe(1.03);
+    expect(delivery('Fair enough.', mid).rate).toBeCloseTo(1.05);
+    expect(delivery('Because every permit system I have seen ends up favouring the people with the most time, the most money and the most flexibility, not the locals.', mid)).toEqual({ rate: 0.96, pitch: 0.99 });
+    expect(delivery('That changes the picture for me.', mid)).toEqual({ rate: 1, pitch: 1 });
   });
 
   it('takes a breath after a question, a shorter one between other sentences', () => {

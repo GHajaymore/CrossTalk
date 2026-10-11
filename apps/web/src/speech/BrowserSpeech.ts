@@ -144,10 +144,25 @@ export const LAUGHS: Partial<Record<Language, string[]>> = {
 };
 
 export type SpokenPart =
-  | { kind: 'line'; item: SpeechItem; speakerId: SpeakerId; text: string; last: boolean; pauseMs: number; rate: number; laughing?: boolean }
+  | { kind: 'line'; item: SpeechItem; speakerId: SpeakerId; text: string; last: boolean; pauseMs: number; rate: number; pitch: number; laughing?: boolean }
   | { kind: 'murmur'; speakerId: SpeakerId; text: string; pauseMs: number; rate: number }
   /** The other host laughs at a joke: out loud when `text` is set, otherwise only on their face. */
   | { kind: 'laugh'; speakerId: SpeakerId; joker: SpeakerId; text: string | null; pauseMs: number; rate: number };
+
+/**
+ * How one sentence group is said, so a host doesn't read every line in the same flat tone: a question
+ * lifts, an exclamation is brighter and quicker, a short reaction comes out fast, a long explanation
+ * slows a touch. Kept subtle: device voices turn robotic when pushed.
+ */
+export function delivery(text: string, r: () => number = Math.random) {
+  const words = text.trim().split(/\s+/).length;
+  const pace = 0.97 + r() * 0.06;
+  if (/[?？؟]["'”’)]*$/.test(text)) return { rate: pace, pitch: 1.04 };
+  if (/[!！]["'”’)]*$/.test(text)) return { rate: Math.min(1.08, pace * 1.04), pitch: 1.03 };
+  if (words <= 4) return { rate: Math.min(1.09, pace * 1.05), pitch: 1.01 };
+  if (words >= 22) return { rate: pace * 0.96, pitch: 0.99 };
+  return { rate: pace, pitch: 1 };
+}
 
 /**
  * How a run of turns is spoken, like people rather than a reader: a short beat when the other host
@@ -165,7 +180,7 @@ export function planSpeech(items: SpeechItem[], o: { backchannels: string[] | nu
       const pauseMs = i === 0 ? (prev && prev !== item.speakerId ? 260 + Math.round(r() * 260) : 0)
         : /[?？؟]["'”’)]*$/.test(parts[i - 1]) ? 380 : 120;
       const laughing = i === 0 && startsLaughing(text, o.lang);
-      out.push({ kind: 'line', item, speakerId: item.speakerId, text, last: i === parts.length - 1, pauseMs, rate: 0.97 + r() * 0.06, ...(laughing ? { laughing } : {}) });
+      out.push({ kind: 'line', item, speakerId: item.speakerId, text, last: i === parts.length - 1, pauseMs, ...delivery(text, r), ...(laughing ? { laughing } : {}) });
       // At most one murmur per turn, only between the speaker's own sentences.
       if (o.backchannels?.length && !murmured && i < parts.length - 1 && r() < 0.45) {
         murmured = true;
@@ -228,7 +243,7 @@ export class BrowserSpeech implements SpeechProvider {
         const styled = st ? VOICE_STYLES[st] : { rate: 1, pitch: 1 };
         u.rate = Math.min(2, this.prefs().rate * styled.rate * q.rate);
         // A small pitch difference keeps two hosts apart when a device has only one good voice.
-        u.pitch = styled.pitch * (voices.A === voices.B ? (q.speakerId === 'A' ? 0.9 : 1.12) : 1);
+        u.pitch = styled.pitch * (voices.A === voices.B ? (q.speakerId === 'A' ? 0.9 : 1.12) : 1) * (q.kind === 'line' ? q.pitch : 1);
         if (q.kind === 'murmur' || q.kind === 'laugh') {
           // The listener's "mm-hm" or laugh: quieter, and their face shows it. Captions stay with the speaker.
           u.volume = q.kind === 'laugh' ? 0.8 : 0.7;

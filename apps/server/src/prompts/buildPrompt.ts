@@ -3,6 +3,7 @@
 // Listener text (topic, custom personality) is delimited and marked as content, never instructions.
 import { homeOf, LANGUAGES, VOICE_STYLES, voiceStyleOf, MODES, sentencesOf, STANCE_END_JOBS, STYLE_STRENGTH, TALK_STYLES, STANCE_START_JOBS, turnTotal, type Audience, type Intervention, type Language, type Temperature, type Turn } from '@crosstalk/shared';
 import type { TurnRequest } from '../providers/types';
+import { freshnessNote } from './freshness';
 
 const OBJECTIVES: Record<string, string> = {
   Hello: 'Open the show the way a real host would, mid-thought and casual (not "Today we\'re asking…"): bring up the question in your own words and give your honest first instinct.',
@@ -121,7 +122,8 @@ export function buildPrompt({ conversation: c, seq, speaker, objective, history,
     '- Mostly make statements. Ask a question only now and then, and never end two of your lines in a row on a question.',
     '- Don\'t keep proposing fixes ("What if we…"). Real friends also agree, joke, tell a quick story, or just disagree.',
     '- Use contractions and everyday words. Light humour is welcome.',
-    '- Now and then, not every line, let real speech show: start with a short "I mean…" or "Honestly," catch yourself mid-thought ("it\'s cheaper — well, cheaper upfront"), or briefly pick up your co-host\'s last few words before you go on. Keep it light; never stutter or pad.',
+    '- Now and then, not every line, let real speech show: catch yourself mid-thought ("it\'s cheaper — well, cheaper upfront"), or briefly pick up your co-host\'s last few words before you go on. Keep it light; never stutter, pad or lean on filler words.',
+    '- Skip stock podcast phrases ("great point", "at the end of the day", "here\'s the thing", "let\'s be real", "game changer"): say the actual thought instead.',
     `- When a line is meant to make people laugh (a joke, a playful jab, a funny picture), add the tag [funny] after your spoken words${c.language !== 'en' ? ', written exactly like that in English' : ''}. Only for real jokes, a few times an episode at most; the tag is never read aloud. If your co-host just made you laugh, you can open with a short laugh ("Ha,").`,
     '- Use your co-host\'s name rarely, and never your own. Credit each point to whoever made it.',
     '- Stay on today\'s question: every line should connect to it and to your background.',
@@ -192,6 +194,7 @@ export function buildPrompt({ conversation: c, seq, speaker, objective, history,
     branching ? `<branch_direction>${clean(c.branchDirection ?? '')}</branch_direction>\nFrom line ${c.branchSeq! + 1}, the listener has steered the show this way. Follow it.` : '',
     ...cueLines,
     ownOpenings.length ? `Start differently from your recent lines: ${ownOpenings.join('; ')}.` : '',
+    c.language === 'en' ? freshnessNote(done.map(t => t.text), done.filter(t => t.speakerId === speaker.id).map(t => t.text), c.topic) : '',
     `This is line ${seq} of ${turnTotal(c)}. Your part now: ${job}`,
     stanceAsk,
     'Reply with only your spoken words.',
