@@ -748,3 +748,30 @@ test('first visit: a three-step welcome, once; returning listeners see What\'s n
   await expect(page.getByRole('region', { name: "What's new" })).toBeVisible();
   await expect(page.getByRole('region', { name: 'Welcome to CrossTalk' })).toHaveCount(0);
 });
+
+test('Photo of the day: make one, keep it, and it stays on screen and downloadable', async ({ page }) => {
+  // The image service is offline in tests, so the camera and My photos are stand-ins here.
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
+  let kept: { title: string } | null = null;
+  await page.route('**/api/images/try', r => r.request().method() === 'POST'
+    ? r.fulfill({ body: png, contentType: 'image/png', headers: { 'X-Tries-Left': '9', 'X-Photo-Token': 'tok-1' } })
+    : r.fulfill({ json: { left: 10, perDay: 10 } }));
+  await page.route('**/api/photos', r => {
+    if (r.request().method() === 'POST') { kept = r.request().postDataJSON(); return r.fulfill({ status: 201, json: { id: 'k1', ...kept, prompt: 'x', createdAt: '2026-10-11T10:00:00Z' } }); }
+    return r.fulfill({ json: { photos: kept ? [{ id: 'k1', title: kept.title, prompt: 'x', createdAt: '2026-10-11T10:00:00Z' }] : [], max: 200 } });
+  });
+  await page.route('**/api/photos/k1*', r => r.fulfill({ body: png, contentType: 'image/png' }));
+  await page.goto('/#/iris');
+  await page.getByRole('group', { name: "Today's photo ideas" }).getByRole('button').first().click();
+  await page.getByRole('button', { name: '📷 Make the photo' }).click();
+  await expect(page.getByText('9 of 10 left today')).toBeVisible();
+  const photo = page.locator('.try-out img');
+  await expect(photo).toBeVisible();
+  await page.getByRole('button', { name: '☆ Keep in My photos' }).click();
+  await expect(page.getByText('✓ Kept in My photos, below.')).toBeVisible();
+  // Keeping it doesn't let go of the picture on screen.
+  await expect.poll(() => photo.evaluate((i: HTMLImageElement) => i.complete && i.naturalWidth > 0)).toBe(true);
+  await page.waitForTimeout(300);
+  expect(await photo.evaluate((i: HTMLImageElement) => fetch(i.src).then(r => r.ok, () => false))).toBe(true);
+  await expect(page.locator('.photo-grid li')).toHaveCount(1);
+});
