@@ -17,7 +17,9 @@ export function PhotoOfTheDay({ onKept }: { onKept?: () => void }) {
   useEffect(() => {
     fetch('/api/images/try').then(r => (r.ok ? r.json() : null)).then(setLeft).catch(() => {});
   }, []);
-  useEffect(() => () => { if (img) URL.revokeObjectURL(img.url); }, [img]);
+  // Let go of a photo only when a new one replaces it (or the page closes), not when it's kept.
+  const url = img?.url;
+  useEffect(() => () => { if (url) URL.revokeObjectURL(url); }, [url]);
 
   const pick = (title: string, text: string) => { setPicked(title); setPrompt(text); };
   const go = async () => {
