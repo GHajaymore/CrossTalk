@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom';
 import { ARTIST } from '@crosstalk/shared';
 import { irisArtCached } from '../lib/irisEngine';
 import { pictureUrl } from '../lib/usePolledImage';
+import { usePictureSize } from '../lib/usePictureSize';
+import { printSizeLine } from '../lib/printSize';
 import { IrisPicture, type EngineArt } from './IrisPicture';
 
 export type ViewedArt = {
@@ -22,6 +24,10 @@ export type ViewedArt = {
 /** Iris's art, full size: the piece, its title and quote, her sketchbook note, and a download. Esc or a click outside closes it. */
 export function ArtViewer({ art, onClose }: { art: ViewedArt; onClose: () => void }) {
   const close = useRef<HTMLButtonElement>(null);
+  // How big it prints well: her line art is vector; a picture has a real pixel size.
+  const fig = useRef<HTMLElement>(null);
+  const vector = !art.picture && !art.engine;
+  const size = usePictureSize(fig, !vector);
   // Callers pass a fresh onClose each render; the latest is kept here so focus is only moved once.
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
@@ -36,7 +42,7 @@ export function ArtViewer({ art, onClose }: { art: ViewedArt; onClose: () => voi
   // Drawn at the top of the page, so nothing around the art it was opened from can shape it.
   return createPortal(
     <div className="art-viewer" role="dialog" aria-modal="true" aria-label={`${art.title}, full size`} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <figure>
+      <figure ref={fig}>
         {art.picture
           ? <IrisPicture conversationId={art.picture.conversationId} version={art.picture.version} fallback={art.src} alt={alt} engine={art.engine} />
           : art.engine ? <IrisPicture conversationId="" version={0} fallback={art.src} alt={alt} engine={art.engine} />
@@ -45,6 +51,7 @@ export function ArtViewer({ art, onClose }: { art: ViewedArt; onClose: () => voi
           <span className="tag">{ARTIST.name}, {ARTIST.role} · {art.styleName}{art.where ? ` · ${art.where}` : ''}</span>
           <h2>“{art.title}”</h2>
           {art.caption && <p className="av-quote">“{art.caption}”</p>}
+          {(vector || size) && <p className="hint print-size">🖨 {printSizeLine(vector ? 'vector' : size!)}</p>}
           {art.brief && <p className="av-brief"><span className="tag">From her sketchbook</span> {art.brief}</p>}
           <div className="dock-row">
             <button className="btn sm" onClick={() => void downloadArt(art)}>{art.picture ? 'Download picture' : 'Download'}</button>

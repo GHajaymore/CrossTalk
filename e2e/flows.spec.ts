@@ -191,6 +191,8 @@ test('Iris, unique: her sketchbook brief under the picture, and Hear Iris reads 
   await expect(viewer.getByRole('heading')).toContainText('“');
   await expect(viewer).toContainText('From her sketchbook');
   await expect(viewer.getByRole('button', { name: 'Close' })).toBeFocused();
+  // Its real size, and how big it prints well.
+  await expect(viewer).toContainText(/\d+ × \d+ px · prints sharp up to/);
   await page.keyboard.press('Escape');
   await expect(viewer).toHaveCount(0);
   // And from the gallery.
@@ -277,6 +279,10 @@ test("Iris's card shows her sketch, perspective, and learns from feedback", asyn
   await card.getByRole('button', { name: /Watch her draw/ }).click();
   await expect(card.getByRole('button', { name: /Drawing/ })).toBeDisabled();
   await expect(card.locator('.persp')).not.toBeEmpty();
+  // Full size says how big it prints well.
+  await card.getByRole('button', { name: '⤢ Full size' }).click();
+  await expect(page.getByRole('dialog')).toContainText(/Vector art: prints sharp at any size|px · prints sharp up to/);
+  await page.keyboard.press('Escape');
   // Save the piece straight from her card, named after its title.
   const [art] = await Promise.all([page.waitForEvent('download'), card.getByRole('button', { name: '⤓ Download' }).click()]);
   expect(art.suggestedFilename()).toMatch(/^iris-[a-z0-9-]+\.(jpg|svg)$/);
@@ -704,6 +710,7 @@ test('My photos: open one full size, step between them, download, and remove wit
   await page.getByRole('button', { name: 'Open Dawn fairway full size' }).click();
   const viewer = page.getByRole('dialog', { name: /Dawn fairway, full size, photo 1 of 2/ });
   await expect(viewer).toContainText('A real photograph of an empty golf fairway at dawn');
+  await expect(viewer).toContainText('1 × 1 px · prints sharp up to');
   await expect(viewer.getByRole('button', { name: 'Close' })).toBeFocused();
   await page.keyboard.press('ArrowRight');
   await expect(page.getByRole('dialog', { name: /Alpenglow, full size, photo 2 of 2/ })).toBeVisible();
@@ -767,6 +774,7 @@ test('Photo of the day: make one, keep it, and it stays on screen and downloadab
   await expect(page.getByText('9 of 10 left today')).toBeVisible();
   const photo = page.locator('.try-out img');
   await expect(photo).toBeVisible();
+  await expect(page.locator('.try-out')).toContainText('prints sharp up to');
   await page.getByRole('button', { name: '☆ Keep in My photos' }).click();
   await expect(page.getByText('✓ Kept in My photos, below.')).toBeVisible();
   // Keeping it doesn't let go of the picture on screen.
