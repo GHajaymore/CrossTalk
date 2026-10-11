@@ -589,6 +589,8 @@ test('Hot seat: vote who moved you, then make the episode poster', async ({ page
   await expect(page.getByRole('img', { name: /Iris print for/ })).toBeVisible();
   const [dl3] = await Promise.all([page.waitForEvent('download'), print.getByRole('link', { name: 'Download' }).click()]);
   expect(dl3.suggestedFilename()).toMatch(/^crosstalk-ep\d+-iris-a4\.png$/);
+  // Ink on paper is the default: her lines as a classic line-art print.
+  await expect(print.getByRole('button', { name: 'Ink on paper' })).toHaveAttribute('aria-pressed', 'true');
   // Line art is vector: any paper size is sharp, the tile says the file's real resolution, and the vector file itself downloads.
   await print.getByLabel('Paper').selectOption('18x24');
   await expect(print).toContainText('Vector line art: sharp at 18 × 24 in poster. File: 3456 × 4608 px at 192 dpi.');
@@ -724,6 +726,11 @@ test('My photos: open one full size, step between them, download, and remove wit
   await expect(page.getByRole('dialog', { name: /Alpenglow, full size, photo 2 of 2/ })).toBeVisible();
   const [dl] = await Promise.all([page.waitForEvent('download'), page.getByRole('dialog').getByRole('link', { name: '⤓ Download' }).click()]);
   expect(dl.suggestedFilename()).toBe('crosstalk-alpenglow.jpg');
+  // A kept photo prints too, with each paper size saying how good it will look.
+  await expect(page.getByRole('dialog').getByLabel('Print on')).toContainText('5 × 7 in · soft');
+  await page.getByRole('dialog').getByRole('button', { name: '🖨 Make print' }).click();
+  const [pr] = await Promise.all([page.waitForEvent('download'), page.getByRole('dialog').getByRole('link', { name: '⤓ Download print' }).click()]);
+  expect(pr.suggestedFilename()).toBe('crosstalk-alpenglow-print-5x7.png');
   // Remove asks first; "Keep it" changes nothing.
   await page.getByRole('dialog').getByRole('button', { name: 'Remove' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Keep it' }).click();
