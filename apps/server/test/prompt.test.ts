@@ -37,6 +37,18 @@ describe('prompt builder', () => {
     expect(system).toContain('Your personality: Analytical');
   });
 
+  it('steers away from stock phrases and pet words already used, in English episodes', () => {
+    const said = (seq: number, text: string): Turn => ({ ...turn(seq), text });
+    const history = [said(1, 'Honestly, great point to start.'), said(2, 'Honestly? Waste is waste.'), said(3, 'Waste again, waste, and more waste.')];
+    const { system, user } = buildPrompt({ conversation: conv, seq: 5, speaker: conv.speakers.A, objective: 'Story', history: [...history, said(4, 'Fair.')] });
+    expect(system).not.toMatch(/"I mean…" or "Honestly,"/);
+    expect(system).toMatch(/Skip stock podcast phrases/);
+    expect(user).toContain('Already said on this show, so don\'t use them again: "honestly", "great point".');
+    expect(user).toContain('Words you\'ve leaned on: "waste".');
+    const spanish = buildPrompt({ conversation: { ...conv, language: 'es' }, seq: 5, speaker: conv.speakers.A, objective: 'Story', history });
+    expect(spanish.user).not.toContain('Already said on this show');
+  });
+
   it('gives each host their background, and tells them who the co-host is', () => {
     const withRoles = { ...conv, speakers: { A: { ...conv.speakers.A, role: 'Head chef' }, B: { ...conv.speakers.B, role: 'Food critic' } } };
     const { system } = buildPrompt({ conversation: withRoles, seq: 2, speaker: withRoles.speakers.B, objective: 'First take', history: [] });
