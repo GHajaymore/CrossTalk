@@ -721,3 +721,30 @@ test('My photos: open one full size, step between them, download, and remove wit
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page.locator('.photo-grid li')).toHaveCount(1);
 });
+
+test('first visit: a three-step welcome, once; returning listeners see What\'s new instead', async ({ page }) => {
+  await page.goto('/#/create');
+  const tour = page.getByRole('region', { name: 'Welcome to CrossTalk' });
+  await expect(tour).toContainText('step 1 of 3');
+  await expect(tour).toContainText('Pick a question');
+  await tour.getByRole('button', { name: 'Show me' }).click();
+  await expect(page.locator('#topic')).toBeFocused();
+  await tour.getByRole('button', { name: 'Next' }).click();
+  await expect(tour).toContainText('Shape it, then record');
+  await tour.getByRole('button', { name: 'Back' }).click();
+  await expect(tour).toContainText('Pick a question');
+  await tour.getByRole('button', { name: 'Next' }).click();
+  await tour.getByRole('button', { name: 'Next' }).click();
+  await expect(tour).toContainText('Meet Iris');
+  await tour.getByRole('button', { name: "Let's go" }).click();
+  await expect(tour).toHaveCount(0);
+  // Once is enough: no tour and nothing to catch up on after a reload.
+  await page.reload();
+  await expect(page.getByRole('region', { name: 'Welcome to CrossTalk' })).toHaveCount(0);
+  await expect(page.getByRole('region', { name: "What's new" })).toHaveCount(0);
+  // Someone who used the app before an update sees What's new, not the tour.
+  await page.evaluate(() => { localStorage.removeItem('ct_welcomed'); localStorage.setItem('ct_seen_new', 'an-older-edition'); });
+  await page.reload();
+  await expect(page.getByRole('region', { name: "What's new" })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Welcome to CrossTalk' })).toHaveCount(0);
+});
