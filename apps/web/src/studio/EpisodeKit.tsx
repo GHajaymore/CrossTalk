@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { comicName, makeComic } from '../lib/comic';
 import { makePoster, posterName } from '../lib/poster';
-import { makePrint, printListing, printName } from '../lib/print';
+import { makePrint, PAPERS, paperPixels, printListing, printName, vectorArt, vectorName, type PaperKey, type PrintArt } from '../lib/print';
+import { printSizeLine } from '../lib/printSize';
+import { bestArt } from '../lib/irisArt';
 import { PLATFORMS, postText, type Platform } from '../lib/publish';
 import { ARTIST, AUDIENCES, episodeLabel, jobLabel, MODES, NOTICE, TEMPERATURES, type ConversationView } from '@crosstalk/shared';
 
@@ -118,9 +120,7 @@ export function EpisodeKit({ c, toast, photos = false }: { c: ConversationView; 
           blurb="The episode in 4 panels, from the opening to where they landed." />
         <ClipTile c={c} toast={toast} photos={photos} />
         <PostTile c={c} toast={toast} />
-        <ImageTile c={c} toast={toast} title="Iris print" button="Make print" alt="Iris print for" make={makePrint} name={printName}
-          blurb={`“${c.artist?.artTitle ?? 'Her drawing'}” as a matted A4 print (300 dpi).`}
-          extra={<button className="btn sm ghost" onClick={async () => { try { await navigator.clipboard.writeText(printListing(c)); toast('Listing text copied'); } catch { toast('Copying is blocked in this browser'); } }}>Copy listing text</button>} />
+        <PrintTile c={c} toast={toast} />
       </div>
       <p className="hint publish-line">
         <span className={`status ${c.publish === 'approved' ? 'completed' : c.publish === 'held' ? 'failed' : 'paused'}`}>{c.publish === 'approved' ? 'approved' : c.publish === 'held' ? 'held' : 'waiting for your OK'}</span>{' '}
@@ -146,5 +146,63 @@ function PostTile({ c, toast }: { c: ConversationView; toast: (m: string) => voi
       <div className="dock-row"><button className="btn sm" onClick={() => void copy()}>Copy text</button></div>
     </div>
   );
+}
+
+/**
+ * Iris print: her art matted on a page of the size you pick. Her line art is vector, so it's sharp at
+ * every size; her AI picture is only as sharp as its own pixels, and the tile says how big that is.
+ */
+function PrintTile({ c, toast }: { c: ConversationView; toast: (m: string) => void }) {
+  const [paper, setPaper] = useState<PaperKey>('a4');
+  const [art, setArt] = useState<PrintArt>('line');
+  const [made, setMade] = useState<{ url: string; key: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [picSize, setPicSize] = useState<{ w: number; h: number } | null>(null);
+  const key = `${paper}|${art}|${c.artist?.version}|${c.artist?.artStyle}`;
+  useEffect(() => () => { if (made) URL.revokeObjectURL(made.url); }, [made]);
+  const make = async () => {
+    setBusy(true);
+    try { const b = await makePrint(c, paper, art); setMade({ url: URL.createObjectURL(b), key }); }
+    catch (e) { toast((e as Error).message); } finally { setBusy(false); }
+  };
+  const vector = () => {
+    const b = vectorArt(c);
+    if (!b) return;
+    const u = URL.createObjectURL(b);
+    const a = document.createElement('a'); a.href = u; a.download = vectorName(c); document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(u), 1000);
+  };
+  const px = paperPixels(paper);
+  const current = made?.key === key ? made : null;
+  return (
+    <div className="kit-tile poster-tile print-tile"><b>Iris print</b>
+      {current ? <img className="poster-preview" src={current.url} alt={`Iris print for ${c.topic}`} /> : <p>“{c.artist?.artTitle ?? 'Her drawing'}”, matted on a page, ready to print at home or at a print shop.</p>}
+      <div className="seg sm" role="group" aria-label="Art">
+        <button aria-pressed={art === 'line'} onClick={() => setArt('line')}>Line art</button>
+        <button aria-pressed={art === 'picture'} onClick={() => setArt('picture')}>AI picture</button>
+      </div>
+      <label className="fld"><span className="tag">Paper</span>
+        <select value={paper} onChange={e => setPaper(e.target.value as PaperKey)}>
+          {(Object.keys(PAPERS) as PaperKey[]).map(k => <option key={k} value={k}>{PAPERS[k].label}</option>)}
+        </select>
+      </label>
+      <p className="hint print-size">🖨 {art === 'line'
+        ? `Vector line art: sharp at ${PAPERS[paper].label}. File: ${px.w} × ${px.h} px at ${px.dpi} dpi.`
+        : picSize ? `${printSizeLine(picSize)}. Bigger pages enlarge it and look softer; Line art stays sharp.` : 'Sharp only up to the picture\'s own size (shown once it\'s made); Line art stays sharp at any size.'}</p>
+      <div className="dock-row">
+        {!current && <button className="btn sm" disabled={busy} onClick={() => void make().then(() => { if (art === 'picture') void bestPictureSize(c).then(setPicSize); })}>{busy ? 'Drawing…' : 'Make print'}</button>}
+        {current && <a className="btn sm" href={current.url} download={printName(c, paper)}>Download</a>}
+        {art === 'line' && <button className="btn sm ghost" onClick={vector}>⤓ Vector (SVG)</button>}
+        <button className="btn sm ghost" onClick={async () => { try { await navigator.clipboard.writeText(printListing(c)); toast('Listing text copied'); } catch { toast('Copying is blocked in this browser'); } }}>Copy listing text</button>
+      </div>
+    </div>
+  );
+}
+
+/** The real pixel size of her AI picture (or the one she painted here), for the honest print-size line. */
+async function bestPictureSize(c: ConversationView): Promise<{ w: number; h: number } | null> {
+  const src = await bestArt(c).catch(() => null);
+  if (!src) return null;
+  return await new Promise(resolve => { const i = new Image(); i.onload = () => resolve({ w: i.naturalWidth, h: i.naturalHeight }); i.onerror = () => resolve(null); i.src = src; });
 }
 
