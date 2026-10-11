@@ -775,3 +775,15 @@ test('Photo of the day: make one, keep it, and it stays on screen and downloadab
   expect(await photo.evaluate((i: HTMLImageElement) => fetch(i.src).then(r => r.ok, () => false))).toBe(true);
   await expect(page.locator('.photo-grid li')).toHaveCount(1);
 });
+
+test('Publish kit: the words for each platform, AI-labelled, ready to copy', async ({ page, request }) => {
+  const id = await finishedEpisode(request);
+  await page.goto(`/#/studio/${id}/read`);
+  const tile = page.locator('.post-tile');
+  await expect(tile.getByRole('textbox', { name: 'YouTube Shorts text' })).toHaveValue(/Two AI hosts, both sides[\s\S]*Made with AI[\s\S]*#CrossTalk/);
+  await tile.getByRole('button', { name: 'TikTok · Reels' }).click();
+  await expect(tile.getByRole('textbox', { name: 'TikTok · Reels text' })).toHaveValue(/Where do you stand\? 👇[\s\S]*Made with AI/);
+  await tile.getByRole('button', { name: 'Podcast' }).click();
+  await expect(tile.getByRole('textbox', { name: 'Podcast text' })).toHaveValue(/Two AI hosts, .+ talk the question through/);
+  await expect(tile.getByRole('button', { name: 'Copy text' })).toBeEnabled();
+});

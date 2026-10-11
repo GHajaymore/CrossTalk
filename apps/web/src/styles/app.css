@@ -772,3 +772,8 @@ span.ss-art .iris-picture>img,span.ss-art .iris-picture>canvas{object-fit:contai
 .welcome-dots i.on{background:var(--cue)}
 .welcome-actions{display:flex;align-items:center;gap:6px;flex-wrap:nowrap}
 .welcome-actions .btn{width:auto;white-space:nowrap}
+/* Publish kit: one platform at a time, the words ready to copy. */
+.post-tile .seg button{padding:5px 10px;font-size:12.5px}
+.post-text{width:100%;font-size:13px;line-height:1.45;resize:vertical;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+.kit-grid .post-tile{grid-column:span 2}
+@media (max-width:760px){.kit-grid .post-tile{grid-column:auto}}

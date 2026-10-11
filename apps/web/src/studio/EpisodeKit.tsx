@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { comicName, makeComic } from '../lib/comic';
 import { makePoster, posterName } from '../lib/poster';
 import { makePrint, printListing, printName } from '../lib/print';
+import { PLATFORMS, postText, type Platform } from '../lib/publish';
 import { ARTIST, AUDIENCES, episodeLabel, jobLabel, MODES, NOTICE, TEMPERATURES, type ConversationView } from '@crosstalk/shared';
 
 export function showNotes(c: ConversationView) {
@@ -116,6 +117,7 @@ export function EpisodeKit({ c, toast, photos = false }: { c: ConversationView; 
         <ImageTile c={c} toast={toast} title="Comic strip" button="Make comic" alt="Comic strip of" make={makeComic} name={comicName}
           blurb="The episode in 4 panels, from the opening to where they landed." />
         <ClipTile c={c} toast={toast} photos={photos} />
+        <PostTile c={c} toast={toast} />
         <ImageTile c={c} toast={toast} title="Iris print" button="Make print" alt="Iris print for" make={makePrint} name={printName}
           blurb={`“${c.artist?.artTitle ?? 'Her drawing'}” as a matted A4 print (300 dpi).`}
           extra={<button className="btn sm ghost" onClick={async () => { try { await navigator.clipboard.writeText(printListing(c)); toast('Listing text copied'); } catch { toast('Copying is blocked in this browser'); } }}>Copy listing text</button>} />
@@ -127,3 +129,22 @@ export function EpisodeKit({ c, toast, photos = false }: { c: ConversationView; 
     </section>
   );
 }
+
+/** Publish kit: the words to post on each platform, ready to copy. Nothing posts by itself. */
+function PostTile({ c, toast }: { c: ConversationView; toast: (m: string) => void }) {
+  const [p, setP] = useState<Platform>('shorts');
+  const text = postText(c, p);
+  const copy = async () => { try { await navigator.clipboard.writeText(text); toast(`${PLATFORMS[p].label} text copied`); } catch { toast('Copying is blocked in this browser'); } };
+  return (
+    <div className="kit-tile post-tile">
+      <b>Post it</b>
+      <div className="seg sm" role="group" aria-label="Platform">
+        {(Object.keys(PLATFORMS) as Platform[]).map(k => <button key={k} aria-pressed={p === k} onClick={() => setP(k)}>{PLATFORMS[k].label}</button>)}
+      </div>
+      <textarea className="post-text" readOnly value={text} aria-label={`${PLATFORMS[p].label} text`} rows={7} />
+      <p className="hint">{PLATFORMS[p].help} Add the Social clip, and tick the platform's own AI-content label when you post.</p>
+      <div className="dock-row"><button className="btn sm" onClick={() => void copy()}>Copy text</button></div>
+    </div>
+  );
+}
+
