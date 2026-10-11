@@ -778,3 +778,18 @@ span.ss-art .iris-picture>img,span.ss-art .iris-picture>canvas{object-fit:contai
 .kit-grid .post-tile{grid-column:span 2}
 @media (max-width:760px){.kit-grid .post-tile{grid-column:auto}}
 .print-size{margin:4px 0}
+/* A host as a voice, not a face: initials in rings that swell with their voice, and a moving voice print.
+   --lvl is the live level the set writes on the tile (0 when silent). */
+.voice-card{position:absolute;inset:0;display:grid;grid-template-rows:1fr auto;justify-items:center;align-items:center;padding:12% 8% 30%;
+  --seat:var(--a);background:radial-gradient(ellipse at 50% 38%,color-mix(in srgb,var(--seat) calc(10% + var(--lvl,0) * 22%),transparent),transparent 70%)}
+.voice-card.seat-B{--seat:var(--b)}
+.vc-orb{position:relative;width:clamp(64px,34%,150px);aspect-ratio:1;display:grid;place-items:center}
+.vc-ring{position:absolute;inset:0;border-radius:50%;border:1.5px solid var(--seat);opacity:calc(.18 + var(--lvl,0) * .7);transform:scale(calc(1 + var(--lvl,0) * var(--grow)));transition:transform .12s linear,opacity .2s}
+.vc-ring.r1{--grow:.12}.vc-ring.r2{--grow:.3;inset:-12%;opacity:calc(.1 + var(--lvl,0) * .5)}.vc-ring.r3{--grow:.5;inset:-26%;opacity:calc(.05 + var(--lvl,0) * .35)}
+.vc-ini{font-family:var(--f-say);font-size:clamp(22px,4vw,46px);color:var(--seat);letter-spacing:.04em}
+.vc-wave{display:flex;align-items:center;gap:3px;height:clamp(28px,16%,64px);width:84%;margin-top:6%}
+.vc-wave i{flex:1;height:100%;border-radius:2px;background:var(--seat);opacity:calc(.25 + var(--lvl,0) * .75);transform:scaleY(calc(.06 + var(--lvl,0) * var(--k) * 1.6));transform-origin:center;animation:vc-beat .6s ease-in-out infinite alternate;animation-play-state:paused}
+.set-tile.on .vc-wave i{animation-play-state:running}
+@keyframes vc-beat{from{scale:1 .55}to{scale:1 1}}
+@media (prefers-reduced-motion: reduce){.vc-wave i{animation:none}.vc-ring{transition:none}}
+@media (max-width:600px){.voice-card{padding:16% 8% 44%}.vc-wave{gap:2px;width:90%}}

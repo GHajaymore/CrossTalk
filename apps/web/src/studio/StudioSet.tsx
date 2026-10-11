@@ -3,6 +3,8 @@ import { homeOf, initials as toInitials, type RunState, type Temperature } from 
 import { HeatMeter } from '../lib/HeatMeter';
 import { clock } from '../lib/text';
 import { HostPortrait } from './Portrait';
+import { VoiceCard } from './VoiceCard';
+import { useHostLook } from '../lib/hostLook';
 import './StudioSet.css';
 
 export type SeatKey = 'A' | 'B' | 'G';
@@ -117,6 +119,7 @@ export function StudioSet(p: StudioSetProps) {
     return () => cancelAnimationFrame(raf);
   }, []);
 
+  const look = useHostLook();
   const [recText, recClass] = REC[p.runState];
   const capName = p.caption?.who === 'G' ? 'YOU' : p.caption?.who ? p.hosts[p.caption.who].name.toUpperCase() : '';
 
@@ -127,9 +130,12 @@ export function StudioSet(p: StudioSetProps) {
         {who.media
           ? <div className="set-media">{who.media}</div>
           : k !== 'G'
-            ? <HostPortrait name={who.name} role={who.role} seat={k} mood={p.temperature} photo={p.photos} home={who.home} />
+            ? look === 'voice'
+              ? <VoiceCard name={who.name} seat={k} />
+              : <HostPortrait name={who.name} role={who.role} seat={k} mood={p.temperature} photo={p.photos} home={who.home} />
             : <div className="set-avatar"><span className="set-halo" /><span className="set-ini">{k === 'G' ? who.icon ?? '🎙' : toInitials(who.name)}</span></div>}
-        <Mic />
+        {/* As voices, the voice print is the microphone. */}
+        {(k === 'G' || look !== 'voice') && <Mic />}
         <span className="set-camtag">{k === 'G' ? 'Guest · real person' : 'Host · AI presenter'}</span>
         <span className="set-livedot" aria-hidden="true" />
       </div>

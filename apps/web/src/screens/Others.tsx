@@ -7,6 +7,7 @@ import { useVoices } from '../speech/usePlayback';
 import { VoicePicker } from '../speech/VoicePicker';
 import { ago, SetupBanner, StorageBanner } from '../lib/Banners';
 import { Footer } from './Footer';
+import { setHostLook, useHostLook } from '../lib/hostLook';
 
 /** Online only: is every episode really being kept? Asks the bucket itself, not just the settings. */
 function BackupSection({ config, refreshConfig }: { config: AppConfig; refreshConfig: () => void }) {
@@ -138,6 +139,7 @@ function VoiceSettings() {
   const names = { A: 'Left seat (warm)', B: 'Right seat (cool)' };
   return (
     <section className="sec"><h2>Voices</h2>
+      <HostLookPicker />
       <p className="hint">Saved on this device only. The same choices are in the Studio under Cues &amp; voices. Episodes with a rendered recording play its natural voices instead.</p>
       <VoicePicker names={names} voices={voices} prefs={prefs} update={update}
         preview={k => new BrowserSpeech(() => prefs).speak([{ key: 'p', speakerId: k, text: `This is the ${k === 'A' ? 'left' : 'right'} seat. This is how I'll sound on the show.` }], {})} />
@@ -175,3 +177,19 @@ function ScoutSettings({ real }: { real: boolean }) {
     </section>
   );
 }
+
+/** How the hosts appear on screen, on this device: as voices (the default) or as their AI photos. */
+function HostLookPicker() {
+  const look = useHostLook();
+  return (
+    <div className="fld host-look">
+      <span className="tag">Hosts on screen</span>
+      <div className="seg" role="group" aria-label="Hosts on screen">
+        <button aria-pressed={look === 'voice'} onClick={() => setHostLook('voice')}>Voices</button>
+        <button aria-pressed={look === 'photo'} onClick={() => setHostLook('photo')}>Photos</button>
+      </div>
+      <p className="hint">{look === 'voice' ? 'Each host is shown as their voice: initials and a voice print that moves as they talk. Nothing pretends to be a person.' : 'Each host is shown as an AI-made photo of an invented person. The photos blink but their lips don\'t move.'}</p>
+    </div>
+  );
+}
+

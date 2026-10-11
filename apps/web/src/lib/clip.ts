@@ -14,6 +14,7 @@ import { Portrait } from '../studio/Portrait';
 import { bestArt } from './irisArt';
 import fixWebmDuration from 'fix-webm-duration';
 import { musicPlan, playMusic, type MusicPlan } from './clipMusic';
+import { hostLook } from './hostLook';
 import { C, loadImage, SAY, TAG, UI, wrap } from './poster';
 
 export const CLIP_W = 720, CLIP_H = 1280, CLIP_FPS = 30;
@@ -70,7 +71,7 @@ export function planClip(v: ConversationView): ClipPlan {
 
 export const clipName = (v: ConversationView) => `crosstalk-${episodeLabel(v.episode).replace(/\W+/g, '').toLowerCase()}-clip`;
 
-type HostArt = { photo: HTMLImageElement | null; rest: HTMLImageElement; talk: HTMLImageElement; blink: HTMLImageElement };
+type HostArt = { photo: HTMLImageElement | null; rest: HTMLImageElement; talk: HTMLImageElement; blink: HTMLImageElement; voice?: { ini: string } };
 export type ClipAssets = { hosts: Record<SpeakerId, HostArt>; art: HTMLImageElement | null };
 
 // The drawn portrait as a still picture: resting, mid-word (mouth open) and mid-blink.
@@ -93,6 +94,8 @@ export async function loadClipAssets(v: ConversationView, photos: boolean): Prom
     const s = v.speakers[id];
     const role = hostSubtitle(s);
     const drawn = await drawnPoses(s.name, role, id, s.home);
+    // Hosts shown as voices on this device: the clip shows them the same way.
+    if (hostLook() === 'voice') return { photo: null, ...drawn, voice: { ini: s.name.split(/\s+/).filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase() || id } };
     let photo: HTMLImageElement | null = null;
     if (photos) {
       try {
@@ -131,7 +134,26 @@ function drawHost(ctx: CanvasRenderingContext2D, a: HostArt, id: SpeakerId, x: n
   ctx.fillStyle = g; ctx.fillRect(x, y, w, h);
   // A gentle breath, and a slow push in while they talk.
   const s = 1.02 + Math.sin(t * 1.3 + (id === 'A' ? 0 : 2)) * 0.008 + (talking ? 0.02 : 0);
-  if (a.photo) {
+  if (a.voice) {
+    // Their voice, not a face: initials in rings that swell as they talk, over a moving voice print.
+    const col = seatColour(id), lvl = talking ? 0.55 + 0.45 * Math.abs(Math.sin(t * 7.1) * Math.sin(t * 3.3 + 1)) : 0;
+    const cx = x + w / 2, cy = y + h * 0.42, r = Math.min(w, h) * 0.17;
+    ctx.strokeStyle = col;
+    [[1, 0.12, 0.2], [1.3, 0.3, 0.12], [1.65, 0.5, 0.07]].forEach(([k, grow, base]) => {
+      ctx.globalAlpha = base + lvl * 0.6; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(cx, cy, r * k * (1 + lvl * grow), 0, Math.PI * 2); ctx.stroke();
+    });
+    ctx.globalAlpha = 1; ctx.fillStyle = col; ctx.font = `${Math.round(r * 0.9)}px ${SAY}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(a.voice.ini, cx, cy);
+    const n = 24, bw = (w * 0.76) / n, top = y + h * 0.78;
+    for (let i = 0; i < n; i++) {
+      const k = 0.35 + 0.65 * Math.abs(Math.sin(i * 2.17 + 0.6));
+      const bh = Math.max(3, h * 0.12 * (0.08 + lvl * k * (0.55 + 0.45 * Math.abs(Math.sin(t * 8 + i * 1.9)))));
+      ctx.globalAlpha = 0.3 + lvl * 0.7;
+      ctx.fillRect(x + w * 0.12 + i * bw + bw * 0.2, top - bh / 2, bw * 0.6, bh);
+    }
+    ctx.globalAlpha = 1;
+  } else if (a.photo) {
     const ir = a.photo.width / a.photo.height, fr = w / h;
     const dw = (ir > fr ? h * ir : w) * s, dh = (ir > fr ? h : w / ir) * s;
     ctx.drawImage(a.photo, x + (w - dw) / 2, y + (h - dh) * 0.35, dw, dh);

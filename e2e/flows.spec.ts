@@ -77,6 +77,8 @@ test('language: a host from Mexico puts Spanish first; the episode greets in Spa
 });
 
 test('host photos: "still being made" is waited for, then the photo shows and moves', async ({ page }) => {
+  // Photos are a choice in Settings; voices are the default.
+  await page.addInitScript(() => localStorage.setItem('ct_host_look', 'photo'));
   // A real photo can't be fetched here, so the server's answers are played back: two 202s, then a picture.
   const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
   const asked = new Map<string, number>();
@@ -810,3 +812,20 @@ test('Publish kit: the words for each platform, AI-labelled, ready to copy', asy
   await expect(tile.getByRole('textbox', { name: 'Podcast text' })).toHaveValue(/Two AI hosts, .+ talk the question through/);
   await expect(tile.getByRole('button', { name: 'Copy text' })).toBeEnabled();
 });
+
+test('hosts as voices by default: a voice print, no face; Settings switches to photos and back', async ({ page }) => {
+  await page.goto('/#/create');
+  await expect(page.locator('.set-tile.A .voice-card')).toBeVisible();
+  await expect(page.locator('.set-tile .set-photo, .set-tile .set-portrait')).toHaveCount(0);
+  await page.goto('/#/settings');
+  const look = page.getByRole('group', { name: 'Hosts on screen' });
+  await expect(look.getByRole('button', { name: 'Voices' })).toHaveAttribute('aria-pressed', 'true');
+  await look.getByRole('button', { name: 'Photos' }).click();
+  await page.goto('/#/create');
+  await expect(page.locator('.set-tile.A .voice-card')).toHaveCount(0);
+  await page.goto('/#/settings');
+  await page.getByRole('group', { name: 'Hosts on screen' }).getByRole('button', { name: 'Voices' }).click();
+  await page.goto('/#/create');
+  await expect(page.locator('.set-tile.B .voice-card')).toBeVisible();
+});
+
