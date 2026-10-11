@@ -757,3 +757,5 @@ span.ss-art .iris-picture>img,span.ss-art .iris-picture>canvas{object-fit:contai
 .under-hood[open]>summary{margin-bottom:12px}
 .under-hood>.sec{border:0;padding:0;margin:14px 0 0;background:none}
 .kit-free{margin:2px 0 0}
+.photo-open{padding:0;border:0;background:none;cursor:zoom-in;display:block;width:100%;border-radius:8px}
+.photo-open:focus-visible{outline:2px solid var(--cue);outline-offset:2px}

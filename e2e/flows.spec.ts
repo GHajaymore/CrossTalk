@@ -685,3 +685,39 @@ test("Photo of the day: today's eight ideas, a brief you can change, or your own
   await expect(page.getByRole('heading', { name: 'My photos' })).toBeVisible();
   await expect(page.getByText('None yet. Make a photo above')).toBeVisible();
 });
+
+test('My photos: open one full size, step between them, download, and remove with a confirm', async ({ page }) => {
+  // Two kept photos, served by stand-ins (the image service is offline in tests).
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
+  let photos = [
+    { id: 'p2', title: 'Dawn fairway', prompt: 'A real photograph of an empty golf fairway at dawn', createdAt: '2026-10-11T09:00:00Z' },
+    { id: 'p1', title: 'Alpenglow', prompt: 'A real photograph of a jagged snow peak glowing pink', createdAt: '2026-10-10T09:00:00Z' },
+  ];
+  const removed: string[] = [];
+  await page.route('**/api/photos', r => r.fulfill({ json: { photos, max: 200 } }));
+  await page.route('**/api/photos/*', async r => {
+    const id = r.request().url().split('/').pop()!.replace('.jpg', '');
+    if (r.request().method() === 'DELETE') { removed.push(id); photos = photos.filter(p => p.id !== id); return r.fulfill({ status: 204 }); }
+    return r.fulfill({ body: png, contentType: 'image/png' });
+  });
+  await page.goto('/#/iris');
+  await page.getByRole('button', { name: 'Open Dawn fairway full size' }).click();
+  const viewer = page.getByRole('dialog', { name: /Dawn fairway, full size, photo 1 of 2/ });
+  await expect(viewer).toContainText('A real photograph of an empty golf fairway at dawn');
+  await expect(viewer.getByRole('button', { name: 'Close' })).toBeFocused();
+  await page.keyboard.press('ArrowRight');
+  await expect(page.getByRole('dialog', { name: /Alpenglow, full size, photo 2 of 2/ })).toBeVisible();
+  const [dl] = await Promise.all([page.waitForEvent('download'), page.getByRole('dialog').getByRole('link', { name: '⤓ Download' }).click()]);
+  expect(dl.suggestedFilename()).toBe('crosstalk-alpenglow.jpg');
+  // Remove asks first; "Keep it" changes nothing.
+  await page.getByRole('dialog').getByRole('button', { name: 'Remove' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Keep it' }).click();
+  expect(removed).toEqual([]);
+  await page.getByRole('dialog').getByRole('button', { name: 'Remove' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Yes, remove it' }).click();
+  expect(removed).toEqual(['p1']);
+  await expect(page.getByRole('dialog', { name: /Dawn fairway, full size, photo 1 of 1/ })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.locator('.photo-grid li')).toHaveCount(1);
+});
