@@ -87,7 +87,20 @@ export function Settings({ config, refreshConfig }: { config: AppConfig | null; 
       <StorageBanner config={config} />
       <VoiceSettings />
       <ScoutSettings real={real} />
-      <section className="sec"><h2>Models</h2>
+      {config && config.storage !== 'local' && <BackupSection config={config} refreshConfig={refreshConfig} />}
+      {config && (config.portraits || config.irisPictures) && <ImagesSection config={config} />}
+      <section className="sec"><h2>Usage today</h2>
+        <dl className="kv">
+          <dt>Requests</dt><dd>{config ? `${config.requestsToday} of ${config.dailyLimit} (every attempt counts, including retries)` : '…'}</dd>
+          <dt>Tokens</dt><dd>{u ? `${u.tokensIn.toLocaleString()} in · ${u.tokensOut.toLocaleString()} out` : '…'}</dd>
+          <dt>Cost</dt><dd>{cost}</dd>
+        </dl>
+        <p className="hint">The daily limit is a local safety limit set by the app. It is not a billing guarantee from any provider.</p>
+      </section>
+      {/* The technical bits fold away; they open by themselves when something there needs fixing. */}
+      <details className="sec under-hood" open={!!config?.problems.length}>
+        <summary><h2>Under the hood</h2><span className="hint">Models, API key{real ? '' : ', prototype controls'}</span></summary>
+      <section className="sec"><h3>Models</h3>
         <p className="hint">Read-only here. Models are set in the server's settings (the <code>.env</code> file, or the cloud environment's variables) and must be different IDs.</p>
         <dl className="kv">
           <dt>PROVIDER_MODE</dt><dd>{config?.providerMode ?? '…'}</dd>
@@ -104,25 +117,16 @@ export function Settings({ config, refreshConfig }: { config: AppConfig | null; 
           <span className="hint">{config?.guard.checkedAt ? `Last checked ${new Date(config.guard.checkedAt).toLocaleTimeString()}. ` : ''}{groq ? "Each model must be on Groq's own list for your key, or runs are blocked." : 'Each model must show $0 on OpenRouter\'s own price list, or runs are blocked. A ":free" name alone doesn\'t count.'}</span>
         </div>}
       </section>
-      <section className="sec"><h2>Usage today</h2>
-        <dl className="kv">
-          <dt>Requests</dt><dd>{config ? `${config.requestsToday} of ${config.dailyLimit} (every attempt counts, including retries)` : '…'}</dd>
-          <dt>Tokens</dt><dd>{u ? `${u.tokensIn.toLocaleString()} in · ${u.tokensOut.toLocaleString()} out` : '…'}</dd>
-          <dt>Cost</dt><dd>{cost}</dd>
-        </dl>
-        <p className="hint">The daily limit is a local safety limit set by the app. It is not a billing guarantee from any provider.</p>
-      </section>
-      {config && config.storage !== 'local' && <BackupSection config={config} refreshConfig={refreshConfig} />}
-      {config && (config.portraits || config.irisPictures) && <ImagesSection config={config} />}
-      <section className="sec"><h2>API key</h2>
+      <section className="sec"><h3>API key</h3>
         <p className="hint">The {service} key lives only in the server's settings, read by the local server. The browser never receives it.</p>
         <dl className="kv"><dt>{config?.keyName ?? 'OPENROUTER_API_KEY'}</dt><dd>{!real ? 'not needed in mock mode' : config?.apiKeySet ? 'set' : 'not set'}</dd></dl>
       </section>
-      {!real && <section className="sec"><h2>Prototype controls</h2>
+      {!real && <section className="sec"><h3>Prototype controls</h3>
         <label className="toggle"><input type="checkbox" checked={!!config?.mock.failOnce} onChange={e => set({ failOnce: e.target.checked })} /> Simulate a provider failure on turn 5 (once per conversation)</label>
         <label className="toggle"><input type="checkbox" checked={!!config?.mock.fast} onChange={e => set({ fast: e.target.checked })} /> Fast streaming</label>
         <p className="hint">These reset when the server restarts.</p>
       </section>}
+      </details>
       <Footer config={config} />
     </div>
   );
@@ -156,7 +160,7 @@ function ScoutSettings({ real }: { real: boolean }) {
   const last = data.status.lastRun;
   return (
     <section className="sec"><h2>Topic Scout</h2>
-      <p className="hint">Once a day the Scout reads public lists and feeds, drops tragedies, crime, health scares and private lives, and briefs the best 3–5 debates for your Today tray on Create.</p>
+      <p className="hint">Once a day the Scout reads public lists and feeds, drops tragedies, crime, health scares and private lives, and briefs the best 3–5 debates for the In the news tab on Create.</p>
       <ScoutPrefsEditor prefs={data.prefs} onChange={save} />
       <label className="fld"><span className="tag">Your city or region, for "Local"</span>
         <input type="text" maxLength={60} value={place} placeholder="e.g. Columbus, Ohio" onChange={e => setPlace(e.target.value)} onBlur={() => place !== data.prefs.place && save({ ...data.prefs, place: place.trim() })} />
