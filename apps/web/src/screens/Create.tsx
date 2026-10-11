@@ -12,7 +12,7 @@ import { TodayTray } from '../scout/TodayTray';
 import { StudioSet } from '../studio/StudioSet';
 import { Footer } from './Footer';
 import { TopicIdeas } from './TopicIdeas';
-import { WhatsNew } from './WhatsNew';
+import { Welcome } from './Welcome';
 
 const seatDraft = (persona: PersonaKey): SpeakerDraft => ({ name: '', autoName: true, persona, autoPersona: true, lens: '', role: '', autoRole: true });
 const HOME_REGIONS = ['na', 'latam', 'europe', 'mideast', 'africa', 'asia', 'oceania'] as const;
@@ -173,7 +173,7 @@ export function Create({ config, go, refreshConfig, toast }: Props) {
         <p>Challenge their ideas, turn up the heat, branch from any moment, and keep the episode and Iris's art.</p>
       </div>
 
-      <WhatsNew />
+      <Welcome />
 
       <div className="topic-box">
         <label className="tag" htmlFor="topic">Topic</label>

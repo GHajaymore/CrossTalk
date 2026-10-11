@@ -2,7 +2,7 @@ import { useState } from 'react';
 
 const KEY = 'ct_seen_new';
 // Bump when there's something new to show; each listener sees it once until they close it.
-const EDITION = '2026-10-13';
+export const EDITION = '2026-10-13';
 
 const ITEMS = [
   { icon: '📷', title: 'Photo of the day', text: 'Eight photo ideas a day on the Iris page, or your own words. Keep the best in My photos.' },

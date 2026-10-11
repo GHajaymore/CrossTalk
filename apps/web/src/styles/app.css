@@ -762,3 +762,13 @@ span.ss-art .iris-picture>img,span.ss-art .iris-picture>canvas{object-fit:contai
 .kit-free{margin:2px 0 0}
 .photo-open{padding:0;border:0;background:none;cursor:zoom-in;display:block;width:100%;border-radius:8px}
 .photo-open:focus-visible{outline:2px solid var(--cue);outline-offset:2px}
+/* First visit: a three-step welcome, once. */
+.welcome{border:1px solid var(--cue);border-radius:10px;padding:14px 16px;margin:0 0 16px;background:linear-gradient(180deg,rgba(233,211,106,.07),transparent);display:grid;gap:8px}
+.welcome .wn-head{display:flex;justify-content:space-between;align-items:center}
+.welcome-step b{font-size:17px}
+.welcome-step p{margin:4px 0 0;color:var(--muted);max-width:62ch}
+.welcome-dots{display:inline-flex;gap:6px;margin-right:auto}
+.welcome-dots i{width:8px;height:8px;border-radius:50%;border:1px solid var(--cue)}
+.welcome-dots i.on{background:var(--cue)}
+.welcome-actions{display:flex;align-items:center;gap:6px;flex-wrap:nowrap}
+.welcome-actions .btn{width:auto;white-space:nowrap}
