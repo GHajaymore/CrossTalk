@@ -89,8 +89,15 @@ export const JOBS = [
   'Big idea', 'Catch', 'Rethink', 'Curveball', 'Common ground', 'Still unsure', 'Takeaway', 'Sign-off',
 ] as const;
 
-/** A turn's job as listeners see it ('Test' is stored, 'Crux' is what it does). */
-export const jobLabel = (job: string) => (job === 'Test' ? 'Crux' : job);
+/** A quote reads as something said, so a spoken label in front ("Takeaway:", "Bottom line:") is dropped. */
+export const unlabel = (t: string) => t.replace(/^\s*(takeaway|my takeaway|the takeaway|bottom line|in short|tl;?dr|curveball|my curveball)\s*[:—–-]\s*/i, '').replace(/^\p{Ll}/u, c => c.toUpperCase());
+
+/** When turn 8 started asking for the crux (Oct 10, 2026, as deployed). Earlier episodes were asked to test an assumption. */
+export const CRUX_SINCE = '2026-10-10T15:20:00Z';
+/** Whether this episode was recorded with the crux turn (an episode with no date yet is a new one). */
+export const hasCrux = (createdAt?: string | null) => !createdAt || createdAt >= CRUX_SINCE;
+/** A turn's job as listeners see it: 'Test' is stored, and from CRUX_SINCE it asks for the crux. */
+export const jobLabel = (job: string, createdAt?: string | null) => (job === 'Test' && hasCrux(createdAt) ? 'Crux' : job);
 
 /** The longest episode (Long). Normal is 16, Short is 8. */
 export const MAX_TURNS = 24;

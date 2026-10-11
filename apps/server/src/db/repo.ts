@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3';
-import { ArtistNotes, Conversation, Intervention, Run, type BranchSummary, type ConversationView, type ScoutStatus, type ScoutTopic, type GalleryEpisode, type IrisFeedback, paintStyleOf, type PaintStyle, type ReactionKind, type RunState, type Speakers, type Turn } from '@crosstalk/shared';
+import { ArtistNotes, Conversation, Intervention, Run, type BranchSummary, type ConversationView, type ScoutStatus, type ScoutTopic, type GalleryEpisode, type IrisFeedback, paintStyleOf, unlabel, type PaintStyle, type ReactionKind, type RunState, type Speakers, type Turn } from '@crosstalk/shared';
 import { MIGRATIONS } from './schema';
 
 export type DB = Database.Database;
@@ -288,7 +288,7 @@ export class Repo {
     if (!r) return null;
     return ArtistNotes.parse({
       conversationId: r.conversation_id, state: r.state, modelId: r.model_id, perspective: r.perspective, momentSeq: r.moment_seq,
-      caption: r.caption, artTitle: r.art_title, artStyle: r.art_style, sketchSvg: r.sketch_svg ?? null, imagePrompt: r.image_prompt,
+      caption: unlabel(String(r.caption ?? '')), artTitle: r.art_title, artStyle: r.art_style, sketchSvg: r.sketch_svg ?? null, imagePrompt: r.image_prompt,
       error: r.error ?? null, version: r.version, createdAt: r.created_at,
     });
   }
@@ -315,7 +315,7 @@ export class Repo {
     const r = this.db.prepare(`SELECT image_prompt, art_title, caption FROM artworks WHERE conversation_id = ? AND version = ? ORDER BY image_prompt = '', id LIMIT 1`).get(conversationId, version) as { image_prompt: string; art_title: string; caption: string } | undefined;
     const a = this.getArtist(conversationId);
     const current = a && a.state === 'done' && a.version === version ? a : null;
-    if (r) return { imagePrompt: r.image_prompt || current?.imagePrompt || '', title: r.art_title, caption: r.caption };
+    if (r) return { imagePrompt: r.image_prompt || current?.imagePrompt || '', title: r.art_title, caption: unlabel(r.caption) };
     return current ? { imagePrompt: current.imagePrompt, title: current.artTitle, caption: current.caption } : null;
   }
   /** Whether a drawing version is, or was, shown as a Picture (only those are painted). */
@@ -383,7 +383,7 @@ export class Repo {
         byEpisode.set(id, g);
       }
       g.artworks.push({ id: r.id as number, version: r.version as number, style: paintStyleOf(r.art_style as string), title: r.art_title as string,
-        caption: r.caption as string, momentSeq: r.moment_seq as number, svg: r.sketch_svg as string, createdAt: r.created_at as string, brief: (r.image_prompt as string | null) ?? '' });
+        caption: unlabel(r.caption as string), momentSeq: r.moment_seq as number, svg: r.sketch_svg as string, createdAt: r.created_at as string, brief: (r.image_prompt as string | null) ?? '' });
     }
     return [...byEpisode.values()];
   }

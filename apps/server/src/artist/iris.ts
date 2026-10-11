@@ -2,7 +2,7 @@
 // One request after each completed run (never during it). Her failure never changes the discussion.
 // She learns: the listener's recent notes on her work go into every new request.
 import { z } from 'zod';
-import { ART_STYLES, cleanStyles, episodeStyles, sentencesOf, wordsIn, defaultPaintStyle, type ArtistNotes, type ConversationView, type IrisFeedback, type PaintStyle } from '@crosstalk/shared';
+import { ART_STYLES, cleanStyles, unlabel, episodeStyles, sentencesOf, wordsIn, defaultPaintStyle, type ArtistNotes, type ConversationView, type IrisFeedback, type PaintStyle } from '@crosstalk/shared';
 import type { Repo } from '../db/repo';
 import { buildIrisPrompt, type RecentWork } from './prompt';
 import { MOCK_LANGS } from '../providers/mockScriptsLocal';
@@ -37,8 +37,6 @@ export function favouriteStyle(chosen: PaintStyle[]): PaintStyle | null {
 const words = (t: string) => t.split(/\s+/).filter(Boolean);
 const wordsOf = wordsIn;
 const norm = (t: string) => t.toLowerCase().replace(/[‘’“”"'.,!?;:—–-]/g, ' ').replace(/\s+/g, ' ').trim();
-/** A quote reads as something said, so a spoken label in front ("Takeaway:", "Bottom line:") is dropped. */
-export const unlabel = (t: string) => t.replace(/^\s*(takeaway|my takeaway|the takeaway|bottom line|in short|tl;?dr|curveball|my curveball)\s*[:—–-]\s*/i, '').replace(/^\p{Ll}/u, c => c.toUpperCase());
 const firstSentence = (t: string) => {
   const s = unlabel(sentencesOf(t)[0] ?? t.trim());
   if (wordsOf(s) <= 20) return s;

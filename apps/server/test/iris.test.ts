@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { Iris, mockArtist, unlabel, type ArtistBackend } from '../src/artist/iris';
+import { unlabel } from '@crosstalk/shared';
+import { Iris, mockArtist, type ArtistBackend } from '../src/artist/iris';
 import { mockSketch } from '../src/artist/mockSketches';
 import { buildIrisPrompt } from '../src/artist/prompt';
 import { safeSvg } from '../src/artist/svgSafety';
@@ -165,6 +166,13 @@ describe('Iris remembers her own work', () => {
 });
 
 describe('her quotes read as something said', () => {
+  it('an older quote saved with its label reads clean too', () => {
+    const { repo, controller } = setup();
+    const { id } = controller.create(draft('Old quote'));
+    repo.saveArtist({ conversationId: id, state: 'done', modelId: 'm', perspective: 'p', momentSeq: 15, caption: 'Takeaway: keep it small.', artTitle: 'T', artStyle: 'sketch', sketchSvg: null, imagePrompt: '', error: null, version: 1, createdAt: '2026-10-09T00:00:00Z' });
+    expect(repo.getArtist(id)!.caption).toBe('Keep it small.');
+  });
+
   it('drops a spoken label in front, and keeps everything else as it was', () => {
     expect(unlabel('Takeaway: keep the tech small and optional.')).toBe('Keep the tech small and optional.');
     expect(unlabel('Bottom line — start small.')).toBe('Start small.');
