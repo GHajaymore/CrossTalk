@@ -21,6 +21,7 @@ const engineOf = (g: GalleryEpisode, a: Artwork) => ({ sketch: a.svg, seed: artS
 /** What the free AI image service adds to each style (the rest are made on this device). */
 const AI_LOOK: Partial<Record<string, string>> = {
   picture: 'She paints a study here first; the AI photograph fades in when it’s ready',
+  painting: 'Painted here in gouache first, then an AI gouache painting fades in',
   dreamscape: 'Painted here first, then an AI dreamscape fades in',
   sketch: 'Drawn here first, then an AI graphite sketch fades in',
 };
@@ -120,7 +121,7 @@ export function IrisPage({ config }: { config: AppConfig | null }) {
           </ul>
         </div>
         {styleMsg && <p className="hint" role="status">{styleMsg}</p>}
-        {config?.irisPictures !== false ? <p className="hint">Picture, Dreamscape and Sketch: she paints one in your browser straight away, then the free AI image service{config ? <> (<b>{config.images.service}</b>)</> : ''} makes the finished piece from her brief, and it fades in. Only the brief is sent, never names. Painting and the home styles are made entirely in your browser from her own lines.</p>
+        {config?.irisPictures !== false ? <p className="hint">Picture, Painting, Dreamscape and Sketch: she paints one in your browser straight away, then the free AI image service{config ? <> (<b>{config.images.service}</b>)</> : ''} makes the finished piece from her brief, and it fades in. Only the brief is sent, never names. The home styles are made entirely in your browser from her own lines.</p>
           : <p className="hint">Every style is drawn in your browser from her own lines.</p>}
       </details>
 

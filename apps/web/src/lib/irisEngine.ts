@@ -156,8 +156,8 @@ async function sketchLayer(svg: string): Promise<HTMLCanvasElement | null> {
 }
 
 export type PaintOptions = { animate?: boolean; signal?: AbortSignal; onDone?: () => void };
-/** Her three engine styles: a Picture (painted light), a Dreamscape (night sky and aurora), a Sketch (pencil on paper). */
-export type EngineStyle = 'picture' | 'dreamscape' | 'sketch';
+/** Her engine styles: a Picture (painted light), a Painting (gouache), a Dreamscape (night sky and aurora), a Sketch (pencil on paper). */
+export type EngineStyle = 'picture' | 'painting' | 'dreamscape' | 'sketch';
 export type EngineInput = { sketch: string; seed: string; brief?: string; style?: EngineStyle };
 
 /** Paints one piece onto `canvas` (1024×614). Resolves when it's finished (or stopped). */
@@ -266,6 +266,7 @@ export async function paintIris(canvas: HTMLCanvasElement, input: EngineInput, o
   const env: Env = { ctx, canvas, r, pal, mood, n, pick, sk, near, subjectPts, regionPts, regionColour, regionAt, o };
   if (input.style === 'dreamscape') return paintDreamscape(env);
   if (input.style === 'sketch') return paintSketch(env);
+  if (input.style === 'painting') return paintGouache(env);
 
   // 1. The ground: a lit gradient and pools of light.
   const g = ctx.createLinearGradient(0, 0, 0, ART_H);
@@ -622,6 +623,154 @@ function paintSketch(env: Env): Promise<void> {
     env.o.onDone?.();
   };
   return runStrokes(strokes, finish, env.o, 110);
+}
+
+/**
+ * Painting, in gouache: flat, matte, opaque colour laid on with a broad brush. A calm sky, far hills and
+ * a ground, each in its own colour with the brush marks showing; the shapes she closed filled in bold;
+ * her subject built up in thick strokes along her lines, caught by light from one side; then her line
+ * as a dark painted contour. Chalky, never glowing.
+ */
+function paintGouache(env: Env): Promise<void> {
+  const { ctx, r, n, pal, sk, mood } = env;
+  // Gouache dries matte and a little chalky: every colour carries a touch of white.
+  const chalk = (c: RGB, t = 0.14): RGB => mix(c, [244, 238, 226], t);
+  const sky = chalk(mix(mood.night ? pal.dark : pal.light, pal.mids[0], mood.night ? 0.3 : 0.4), mood.night ? 0.04 : 0.1);
+  const earth = chalk(mix(pal.mids[pal.mids.length - 1], pal.dark, 0.5), 0.05);
+  const hills = mix(sky, earth, 0.45);
+  const horizon = ART_H * (0.6 + r() * 0.1);
+  const groundAt = (x: number) => horizon + (n(x * 0.003, 9) - 0.5) * 50;
+  const hillAt = (x: number) => horizon - 30 - n(x * 0.005 + 20, 3) * 90;
+  const band = (top: (x: number) => number) => {
+    const p = new Path2D();
+    p.moveTo(0, ART_H); p.lineTo(0, top(0));
+    for (let x = 0; x <= ART_W; x += 16) p.lineTo(x, top(x));
+    p.lineTo(ART_W, ART_H); p.closePath();
+    return p;
+  };
+  const hillBand = band(hillAt), groundBand = band(groundAt);
+
+  /** One stroke of a loaded flat brush: the body of paint, then a few bristle marks through it. */
+  const brush = (x: number, y: number, a: number, len: number, w: number, c: RGB, alpha: number) => {
+    const dx = Math.cos(a) * len, dy = Math.sin(a) * len, bend = (r() - 0.5) * len * 0.25;
+    const path = (ox: number, oy: number) => { ctx.beginPath(); ctx.moveTo(x + ox, y + oy); ctx.quadraticCurveTo(x + dx / 2 + ox - Math.sin(a) * bend, y + dy / 2 + oy + Math.cos(a) * bend, x + dx + ox, y + dy + oy); };
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = css(c, alpha); ctx.lineWidth = w; path(0, 0); ctx.stroke();
+    for (let b = 0; b < 3; b++) {
+      const off = (r() - 0.5) * w * 0.8, ox = -Math.sin(a) * off, oy = Math.cos(a) * off;
+      ctx.strokeStyle = css(r() < 0.5 ? mix(c, [255, 252, 244], 0.18) : mix(c, pal.deep, 0.18), alpha * 0.45);
+      ctx.lineWidth = 0.8 + r() * 1.4; path(ox, oy); ctx.stroke();
+    }
+  };
+  const vary = (c: RGB) => mix(c, r() < 0.5 ? pal.light : env.pick([...pal.mids, pal.dark]), r() * 0.14);
+  const flow = (x: number, y: number) => (n(x * 0.003, y * 0.003) - 0.5) * 0.9;
+
+  // The sky, laid flat first.
+  ctx.fillStyle = css(sky); ctx.fillRect(0, 0, ART_W, ART_H);
+  const strokes: (() => void)[] = [];
+  const layer = (clip: Path2D | null, base: RGB, count: number, y0: number, y1: number, w0: number, w1: number) => {
+    if (clip) strokes.push(() => { ctx.fillStyle = css(base); ctx.fill(clip); });
+    for (let i = 0; i < count; i++) {
+      const x = r() * ART_W - 30, y = y0 + r() * (y1 - y0);
+      strokes.push(() => {
+        if (clip) { ctx.save(); ctx.clip(clip); }
+        brush(x, y, flow(x, y), 40 + r() * 70, w0 + r() * (w1 - w0), vary(base), 0.55 + r() * 0.35);
+        if (clip) ctx.restore();
+      });
+    }
+  };
+  layer(null, sky, 520, 0, horizon, 14, 30);
+  // A sun low in a warm sky, a moon at night: a flat disc, dabbed on.
+  if (mood.warm || mood.night) {
+    const cx = ART_W * (r() < 0.5 ? 0.18 + r() * 0.12 : 0.7 + r() * 0.12), cy = horizon * (mood.night ? 0.3 : 0.55), rad = 34 + r() * 18;
+    const disc = mix(pal.light, mood.night ? [235, 235, 245] : pal.accent, 0.3);
+    for (let i = 0; i < 70; i++) strokes.push(() => {
+      const t = r() * Math.PI * 2, d = Math.sqrt(r()) * rad * 0.8;
+      brush(cx + Math.cos(t) * d - 6, cy + Math.sin(t) * d, r() * Math.PI, 10 + r() * 10, 8 + r() * 6, chalk(disc, 0.1), 0.8);
+    });
+  }
+  layer(hillBand, hills, 260, horizon - 130, horizon + 20, 12, 24);
+  layer(groundBand, earth, 420, horizon - 30, ART_H, 16, 34);
+
+  // The shapes she closed, filled with bold, opaque colour (painted on their own layer, kept inside them).
+  if (env.regionPts.length) {
+    strokes.push(() => {
+      const fill = document.createElement('canvas');
+      fill.width = ART_W; fill.height = ART_H;
+      const fc = fill.getContext('2d')!;
+      for (const [x, y, id] of env.regionPts) {
+        const c = chalk(env.regionColour[id], 0.08);
+        fc.lineCap = 'round';
+        fc.strokeStyle = css(vary(c), 0.75 + r() * 0.25); fc.lineWidth = 8 + r() * 10;
+        const a = flow(x, y) + (r() < 0.3 ? Math.PI / 2 : 0), l = 10 + r() * 22;
+        fc.beginPath(); fc.moveTo(x - Math.cos(a) * l / 2, y - Math.sin(a) * l / 2); fc.lineTo(x + Math.cos(a) * l / 2, y + Math.sin(a) * l / 2); fc.stroke();
+      }
+      // Only inside her shapes.
+      const mask = fc.getImageData(0, 0, ART_W, ART_H), px = mask.data;
+      for (let y = 0; y < ART_H; y++) for (let x = 0; x < ART_W; x++) if (!env.regionAt(x, y)) px[(y * ART_W + x) * 4 + 3] = 0;
+      fc.putImageData(mask, 0, 0);
+      ctx.drawImage(fill, 0, 0);
+    });
+  }
+
+  // Her subject, built up in thick paint along her lines, in the colours she drew them.
+  const marks = sk?.getContext('2d')?.getImageData(0, 0, ART_W, ART_H).data ?? null;
+  const markColour = (x: number, y: number): RGB | null => {
+    if (!marks) return null;
+    // The nearest mark of hers, a few pixels around.
+    for (let d = 0; d <= 12; d += 3) for (const [ox, oy] of [[0, 0], [d, 0], [-d, 0], [0, d], [0, -d]]) {
+      const xi = Math.round(x + ox), yi = Math.round(y + oy);
+      if (xi < 0 || yi < 0 || xi >= ART_W || yi >= ART_H) continue;
+      const i = (yi * ART_W + xi) * 4;
+      if (marks[i + 3] > 120) return [marks[i], marks[i + 1], marks[i + 2]];
+    }
+    return null;
+  };
+  const subjectCount = Math.min(1800, env.subjectPts.length * 2);
+  for (let i = 0; i < subjectCount; i++) {
+    const [sx, sy] = env.pick(env.subjectPts);
+    strokes.push(() => {
+      const own = markColour(sx, sy);
+      // White lines would vanish into a pale sky: those take her accent instead.
+      const base = !own || lum(own) > 200 ? pal.accent : own;
+      let x = sx + (r() - 0.5) * 4, y = sy + (r() - 0.5) * 4, prev = NaN;
+      ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      ctx.strokeStyle = css(chalk(vary(base), 0.1), 0.8 + r() * 0.2); ctx.lineWidth = 5 + r() * 7;
+      ctx.beginPath(); ctx.moveTo(x, y);
+      for (let s = 0; s < 4 + r() * 6; s++) {
+        const a = along(env, x, y, prev) ?? flow(x, y);
+        prev = a; x += Math.cos(a) * 3; y += Math.sin(a) * 3; ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    });
+  }
+  // Light from the upper left: dry, pale touches on that side of her forms.
+  for (let i = 0; i < Math.min(500, env.subjectPts.length); i++) {
+    const [sx, sy] = env.pick(env.subjectPts);
+    strokes.push(() => {
+      const own = markColour(sx, sy) ?? pal.accent;
+      ctx.strokeStyle = css(mix(own, [255, 250, 238], 0.55), 0.35 + r() * 0.3); ctx.lineWidth = 1.5 + r() * 2;
+      ctx.beginPath(); ctx.moveTo(sx - 4, sy - 4); ctx.lineTo(sx - 4 + (r() - 0.5) * 8, sy - 4 + (r() - 0.5) * 4); ctx.stroke();
+    });
+  }
+
+  const finish = () => {
+    if (sk) {
+      // A soft cast shadow, then her line as a dark painted contour.
+      ctx.globalCompositeOperation = 'multiply';
+      ctx.globalAlpha = 0.22; ctx.drawImage(tint(softened(sk, 6), pal.deep), 6, 8);
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 0.85; ctx.drawImage(tint(sk, mix(pal.deep, earth, 0.25)), 0, 0);
+      ctx.globalAlpha = 1;
+    }
+    // The edges of the sheet a touch darker, as paint gathers; then the paper's tooth.
+    const v = ctx.createRadialGradient(ART_W / 2, ART_H / 2, ART_H * 0.45, ART_W / 2, ART_H / 2, ART_W * 0.72);
+    v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, css(pal.deep, 0.28));
+    ctx.fillStyle = v; ctx.fillRect(0, 0, ART_W, ART_H);
+    grain(ctx, r);
+    env.o.onDone?.();
+  };
+  return runStrokes(strokes, finish, env.o, 100);
 }
 
 /** A layer's shapes, recoloured in one colour (keeping their alpha). */

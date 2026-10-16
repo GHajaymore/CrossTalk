@@ -1,6 +1,7 @@
 // The episode poster: a 1080×1350 image to share, drawn on the device (no server, no cost).
 import { ARTIST, artworkSvg, episodeLabel, hasCrux, hostSubtitle, mindChange, MODES, NOTICE, SCOUT_NOTICE, VERDICTS, type ConversationView } from '@crosstalk/shared';
 import { pointOf } from '../studio/DebateMap';
+import { bestArt } from './irisArt';
 
 const W = 1080, H = 1350, PAD = 72;
 // The studio tokens, as plain colours (a canvas can't read CSS variables).
@@ -48,12 +49,19 @@ export async function makePoster(v: ConversationView): Promise<Blob> {
   ctx.textBaseline = 'top';
   ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H);
 
-  // Iris's art leads, edge to edge: her washes and glow, with her lines kept sharp on top. It is drawn
-  // at the poster's own pixel size, never made small and stretched.
+  // Iris's art leads, edge to edge: her painting (the AI one, or the one she paints on this device)
+  // when her style has one; otherwise her line art, drawn at the poster's own size with her lines
+  // kept sharp, never made small and stretched.
   const art = v.artist?.state === 'done' ? v.artist : null;
   const ART_TOP = 80, ART_MAX = 700;
   let artBottom = ART_TOP + 560;
-  if (art?.sketchSvg) {
+  const painted = await bestArt(v).then(u => (u ? loadImage(u) : null)).catch(() => null);
+  if (painted) {
+    const h = Math.min(ART_MAX, Math.round(W * painted.height / painted.width));
+    ctx.drawImage(painted, 0, ART_TOP, W, h);
+    artBottom = ART_TOP + h;
+    if (painted.src.startsWith('blob:')) URL.revokeObjectURL(painted.src);
+  } else if (art?.sketchSvg) {
     try {
       const svg = artworkSvg(art, { crisp: true })!;
       const { vw, vh } = viewBoxOf(svg);

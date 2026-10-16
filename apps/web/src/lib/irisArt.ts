@@ -4,7 +4,7 @@ import { artSeed, type ArtistNotes } from '@crosstalk/shared';
 import { irisArtUrl, type EngineStyle } from './irisEngine';
 import { readyPicture } from './usePolledImage';
 
-const ENGINE: readonly string[] = ['picture', 'dreamscape', 'sketch'];
+const ENGINE: readonly string[] = ['picture', 'painting', 'dreamscape', 'sketch'];
 
 type WithArt = { id: string; artist?: Pick<ArtistNotes, 'artStyle' | 'version' | 'sketchSvg' | 'imagePrompt' | 'state'> | null };
 

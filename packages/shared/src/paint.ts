@@ -19,7 +19,7 @@ export type HomeStyle = (typeof HOME_STYLES)[number];
 export const PAINT_STYLE_INFO: Record<PaintStyle, { name: string; what: string }> = {
   picture: { name: 'Picture', what: 'A real-looking AI photograph of the moment, from her own brief to the camera' },
   sketch: { name: 'Sketch', what: 'Her line drawing, crisp and clear' },
-  painting: { name: 'Painting', what: 'Watercolour washes and inky lines on grained paper' },
+  painting: { name: 'Painting', what: 'A gouache painting: flat, bold, opaque colour with the brush marks showing' },
   dreamscape: { name: 'Dreamscape', what: 'A drifting sky, echoes and glow, for big open ideas' },
   inkwash: { name: 'Ink wash', what: 'Brush and ink on pale paper with a red seal, from the East Asian ink-painting tradition' },
   folk: { name: 'Folk colour', what: 'Cut-paper bunting and bold colour, from Latin American folk art' },
