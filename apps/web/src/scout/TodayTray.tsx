@@ -60,7 +60,7 @@ export function TodayTray({ rules, audience, selected, onPick, toast, real }: Pr
       </p>
       {last?.state === 'failed' && <p className="hint">Last run didn't finish: {last.error}</p>}
       {last?.sourcesFailed.length ? <p className="hint">Couldn't reach {last.sourcesFailed.join(', ')} last time; the others still counted.</p> : null}
-      {last?.autopilotConversationId && <p className="hint">Autopilot made today's episode: <a href={`#/studio/${last.autopilotConversationId}/watch`}>open it</a>.</p>}
+      {last?.autopilotConversationId && <p className="hint">Autopilot made today's episode: <a href={`#/studio/${last.autopilotConversationId}/watch`}>open it</a>, or get <a href="#/today">📦 Today's pack</a> to post it.</p>}
       {last?.autopilotNote && <p className="hint">Autopilot: {last.autopilotNote}</p>}
       {!topics.length ? <p className="empty-stage tray-empty">No topics yet. The Scout looks at {at}, or press Refresh topics.</p>
         : !picks.length ? <p className="empty-stage tray-empty">No topics match your choices. Turn on more topics or regions.</p>

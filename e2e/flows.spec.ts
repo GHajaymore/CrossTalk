@@ -829,3 +829,21 @@ test('hosts as voices by default: a voice print, no face; Settings switches to p
   await expect(page.locator('.set-tile.B .voice-card')).toBeVisible();
 });
 
+
+test("Today's pack: the latest episode's clip, poster and words in four steps; posting is ticked, never done for you", async ({ page, request }) => {
+  await finishedEpisode(request);
+  await page.goto('/#/episodes');
+  await page.getByRole('link', { name: "📦 Today's pack" }).click();
+  await expect(page.getByRole('heading', { name: "Everything for today's post, ready." })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /The clip/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Make clip' })).toBeEnabled();
+  await page.getByRole('button', { name: 'Make poster' }).click();
+  await expect(page.getByRole('img', { name: /Poster for/ })).toBeVisible();
+  await expect(page.getByRole('textbox', { name: 'YouTube Shorts text' })).toHaveValue(/Made with AI/);
+  // Posting happens on each platform; the pack only links there and remembers what you ticked.
+  await expect(page.getByRole('link', { name: 'Open YouTube Shorts ↗' })).toHaveAttribute('href', 'https://www.youtube.com/upload');
+  for (const box of await page.getByRole('checkbox', { name: 'Posted' }).all()) await box.check();
+  await expect(page.getByText('✓ All posted for today.')).toBeVisible();
+  await page.reload();
+  await expect(page.getByText('✓ All posted for today.')).toBeVisible();
+});

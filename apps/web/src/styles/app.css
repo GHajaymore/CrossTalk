@@ -793,3 +793,16 @@ span.ss-art .iris-picture>img,span.ss-art .iris-picture>canvas{object-fit:contai
 @keyframes vc-beat{from{scale:1 .55}to{scale:1 1}}
 @media (prefers-reduced-motion: reduce){.vc-wave i{animation:none}.vc-ring{transition:none}}
 @media (max-width:600px){.voice-card{padding:16% 8% 44%}.vc-wave{gap:2px;width:90%}}
+/* Episodes: the pack sits beside the title. */
+.eps-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
+/* Today's pack: four numbered steps, one thing each. */
+.pack-steps{list-style:none;margin:0;padding:0;display:grid;gap:18px}
+.pack-steps>li{border:1px solid var(--line);border-radius:12px;background:var(--surface);padding:16px 18px;display:grid;gap:8px}
+.pack-steps h2{display:flex;align-items:center;gap:10px;margin:0;font-size:18px}
+.pack-n{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;border:1.5px solid var(--cue);color:var(--cue);font-size:14px;font-weight:700}
+.pack-steps .kit-grid{grid-template-columns:minmax(0,1fr)}
+.pack-steps .kit-grid .post-tile{grid-column:auto}
+.pack-places{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.pack-places li{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.pack-episode select{max-width:100%}
+.pack-steps .poster-preview{max-width:min(520px,100%);justify-self:start}
