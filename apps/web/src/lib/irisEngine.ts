@@ -662,7 +662,7 @@ function paintGouache(env: Env): Promise<void> {
       ctx.lineWidth = 0.8 + r() * 1.4; path(ox, oy); ctx.stroke();
     }
   };
-  const vary = (c: RGB) => mix(c, r() < 0.5 ? pal.light : env.pick([...pal.mids, pal.dark]), r() * 0.14);
+  const vary = (c: RGB, t = 0.12) => mix(c, r() < 0.5 ? pal.light : env.pick(pal.mids), r() * t);
   const flow = (x: number, y: number) => (n(x * 0.003, y * 0.003) - 0.5) * 0.9;
 
   // The sky, laid flat first.
@@ -674,23 +674,28 @@ function paintGouache(env: Env): Promise<void> {
       const x = r() * ART_W - 30, y = y0 + r() * (y1 - y0);
       strokes.push(() => {
         if (clip) { ctx.save(); ctx.clip(clip); }
-        brush(x, y, flow(x, y), 40 + r() * 70, w0 + r() * (w1 - w0), vary(base), 0.55 + r() * 0.35);
+        brush(x, y, flow(x, y), 70 + r() * 110, w0 + r() * (w1 - w0), vary(base, 0.08), 0.45 + r() * 0.35);
         if (clip) ctx.restore();
       });
     }
   };
-  layer(null, sky, 520, 0, horizon, 14, 30);
+  layer(null, sky, 420, 0, horizon, 22, 44);
   // A sun low in a warm sky, a moon at night: a flat disc, dabbed on.
   if (mood.warm || mood.night) {
     const cx = ART_W * (r() < 0.5 ? 0.18 + r() * 0.12 : 0.7 + r() * 0.12), cy = horizon * (mood.night ? 0.3 : 0.55), rad = 34 + r() * 18;
     const disc = mix(pal.light, mood.night ? [235, 235, 245] : pal.accent, 0.3);
-    for (let i = 0; i < 70; i++) strokes.push(() => {
-      const t = r() * Math.PI * 2, d = Math.sqrt(r()) * rad * 0.8;
-      brush(cx + Math.cos(t) * d - 6, cy + Math.sin(t) * d, r() * Math.PI, 10 + r() * 10, 8 + r() * 6, chalk(disc, 0.1), 0.8);
+    strokes.push(() => {
+      ctx.fillStyle = css(chalk(disc, 0.1)); ctx.beginPath(); ctx.arc(cx, cy, rad, 0, Math.PI * 2); ctx.fill();
+      // A few curved strokes following its edge, so it reads as painted, not stamped.
+      for (let i = 0; i < 14; i++) {
+        const t = r() * Math.PI * 2;
+        ctx.strokeStyle = css(vary(chalk(disc, 0.1), 0.15), 0.6); ctx.lineWidth = 3 + r() * 5; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.arc(cx, cy, rad * (0.55 + r() * 0.4), t, t + 0.6 + r() * 0.9); ctx.stroke();
+      }
     });
   }
-  layer(hillBand, hills, 260, horizon - 130, horizon + 20, 12, 24);
-  layer(groundBand, earth, 420, horizon - 30, ART_H, 16, 34);
+  layer(hillBand, hills, 200, horizon - 130, horizon + 20, 18, 34);
+  layer(groundBand, earth, 340, horizon - 30, ART_H, 24, 46);
 
   // The shapes she closed, filled with bold, opaque colour (painted on their own layer, kept inside them).
   if (env.regionPts.length) {
@@ -698,11 +703,20 @@ function paintGouache(env: Env): Promise<void> {
       const fill = document.createElement('canvas');
       fill.width = ART_W; fill.height = ART_H;
       const fc = fill.getContext('2d')!;
-      for (const [x, y, id] of env.regionPts) {
+      // A flat coat of each shape's colour first, so it's solid like gouache; then brushwork over it.
+      const base = fc.createImageData(ART_W, ART_H), bp = base.data;
+      for (let y = 0; y < ART_H; y++) for (let x = 0; x < ART_W; x++) {
+        const id = env.regionAt(x, y);
+        if (!id) continue;
+        const c = chalk(env.regionColour[id], 0.08), i = (y * ART_W + x) * 4;
+        bp[i] = c[0]; bp[i + 1] = c[1]; bp[i + 2] = c[2]; bp[i + 3] = 255;
+      }
+      fc.putImageData(base, 0, 0);
+      for (const [x, y, id] of [...env.regionPts, ...env.regionPts]) {
         const c = chalk(env.regionColour[id], 0.08);
         fc.lineCap = 'round';
-        fc.strokeStyle = css(vary(c), 0.75 + r() * 0.25); fc.lineWidth = 8 + r() * 10;
-        const a = flow(x, y) + (r() < 0.3 ? Math.PI / 2 : 0), l = 10 + r() * 22;
+        fc.strokeStyle = css(vary(c, 0.18), 0.35 + r() * 0.3); fc.lineWidth = 6 + r() * 10;
+        const a = flow(x, y) + (r() < 0.3 ? Math.PI / 2 : 0), l = 16 + r() * 30;
         fc.beginPath(); fc.moveTo(x - Math.cos(a) * l / 2, y - Math.sin(a) * l / 2); fc.lineTo(x + Math.cos(a) * l / 2, y + Math.sin(a) * l / 2); fc.stroke();
       }
       // Only inside her shapes.
@@ -726,7 +740,7 @@ function paintGouache(env: Env): Promise<void> {
     }
     return null;
   };
-  const subjectCount = Math.min(1800, env.subjectPts.length * 2);
+  const subjectCount = Math.min(2600, env.subjectPts.length * 3);
   for (let i = 0; i < subjectCount; i++) {
     const [sx, sy] = env.pick(env.subjectPts);
     strokes.push(() => {
@@ -735,9 +749,9 @@ function paintGouache(env: Env): Promise<void> {
       const base = !own || lum(own) > 200 ? pal.accent : own;
       let x = sx + (r() - 0.5) * 4, y = sy + (r() - 0.5) * 4, prev = NaN;
       ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-      ctx.strokeStyle = css(chalk(vary(base), 0.1), 0.8 + r() * 0.2); ctx.lineWidth = 5 + r() * 7;
+      ctx.strokeStyle = css(chalk(vary(base, 0.1), 0.1), 0.85 + r() * 0.15); ctx.lineWidth = 4 + r() * 5;
       ctx.beginPath(); ctx.moveTo(x, y);
-      for (let s = 0; s < 4 + r() * 6; s++) {
+      for (let s = 0; s < 10 + r() * 14; s++) {
         const a = along(env, x, y, prev) ?? flow(x, y);
         prev = a; x += Math.cos(a) * 3; y += Math.sin(a) * 3; ctx.lineTo(x, y);
       }
