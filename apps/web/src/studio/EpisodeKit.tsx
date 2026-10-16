@@ -26,7 +26,7 @@ export function showNotes(c: ConversationView) {
 type ImageTileProps = { c: ConversationView; toast: (m: string) => void; title: string; blurb: string; button: string; alt: string; make: (c: ConversationView) => Promise<Blob>; name: (c: ConversationView) => string; extra?: React.ReactNode };
 
 /** A share-ready image (poster or comic): made on this device, then downloaded or shared from the phone. */
-function ImageTile({ c, toast, title, blurb, button, alt, make: draw, name, extra }: ImageTileProps) {
+export function ImageTile({ c, toast, title, blurb, button, alt, make: draw, name, extra }: ImageTileProps) {
   const [url, setUrl] = useState<string | null>(null);
   const [blob, setBlob] = useState<Blob | null>(null);
   const [busy, setBusy] = useState(false);
@@ -58,7 +58,7 @@ function ImageTile({ c, toast, title, blurb, button, alt, make: draw, name, extr
  * The social clip: a vertical video of the key moment, recorded on this device in real time. You
  * watch it being made, then download or share it. Silent with big captions, like most social clips.
  */
-function ClipTile({ c, toast, photos }: { c: ConversationView; toast: (m: string) => void; photos: boolean }) {
+export function ClipTile({ c, toast, photos }: { c: ConversationView; toast: (m: string) => void; photos: boolean }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const [state, setState] = useState<'idle' | 'recording' | 'done'>('idle');
   const [progress, setProgress] = useState({ sec: 0, total: 0 });
@@ -131,7 +131,7 @@ export function EpisodeKit({ c, toast, photos = false }: { c: ConversationView; 
 }
 
 /** Publish kit: the words to post on each platform, ready to copy. Nothing posts by itself. */
-function PostTile({ c, toast }: { c: ConversationView; toast: (m: string) => void }) {
+export function PostTile({ c, toast }: { c: ConversationView; toast: (m: string) => void }) {
   const [p, setP] = useState<Platform>('shorts');
   const text = postText(c, p);
   const copy = async () => { try { await navigator.clipboard.writeText(text); toast(`${PLATFORMS[p].label} text copied`); } catch { toast('Copying is blocked in this browser'); } };

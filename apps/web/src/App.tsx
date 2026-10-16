@@ -19,6 +19,7 @@ const IrisPage = lazy(withReload(() => import('./screens/Iris').then(m => ({ def
 const Episodes = lazy(withReload(() => import('./screens/Episodes').then(m => ({ default: m.Episodes }))));
 const ControlRoom = lazy(withReload(() => import('./screens/ControlRoom').then(m => ({ default: m.ControlRoom }))));
 const Settings = lazy(withReload(() => import('./screens/Others').then(m => ({ default: m.Settings }))));
+const TodayPack = lazy(withReload(() => import('./screens/TodayPack').then(m => ({ default: m.TodayPack }))));
 
 // Routes live in the URL hash (#/studio/<id>/<tab>), so a refresh reopens the same discussion and view.
 const parse = (h: string) => {
@@ -77,6 +78,7 @@ export function App() {
   else if (loc.route === 'episodes') screen = <Episodes config={config} toast={toast} />;
   else if (loc.route === 'iris') screen = <IrisPage config={config} />;
   else if (loc.route === 'settings') screen = <Settings config={config} refreshConfig={refreshConfig} />;
+  else if (loc.route === 'today') screen = <TodayPack config={config} toast={toast} />;
   else if (loc.route === 'control') screen = <ControlRoom config={config} tab={loc.id} toast={toast} refreshConfig={refreshConfig} />;
   else screen = <Create config={config} go={go} refreshConfig={refreshConfig} toast={toast} />;
 

@@ -56,7 +56,8 @@ export function Episodes({ config, toast }: { config: AppConfig | null; toast: (
   return (
     <div className="page">
       <StorageBanner config={config} />
-      <div><h1>Episodes</h1><p className="hint">Every episode you've made, with its branches underneath. Iris's art is also in her gallery on the <a href="#/iris">Iris</a> page.</p></div>
+      <div className="eps-head"><div><h1>Episodes</h1><p className="hint">Every episode you've made, with its branches underneath. Iris's art is also in her gallery on the <a href="#/iris">Iris</a> page.</p></div>
+        <a className="btn primary" href="#/today">📦 Today's pack</a></div>
       {items && <RecapPanel items={items} photos={!!config?.portraits} toast={toast} />}
       {items && hidden.length > 0 && (
         <div className="lib-unfinished">
