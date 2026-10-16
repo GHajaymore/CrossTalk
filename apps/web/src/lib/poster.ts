@@ -70,8 +70,8 @@ export async function makePoster(v: ConversationView): Promise<Blob> {
     g.addColorStop(0, `${C.bg}00`); g.addColorStop(1, C.bg);
     ctx.fillStyle = g; ctx.fillRect(0, Math.min(y0, y1), W, Math.abs(y1 - y0));
   };
-  fade(ART_TOP + 90, ART_TOP); fade(artBottom - 180, artBottom - 20);
-  ctx.fillStyle = C.bg; ctx.fillRect(0, artBottom, W, H - artBottom);
+  fade(ART_TOP + 90, ART_TOP); fade(artBottom - 180, artBottom - 40);
+  ctx.fillStyle = C.bg; ctx.fillRect(0, artBottom - 40, W, H - artBottom + 40);
 
   // Brand mark, show line
   ctx.fillStyle = C.a; ctx.fillRect(PAD, 48, 16, 36);
