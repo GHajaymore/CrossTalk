@@ -381,7 +381,7 @@ export function buildApp(cfg: ServerConfig, opts: AppOptions = {}) {
   });
 
   app.get<{ Params: { id: string; version: string }; Querystring: { style?: string; ready?: string } }>('/api/iris/picture/:id/:version', async (req, reply) => {
-    // Her photograph by default; ?style=dreamscape or ?style=sketch for those. ?ready=1 only answers
+    // Her photograph by default; ?style=painting, ?style=dreamscape or ?style=sketch for those. ?ready=1 only answers
     // with one already made (for thumbnails: browsing never spends the day's pictures).
     const style = (AI_STYLES as readonly string[]).includes(req.query.style ?? 'picture') ? (req.query.style ?? 'picture') as AiStyle : null;
     const version = Number(req.params.version.replace(/\.(jpg|png|webp)$/, '')) || 0;

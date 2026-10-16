@@ -1,5 +1,7 @@
 // The episode poster: a 1080×1350 image to share, drawn on the device (no server, no cost).
-import { ARTIST, artworkSvg, episodeLabel, hostSubtitle, mindChange, MODES, NOTICE, SCOUT_NOTICE, VERDICTS, type ConversationView } from '@crosstalk/shared';
+import { ARTIST, artworkSvg, episodeLabel, hasCrux, hostSubtitle, mindChange, MODES, NOTICE, SCOUT_NOTICE, VERDICTS, type ConversationView } from '@crosstalk/shared';
+import { pointOf } from '../studio/DebateMap';
+import { bestArt } from './irisArt';
 
 const W = 1080, H = 1350, PAD = 72;
 // The studio tokens, as plain colours (a canvas can't read CSS variables).
@@ -39,90 +41,135 @@ export const loadImage = (src: string) => new Promise<HTMLImageElement>((resolve
 });
 
 export async function makePoster(v: ConversationView): Promise<Blob> {
-  await Promise.all([`600 64px ${SAY}`, `italic 36px ${SAY}`, `600 30px ${UI}`, `22px ${TAG}`].map(f => document.fonts?.load(f).catch(() => {})));
+  await Promise.all([`600 72px ${SAY}`, `italic 34px ${SAY}`, `600 30px ${UI}`, `22px ${TAG}`].map(f => document.fonts?.load(f).catch(() => {})));
   const canvas = document.createElement('canvas');
   canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext('2d')!;
-  // Art is drawn larger than it was made: the browser's best scaling keeps it sharp (its default is the softest).
   ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+  ctx.textBaseline = 'top';
   ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H);
 
-  // Brand mark and show line
-  ctx.fillStyle = C.a; ctx.fillRect(PAD, PAD, 18, 40);
-  ctx.fillStyle = C.b; ctx.fillRect(PAD + 24, PAD, 18, 40);
-  ctx.fillStyle = C.text; ctx.font = `700 34px ${UI}`; ctx.textBaseline = 'top';
-  ctx.fillText('CrossTalk', PAD + 60, PAD + 2);
-  ctx.fillStyle = C.muted; ctx.font = `22px ${TAG}`;
-  ctx.fillText(`${episodeLabel(v.episode).toUpperCase()} · ${MODES[v.mode].label.toUpperCase()}`, PAD, PAD + 70);
-
-  // The question
-  let y = PAD + 120;
-  ctx.fillStyle = C.text; ctx.font = `600 64px ${SAY}`;
-  for (const l of wrap(ctx, v.topic, W - PAD * 2, 3)) { ctx.fillText(l, PAD, y); y += 76; }
-
-  // Iris's sketch, framed
-  y += 24;
+  // Iris's art leads, edge to edge: her painting (the AI one, or the one she paints on this device)
+  // when her style has one; otherwise her line art, drawn at the poster's own size with her lines
+  // kept sharp, never made small and stretched.
   const art = v.artist?.state === 'done' ? v.artist : null;
-  // Room for the verdict line without ever touching the AI-generated notice at the bottom.
-  const boxH = v.verdict ? 430 : 480;
-  ctx.fillStyle = '#0e0d0c'; ctx.strokeStyle = C.line; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.roundRect(PAD, y, W - PAD * 2, boxH, 16); ctx.fill(); ctx.stroke();
-  if (art?.sketchSvg) {
+  const ART_TOP = 80, ART_MAX = 700;
+  let artBottom = ART_TOP + 560;
+  const painted = await bestArt(v).then(u => (u ? loadImage(u) : null)).catch(() => null);
+  if (painted) {
+    const h = Math.min(ART_MAX, Math.round(W * painted.height / painted.width));
+    ctx.drawImage(painted, 0, ART_TOP, W, h);
+    artBottom = ART_TOP + h;
+    if (painted.src.startsWith('blob:')) URL.revokeObjectURL(painted.src);
+  } else if (art?.sketchSvg) {
     try {
-      const { img, vw, vh } = await loadSketch(artworkSvg(art)!);
-      const scale = Math.min((W - PAD * 2 - 40) / vw, (boxH - 40) / vh);
-      const w = vw * scale, h = vh * scale;
-      ctx.drawImage(img, (W - w) / 2, y + (boxH - h) / 2, w, h);
-    } catch { /* the frame stays empty */ }
+      const svg = artworkSvg(art, { crisp: true })!;
+      const { vw, vh } = viewBoxOf(svg);
+      const h = Math.min(ART_MAX, Math.round(W * vh / vw)), w = Math.round(h * vw / vh);
+      const { img } = await loadSketch(svg, w, h);
+      ctx.fillStyle = ART_GROUND; ctx.fillRect(0, ART_TOP, W, h);
+      ctx.drawImage(img, Math.round((W - w) / 2), ART_TOP, w, h);
+      artBottom = ART_TOP + h;
+    } catch { /* the poster stands on its words */ }
   }
-  y += boxH + 26;
+  // Soft edges into the page above and below, so the art sits in the poster rather than on it.
+  const fade = (y0: number, y1: number) => {
+    const g = ctx.createLinearGradient(0, y0, 0, y1);
+    g.addColorStop(0, `${C.bg}00`); g.addColorStop(1, C.bg);
+    ctx.fillStyle = g; ctx.fillRect(0, Math.min(y0, y1), W, Math.abs(y1 - y0));
+  };
+  fade(ART_TOP + 90, ART_TOP); fade(artBottom - 180, artBottom - 40);
+  ctx.fillStyle = C.bg; ctx.fillRect(0, artBottom - 40, W, H - artBottom + 40);
 
-  // Her quote
+  // Brand mark, show line
+  ctx.fillStyle = C.a; ctx.fillRect(PAD, 48, 16, 36);
+  ctx.fillStyle = C.b; ctx.fillRect(PAD + 22, 48, 16, 36);
+  ctx.fillStyle = C.text; ctx.font = `700 32px ${UI}`;
+  ctx.fillText('CrossTalk', PAD + 54, 50);
+  ctx.fillStyle = C.muted; ctx.font = `20px ${TAG}`; ctx.textAlign = 'right';
+  ctx.fillText(`${episodeLabel(v.episode).toUpperCase()} · ${MODES[v.mode].label.toUpperCase()}`, W - PAD, 58);
+  ctx.textAlign = 'left';
+
+  // Iris's credit on the faded foot of the art, then the question, large
+  let y = artBottom - 44;
   if (art) {
-    ctx.fillStyle = C.iris; ctx.font = `italic 36px ${SAY}`;
-    for (const l of wrap(ctx, `“${art.caption}”`, W - PAD * 2, 2)) { ctx.fillText(l, PAD, y); y += 46; }
-    ctx.fillStyle = C.muted; ctx.font = `20px ${TAG}`;
-    ctx.fillText(`${ARTIST.name.toUpperCase()} · “${art.artTitle.toUpperCase()}” · TURN ${art.momentSeq}`, PAD, y + 4, W - PAD * 2);
-    y += 48;
+    ctx.fillStyle = C.iris; ctx.font = `20px ${TAG}`;
+    ctx.fillText(`ART BY ${ARTIST.name.toUpperCase()} · “${art.artTitle.toUpperCase()}”`, PAD, y, W - PAD * 2);
+  }
+  y += 44;
+  let size = 72;
+  ctx.font = `600 ${size}px ${SAY}`;
+  let q = wrap(ctx, v.topic, W - PAD * 2, 3);
+  if (q.length > 2) { size = 62; ctx.font = `600 ${size}px ${SAY}`; q = wrap(ctx, v.topic, W - PAD * 2, 3); }
+  ctx.fillStyle = C.text; ctx.shadowColor = 'rgba(0,0,0,0.55)'; ctx.shadowBlur = 18;
+  for (const l of q) { ctx.fillText(l, PAD, y); y += Math.round(size * 1.16); }
+  ctx.shadowBlur = 0; ctx.shadowColor = 'transparent';
+
+  // From the bottom up: the AI notice, the hosts, who moved the listener, then the crux in what's left.
+  const notice = H - 64;
+  const hostsTop = notice - 28 - 124;
+  const verdictTop = v.verdict ? hostsTop - 52 : hostsTop;
+  const cruxTurn = hasCrux(v.createdAt) ? v.turns.find(t => t.objective === 'Test') : undefined;
+  const quote = cruxTurn ? { label: `THE CRUX · ${v.speakers[cruxTurn.speakerId].name.toUpperCase()}`, text: pointOf(cruxTurn.text), color: cruxTurn.speakerId === 'A' ? C.a : C.b }
+    : art ? { label: `${ARTIST.name.toUpperCase()}, FROM THE BOOTH`, text: art.caption, color: C.iris } : null;
+  const room = verdictTop - 24 - (y + 28);
+  if (quote && room >= 34 + 44) {
+    ctx.font = `italic 34px ${SAY}`;
+    const lines = wrap(ctx, `“${quote.text}”`, W - PAD * 2 - 28, Math.min(3, Math.floor((room - 34) / 44)));
+    // Spare room is shared above and below the quote, so nothing floats in a gap.
+    const top = y + 28 + Math.round((room - (34 + lines.length * 44)) / 2);
+    ctx.fillStyle = quote.color; ctx.fillRect(PAD, top + 2, 4, 34 + lines.length * 44 - 12);
+    ctx.font = `18px ${TAG}`; ctx.fillText(quote.label, PAD + 24, top, W - PAD * 2 - 24);
+    ctx.fillStyle = C.text; ctx.font = `italic 34px ${SAY}`;
+    lines.forEach((l, i) => ctx.fillText(l, PAD + 24, top + 34 + i * 44));
+  }
+  if (v.verdict) {
+    ctx.fillStyle = C.cue; ctx.font = `600 26px ${UI}`;
+    ctx.fillText(`Who moved me: ${VERDICTS[v.verdict]}`, PAD, verdictTop, W - PAD * 2);
   }
 
   // The hosts, each with their seat letter (colour is never the only cue)
   const m = mindChange(v.turns);
   const hostW = (W - PAD * 2 - 24) / 2;
   (['A', 'B'] as const).forEach((k, i) => {
-    const x = PAD + i * (hostW + 24);
-    ctx.fillStyle = C.surface; ctx.beginPath(); ctx.roundRect(x, y, hostW, 132, 12); ctx.fill();
-    ctx.fillStyle = k === 'A' ? C.a : C.b; ctx.fillRect(x, y, 6, 132);
-    ctx.beginPath(); ctx.roundRect(x + 24, y + 22, 40, 40, 8); ctx.fill();
-    ctx.fillStyle = '#141517'; ctx.font = `600 22px ${TAG}`; ctx.fillText(k, x + 37, y + 31);
-    ctx.fillStyle = C.text; ctx.font = `600 30px ${UI}`; ctx.fillText(wrap(ctx, v.speakers[k].name, hostW - 104, 1)[0] ?? '', x + 80, y + 26);
+    const x = PAD + i * (hostW + 24), hy = hostsTop;
+    ctx.fillStyle = C.surface; ctx.beginPath(); ctx.roundRect(x, hy, hostW, 124, 12); ctx.fill();
+    ctx.fillStyle = k === 'A' ? C.a : C.b; ctx.fillRect(x, hy, 6, 124);
+    ctx.beginPath(); ctx.roundRect(x + 24, hy + 22, 40, 40, 8); ctx.fill();
+    ctx.fillStyle = '#141517'; ctx.font = `600 22px ${TAG}`; ctx.fillText(k, x + 37, hy + 31);
+    ctx.fillStyle = C.text; ctx.font = `600 30px ${UI}`; ctx.fillText(wrap(ctx, v.speakers[k].name, hostW - 104, 1)[0] ?? '', x + 80, hy + 22);
     ctx.fillStyle = C.muted; ctx.font = `20px ${UI}`;
-    ctx.fillText(wrap(ctx, hostSubtitle(v.speakers[k]), hostW - 104, 1)[0] ?? '', x + 80, y + 64);
+    ctx.fillText(wrap(ctx, hostSubtitle(v.speakers[k]), hostW - 104, 1)[0] ?? '', x + 80, hy + 60);
     const r = m[k];
     if (r.start != null) {
       ctx.fillStyle = k === 'A' ? C.a : C.b; ctx.font = `20px ${TAG}`;
-      ctx.fillText(r.end != null ? `${r.start}% → ${r.end}% on yes` : `${r.start}% on yes`, x + 80, y + 96);
+      ctx.fillText(r.end != null ? `${r.start}% → ${r.end}% on yes` : `${r.start}% on yes`, x + 80, hy + 90);
     }
   });
-  y += 160;
-
-  if (v.verdict) {
-    ctx.fillStyle = C.cue; ctx.font = `600 28px ${UI}`;
-    ctx.fillText(`Who moved me: ${VERDICTS[v.verdict]}`, PAD, y, W - PAD * 2); y += 44;
-  }
 
   // Always labelled AI-generated
   ctx.fillStyle = C.muted; ctx.font = `20px ${UI}`;
-  ctx.fillText(v.brief ? SCOUT_NOTICE : NOTICE, PAD, H - PAD - 10);
+  ctx.fillText(v.brief ? SCOUT_NOTICE : NOTICE, PAD, notice, W - PAD * 2);
 
   return await new Promise<Blob>((resolve, reject) => canvas.toBlob(b => (b ? resolve(b) : reject(new Error("Couldn't draw the poster."))), 'image/png'));
 }
 
-/** Iris's sketch as an image with its own size from its viewBox (some browsers won't draw a sizeless SVG). */
-export async function loadSketch(svg: string) {
+/** The ground Iris paints on, so the band behind her art meets it without a seam. */
+const ART_GROUND = '#0F1013';
+
+export const viewBoxOf = (svg: string) => {
   const vb = svg.match(/viewBox="\s*[\d.-]+[\s,]+[\d.-]+[\s,]+([\d.]+)[\s,]+([\d.]+)\s*"/);
-  const vw = Number(vb?.[1]) || 600, vh = Number(vb?.[2]) || 360;
-  const sized = svg.replace(/^<svg\b/, `<svg width="${vw}" height="${vh}"`);
+  return { vw: Number(vb?.[1]) || 600, vh: Number(vb?.[2]) || 360 };
+};
+
+/**
+ * Iris's sketch as an image, sized in pixels (some browsers won't draw a sizeless SVG). Pass the size
+ * it will be drawn at: an SVG drawn larger than it was sized comes out soft.
+ */
+export async function loadSketch(svg: string, pw?: number, ph?: number) {
+  const { vw, vh } = viewBoxOf(svg);
+  const w = Math.round(pw ?? vw), h = Math.round(ph ?? (pw ? pw * vh / vw : vh));
+  const sized = svg.replace(/^<svg\b/, `<svg width="${w}" height="${h}"`);
   return { img: await loadImage(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(sized)}`), vw, vh };
 }
 

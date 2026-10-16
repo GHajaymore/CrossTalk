@@ -19,10 +19,12 @@ const PLACE: Record<HomeStyle, string> = {
 
 const clean = (s: string, max: number) => s.replace(/[<>{}\[\]]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max);
 
-/** Her styles an AI image model makes: a photograph, a dreamscape, a pencil sketch. */
-export const AI_STYLES = ['picture', 'dreamscape', 'sketch'] as const;
+/** Her styles an AI image model makes: a photograph, a gouache painting, a dreamscape, a pencil sketch. */
+export const AI_STYLES = ['picture', 'painting', 'dreamscape', 'sketch'] as const;
 export type AiStyle = typeof AI_STYLES[number];
 
+/** Other media her brief may name, which would fight the gouache. */
+const MEDIUM = /,?\s*\b((watercolou?r|acrylic|pastel|charcoal|pencil|graphite)( painting| wash(es)?| sketch| drawing)?|oil paint(ing)?|ink (wash|drawing)|digital (art|painting)|photograph(ic)?)\b/gi;
 /** Camera words in her brief, which only make sense for a photograph. */
 const CAMERA = /,?\s*\b(\d{2,3}\s?mm( lens| film)?|shallow depth of field|film (grain|look)|bokeh|lens)\b/gi;
 
@@ -30,6 +32,14 @@ const CAMERA = /,?\s*\b(\d{2,3}\s?mm( lens| film)?|shallow depth of field|film (
 export function picturePrompt(brief: { imagePrompt: string; caption: string }, topic: string, homes: HomeStyle[], style: AiStyle = 'picture') {
   const scene = clean(brief.imagePrompt, 600) || `A scene about the question "${clean(topic, 160)}", showing this moment: ${clean(brief.caption, 160)}`;
   const limits = 'invented adults only: no children, no text, no words, no letters, no captions, no logos, no watermark, no real or famous people';
+  if (style === 'painting') {
+    return [
+      `A gouache painting on paper of this scene: ${scene.replace(CAMERA, '').replace(MEDIUM, '')}`,
+      'flat, opaque, matte colour laid on with a broad brush, visible brush marks and dry-brush edges, simplified bold shapes, a limited palette, clear light from one side',
+      'a hand-painted editorial illustration, the texture of the paper showing at the edges, no photograph, no digital gloss, no glow',
+      limits,
+    ].join('. ');
+  }
   if (style === 'dreamscape') {
     return [
       `A surreal, dreamlike fine-art image of the idea behind this scene: ${scene.replace(CAMERA, '')}`,
@@ -61,7 +71,7 @@ export class IrisPictures {
   private maker: FreeImages;
   constructor(repo: Repo, f: typeof fetch, queue: SerialQueue, now: () => Date = () => new Date(), busyWaitMs?: number, service?: ImageService) {
     const parse = (key: string) => {
-      const m = /^([0-9a-f-]{36}):([1-9]\d{0,3})(?::(dreamscape|sketch))?$/.exec(key);
+      const m = /^([0-9a-f-]{36}):([1-9]\d{0,3})(?::(painting|dreamscape|sketch))?$/.exec(key);
       return m ? { id: m[1], version: Number(m[2]), style: (m[3] ?? 'picture') as AiStyle } : null;
     };
     this.maker = new FreeImages({

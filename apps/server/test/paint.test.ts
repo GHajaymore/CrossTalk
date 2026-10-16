@@ -10,6 +10,18 @@ import { draft, INSTANT, setup } from './helpers';
 const sketch = mockSketch('four-day workweek').svg;
 
 describe('Iris paints her sketch', () => {
+  it('keeps her lines crisp over the washes and glow when asked (posters), and only then', () => {
+    const lines = sketch.match(/<g [\s\S]*<\/g>/)![0];
+    const soft = paintSvg(sketch, 'painting', 'ep'), crisp = paintSvg(sketch, 'painting', 'ep', { crisp: true });
+    expect(soft).toContain(`<g filter="url(#ink)" opacity="0.92">${lines}</g>`);
+    expect(crisp).toContain(`<g opacity="0.92">${lines}</g>`);
+    expect(crisp).toContain('filter="url(#wash)"');
+    const dream = paintSvg(sketch, 'dreamscape', 'ep', { crisp: true });
+    expect(dream).toContain(`<g filter="url(#glow)">${lines}</g><g>${lines}</g>`);
+    expect(dream).not.toContain('<feMergeNode in="d"/>');
+    expect(paintSvg(sketch, 'dreamscape', 'ep')).toContain('<feMergeNode in="d"/>');
+    expect(paintSvg(sketch, 'sketch', 'ep', { crisp: true })).toBe(sketch);
+  });
   it('leaves a sketch as it is, and paints the same lines for Painting and Dreamscape', () => {
     expect(paintSvg(sketch, 'sketch', 'ep')).toBe(sketch);
     const lines = sketch.match(/<g [\s\S]*<\/g>/)![0];

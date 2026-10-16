@@ -4,16 +4,16 @@ import { pictureUrl, usePolledImage } from '../lib/usePolledImage';
 
 export type EngineArt = EngineInput;
 /** The styles her own engine paints on its own (no AI photo behind them). */
-export const engineStyleOf = (style: string): EngineStyle | null => (style === 'dreamscape' || style === 'sketch' ? style : null);
+export const engineStyleOf = (style: string): EngineStyle | null => (style === 'painting' || style === 'dreamscape' || style === 'sketch' ? style : null);
 
 /**
  * Iris's picture of a drawing. With `engine`, she paints it right here, stroke by stroke, with her own
  * engine (from her sketch and brief: free, on this device, always there). When the AI image service
- * has made the real thing in that style (a photograph, a dreamscape, a pencil sketch), it fades in
+ * has made the real thing in that style (a photograph, a gouache painting, a dreamscape, a pencil sketch), it fades in
  * over it. Without `engine`, her line art stands in.
  */
 export function IrisPicture({ conversationId, version, fallback, alt, className = '', engine }: { conversationId: string; version: number; fallback: string; alt: string; className?: string; engine?: EngineArt }) {
-  // The AI image for her style (a photograph, a dreamscape or a sketch) fades in over what she paints here.
+  // The AI image for her style (a photograph, a painting, a dreamscape or a sketch) fades in over what she paints here.
   const p = usePolledImage(conversationId ? pictureUrl(conversationId, version, engine?.style ?? 'picture') : null);
   const cached = engine ? irisArtCached(engine) : null;
   const [painting, setPainting] = useState(!!engine && !cached);

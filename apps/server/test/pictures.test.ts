@@ -28,6 +28,16 @@ describe("Iris's real paintings", () => {
     expect(picturePrompt({ imagePrompt: '', caption: 'Yeah, good point.' }, 'Should cities ban cars?', [])).toMatch(/question "Should cities ban cars\?".*Yeah, good point/);
   });
 
+  it('her Painting is a gouache: other media and camera words in her brief are left out, the limits stay', () => {
+    const p = picturePrompt({ imagePrompt: 'Two chairs by a window at dusk, soft watercolour washes, oil painting, 35mm, shallow depth of field, amber and teal', caption: 'x' }, 'Q?', [], 'painting');
+    expect(p).toMatch(/^A gouache painting on paper of this scene: Two chairs by a window at dusk/);
+    expect(p).not.toMatch(/watercolou?r|oil painting|35mm|depth of field/i);
+    expect(p).toContain('amber and teal');
+    expect(p).toContain('flat, opaque, matte colour');
+    expect(p).toContain('no children');
+    expect(p).toContain('no real or famous people');
+  });
+
   it('is made once per drawing from her brief, fades in on the page later, and is kept', async () => {
     const asked: string[] = [];
     const f = (async (url: string) => { asked.push(decodeURIComponent(String(url))); return new Response(jpeg, { headers: { 'content-type': 'image/jpeg' } }); }) as unknown as typeof fetch;

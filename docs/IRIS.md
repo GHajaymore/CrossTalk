@@ -24,7 +24,7 @@ Iris listens to every finished episode and responds like a thoughtful listener: 
 - **Her Picture: a real painting** (on by default; ticked under Her styles; `IRIS_PICTURES=off` turns it off). For each drawing she writes an art brief of 40 to 70 words in English: subject, setting, composition, light, mood, a two-to-four colour palette and a medium. A free image service (Pollinations; no key, no cost) paints it once, at 1024×614, with the tradition of a host's home folded in and firm limits added (no text, no logos, no real or famous people); only the brief is sent, never a host's name. It's stored and served like the hosts' photos, one picture at a time through the same queue, at most 30 a day. Her checked line art shows at once ("Iris is painting…") and stays whenever a painting can't be made. The card, gallery, slideshow, print and clips use the painting when it's ready.
 - **She remembers her own work**: her prompt lists her last three pieces for other episodes (title, episode, topic, the moment). When an episode genuinely echoes one, she may say so in one sentence; never to compare or judge hosts. Mock Iris names her last piece.
 - **She reads your reactions**: the emoji you tap while listening show on each line in her prompt. After a turn that answered your cue, she prefers the line you reacted to most (mock Iris too). Reactions are about the moment, never a score for either host.
-- **Real AI art in three styles** (with the free Cloudflare account set up, see docs/DEPLOY.md): her **Picture** is a real-looking photograph, her **Dreamscape** a surreal dreamlike image, her **Sketch** a graphite pencil drawing on paper, each made once per drawing from her own brief (camera words left out of the dream and the sketch) and kept. Only invented adults, never a child, no text or real people. Her own on-device painting shows at once and stays whenever the AI image can't be made.
+- **Real AI art in four styles** (with the free Cloudflare account set up, see docs/DEPLOY.md): her **Picture** is a real-looking photograph, her **Painting** a gouache (flat, opaque, matte colour with the brush marks showing), her **Dreamscape** a surreal dreamlike image, her **Sketch** a graphite pencil drawing on paper, each made once per drawing from her own brief (camera words left out of all but the photograph, and other media left out of the gouache) and kept. Only invented adults, never a child, no text or real people. Her own on-device painting shows at once and stays whenever the AI image can't be made.
 - **She sees the hosts' shared laughs**: a line one host meant as a joke, and the other laughed at, is marked [shared a laugh] in her prompt. She may draw it as a warm moment between them, never as a point scored.
 - **She speaks the episode's language**: her perspective, caption and title are in it; her picture prompt stays in English for the painter.
 - **Her gallery keeps every version** (`artworks` table): each drawing, each "Ask Iris again", and
@@ -36,7 +36,7 @@ Iris listens to every finished episode and responds like a thoughtful listener: 
 - **Round two:** she's told when an episode is a later round of the same question.
 - **Hot seat:** she knows only the listener decides who moved them, and never says who held, won or lost.
 - **She paints:** three styles, all made from her own checked lines in the browser (`packages/shared/src/paint.ts`):
-  **Sketch** (the lines), **Painting** (watercolour washes, paper grain, inky lines) and **Dreamscape** (night sky,
+  **Sketch** (the lines), **Painting** (in line-art places such as prints: washes and inky lines; on screen and on the poster her engine paints a gouache, see above) and **Dreamscape** (night sky,
   moon, drifting coloured echoes and a still lake). SVG filters only: no image model, nothing sent anywhere, always
   free, and nothing new for the safety check because the painted picture adds no drawing of its own. Each episode
   gets its own brushwork (seeded by its id). Her reply includes `artStyle`; if a model leaves it out or invents one,
@@ -63,3 +63,13 @@ Whenever CrossTalk changes, review her notes and improve her where they point: t
 - **Picture:** a full illustration needs an image model. Every image model on OpenRouter is paid today, so it waits
   for a free one (or a free GPU running an open model), using her saved `imagePrompt`.
 - Prints for the shop from her gallery (each waits for the owner's OK). Her own page with the gallery and styles is done.
+
+## Listener note: the Painting should look like a painting (Oct 2026)
+
+A listener said her Painting looked like glowing lines on black, not a painting. Now her engine paints a
+gouache on this device (a calm sky, far hills and ground in broad strokes with the bristle marks showing,
+the shapes she closed filled in bold opaque colour, her subject built up in thick paint along her lines,
+light from one side, her line as a dark contour), and the free AI service paints a gouache from her brief
+that fades in over it. The episode poster uses that painting. Her lines and her choice of moment are
+unchanged; the style never takes a side.
+
