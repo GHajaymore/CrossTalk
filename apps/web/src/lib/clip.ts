@@ -15,7 +15,7 @@ import { bestArt } from './irisArt';
 import fixWebmDuration from 'fix-webm-duration';
 import { musicPlan, playMusic, type MusicPlan } from './clipMusic';
 import { hostLook } from './hostLook';
-import { C, loadImage, SAY, TAG, UI, wrap } from './poster';
+import { C, loadImage, loadSketch, SAY, TAG, UI, wrap } from './poster';
 
 export const CLIP_W = 720, CLIP_H = 1280, CLIP_FPS = 30;
 
@@ -110,7 +110,8 @@ export async function loadClipAssets(v: ConversationView, photos: boolean): Prom
   const art = async () => {
     const best = await bestArt(v).catch(() => null);
     if (best) return loadImage(best).catch(() => null);
-    return svg ? loadImage(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`).catch(() => null) : null;
+    // Sized for the slow push-in, so it stays sharp at its largest.
+    return svg ? loadSketch(svg, (CLIP_W - 80) * 1.1).then(s => s.img).catch(() => null) : null;
   };
   const [A, B, artImg] = await Promise.all([host('A'), host('B'), art()]);
   return { hosts: { A, B }, art: artImg };

@@ -1,7 +1,7 @@
 // The comic strip: the episode in 4 panels (opening, clash, the moment Iris drew, where they landed),
 // drawn on the device as a 1080×1350 image. Free: no server, no requests.
 import { ARTIST, artworkSvg, episodeLabel, mindChange, NOTICE, SCOUT_NOTICE, type ConversationView, type SpeakerId, type Turn } from '@crosstalk/shared';
-import { C, loadSketch, SAY, TAG, UI, wrap } from './poster';
+import { C, loadSketch, SAY, TAG, UI, viewBoxOf, wrap } from './poster';
 
 const W = 1080, H = 1350, PAD = 48, GAP = 24;
 
@@ -105,8 +105,9 @@ export async function makeComic(v: ConversationView): Promise<Blob> {
     ctx.fillStyle = '#0e0d0c'; ctx.beginPath(); ctx.roundRect(x + 20, boxY, pw - 40, boxH, 10); ctx.fill();
     if (art?.sketchSvg) {
       try {
-        const { img, vw, vh } = await loadSketch(artworkSvg(art)!);
+        const svg = artworkSvg(art)!, { vw, vh } = viewBoxOf(svg);
         const sc = Math.min((pw - 60) / vw, (boxH - 20) / vh);
+        const { img } = await loadSketch(svg, vw * sc, vh * sc);
         ctx.drawImage(img, x + (pw - vw * sc) / 2, boxY + (boxH - vh * sc) / 2, vw * sc, vh * sc);
       } catch { /* empty frame */ }
     }

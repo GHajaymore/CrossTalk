@@ -66,10 +66,10 @@ function parts(svg: string) {
  * Her sketch in the chosen style, as a standalone SVG. Show it only as an image (never as live
  * markup), like the sketch itself. "sketch" returns the drawing unchanged.
  */
-export function paintSvg(svg: string, style: PaintStyle, seedText: string): string {
+export function paintSvg(svg: string, style: PaintStyle, seedText: string, opts: { crisp?: boolean } = {}): string {
   if (style === 'sketch' || !svg) return svg;
   // The real picture is an image of its own; in line-art places (and while it's being made) her Painting stands in.
-  if (style === 'picture') return paintSvg(svg, 'painting', seedText);
+  if (style === 'picture') return paintSvg(svg, 'painting', seedText, opts);
   const { x, y, w, h, inner } = parts(svg);
   const seed = paintSeed(seedText);
   const r = rand(seed);
@@ -91,7 +91,7 @@ export function paintSvg(svg: string, style: PaintStyle, seedText: string): stri
       + `<g filter="url(#wash)" opacity="0.36">${inner}</g>`
       + `<g filter="url(#wash)" opacity="0.22" transform="translate(${(r() * 10 - 5).toFixed(1)} ${(r() * 8 - 2).toFixed(1)}) rotate(${tilt} ${x + w / 2} ${y + h / 2})">${inner}</g>`
       + `<g filter="url(#bloom)" opacity="0.5">${inner}</g>`
-      + `<g filter="url(#ink)" opacity="0.92">${inner}</g>`
+      + (opts.crisp ? `<g opacity="0.92">${inner}</g>` : `<g filter="url(#ink)" opacity="0.92">${inner}</g>`)
       + `<rect ${box} filter="url(#grain)"/>`
       + '</svg>';
   }
@@ -109,7 +109,7 @@ export function paintSvg(svg: string, style: PaintStyle, seedText: string): stri
     + `<linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${C.lavender}" stop-opacity="0.34"/><stop offset="0.55" stop-color="${C.teal}" stop-opacity="0.12"/><stop offset="1" stop-color="${GROUND}" stop-opacity="0"/></linearGradient>`
     + `<radialGradient id="moon"><stop offset="0" stop-color="${C.gold}" stop-opacity="0.55"/><stop offset="1" stop-color="${C.gold}" stop-opacity="0"/></radialGradient>`
     + `<filter id="drift" x="-20%" y="-20%" width="140%" height="140%"><feTurbulence type="fractalNoise" baseFrequency="0.007" numOctaves="2" seed="${seed}" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="70" xChannelSelector="R" yChannelSelector="G"/><feGaussianBlur stdDeviation="2.2"/><feColorMatrix type="hueRotate" values="${40 + Math.round(r() * 60)}"/></filter>`
-    + `<filter id="glow" x="-10%" y="-10%" width="120%" height="120%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="1" seed="${seed + 5}" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="9" xChannelSelector="R" yChannelSelector="G" result="d"/><feGaussianBlur in="d" stdDeviation="4" result="g"/><feMerge><feMergeNode in="g"/><feMergeNode in="d"/></feMerge></filter>`
+    + `<filter id="glow" x="-10%" y="-10%" width="120%" height="120%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="1" seed="${seed + 5}" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="9" xChannelSelector="R" yChannelSelector="G" result="d"/><feGaussianBlur in="d" stdDeviation="4" result="g"/><feMerge><feMergeNode in="g"/>${opts.crisp ? '' : '<feMergeNode in="d"/>'}</feMerge></filter>`
     + grain
     + '</defs>'
     + `<rect ${box} fill="${GROUND}"/><rect ${box} fill="url(#sky)"/>${stars}`
@@ -117,7 +117,7 @@ export function paintSvg(svg: string, style: PaintStyle, seedText: string): stri
     + `<circle cx="${moon.cx}" cy="${moon.cy}" r="${(h * 0.045).toFixed(1)}" fill="none" stroke="${C.gold}" stroke-width="1.6" opacity="0.8"/>`
     + `<g filter="url(#drift)" opacity="0.45" transform="translate(${(-10 - r() * 10).toFixed(1)} ${(6 + r() * 8).toFixed(1)})">${inner}</g>`
     + `<g filter="url(#drift)" opacity="0.3" transform="translate(${(10 + r() * 12).toFixed(1)} ${(-4 - r() * 8).toFixed(1)})">${inner}</g>`
-    + `<g filter="url(#glow)">${inner}</g>`
+    + `<g filter="url(#glow)">${inner}</g>${opts.crisp ? `<g>${inner}</g>` : ''}`
     // A still lake: her drawing reflected, squashed and faint, under the horizon.
     + `<g filter="url(#drift)" opacity="0.16" transform="matrix(1 0 0 -0.32 0 ${(lake * 1.32).toFixed(1)})">${inner}</g>`
     + `<rect x="${x}" y="${lake.toFixed(1)}" width="${w}" height="1" fill="${C.ink}" opacity="0.12"/>`
@@ -252,10 +252,13 @@ export type GalleryEpisode = {
 /** The style to show for saved art ("picture" isn't available yet, so it shows as a sketch). */
 export const paintStyleOf = (s: string | null | undefined): PaintStyle => (ART_STYLES as readonly string[]).includes(s ?? '') ? s as PaintStyle : 'sketch';
 
-/** Iris's finished art for an episode, in the style chosen for it, or null if there's no drawing. */
-export function artworkSvg(a: { sketchSvg: string | null; artStyle: string; conversationId: string; version?: number } | null | undefined): string | null {
+/**
+ * Iris's finished art for an episode, in the style chosen for it, or null if there's no drawing.
+ * `crisp` keeps her lines sharp over the soft washes and glow (for posters, where edges matter).
+ */
+export function artworkSvg(a: { sketchSvg: string | null; artStyle: string; conversationId: string; version?: number } | null | undefined, opts: { crisp?: boolean } = {}): string | null {
   if (!a?.sketchSvg) return null;
-  return paintSvg(a.sketchSvg, paintStyleOf(a.artStyle), artSeed(a.conversationId, a.version));
+  return paintSvg(a.sketchSvg, paintStyleOf(a.artStyle), artSeed(a.conversationId, a.version), opts);
 }
 
 /**
