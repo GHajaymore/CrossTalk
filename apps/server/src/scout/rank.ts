@@ -20,7 +20,7 @@ export function buildRankPrompt(candidates: Candidate[], place: string, focus: F
     'You are the Topic Scout for CrossTalk, a podcast where two AI hosts discuss one question.',
     `From the stories inside <candidates>, pick up to ${MAX_TOPICS} that people genuinely disagree about and that make a good, fair discussion.`,
     'For each, write:',
-    '- question: one short, neutral discussion question (no names of private people, no loaded words).',
+    '- question: one short, neutral yes/no question, the way a debate organiser sets a motion: about one concrete choice, rule or change in the story, with a real trade-off where both sides have a strong case. At most 12 words. Never vague ("What do you think about…", "Is X good or bad?"), never leaning on a side, no names of private people, no loaded words.',
     `- category: one of ${Object.keys(SCOUT_CATS).join(', ')}.`,
     `- region: one of ${Object.keys(SCOUT_REGIONS).join(', ')}${place ? ` ("local" means ${clean(place)})` : ' (use "local" only for a single town or city)'}.`,
     '- arguability: 0 to 100, how evenly divided people are likely to be (100 = split down the middle).',

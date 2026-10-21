@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { crispDownload, sourceSize, useCrisp } from '../lib/crisp';
 import { printSizeLine } from '../lib/printSize';
 import { makePhotoPrint, PAPERS, photoQuality, type PaperKey } from '../lib/print';
 import type { AppConfig } from '@crosstalk/shared';
@@ -43,7 +44,7 @@ export function MyPhotos({ config, refresh }: { config: AppConfig | null; refres
               <b>{p.title}</b>
               <span className="tag">{new Date(p.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
               <div className="dock-row">
-                <a className="btn sm" href={`/api/photos/${p.id}.jpg`} download={file(p)}>⤓ Download</a>
+                <a className="btn sm" {...crispDownload(`/api/photos/${p.id}.jpg`, file(p))}>⤓ Download</a>
                 {confirming === p.id
                   ? <><button className="btn sm danger" onClick={() => void remove(p.id)}>Yes, remove</button><button className="btn sm ghost" onClick={() => setConfirming(null)}>Keep</button></>
                   : <button className="btn sm ghost" onClick={() => setConfirming(p.id)}>Remove</button>}
@@ -69,6 +70,8 @@ function PhotoViewer({ photo, index, count, file, confirming, onConfirm, onRemov
 }) {
   const close = useRef<HTMLButtonElement>(null);
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
+  // Shown and saved crisp: enlarged and sharpened here (the size line still uses the photo's own pixels).
+  const sharp = useCrisp(`/api/photos/${photo.id}.jpg`);
   const [paper, setPaper] = useState<PaperKey>('5x7');
   const [print, setPrint] = useState<{ url: string; name: string } | null>(null);
   const [printing, setPrinting] = useState(false);
@@ -97,7 +100,8 @@ function PhotoViewer({ photo, index, count, file, confirming, onConfirm, onRemov
   return createPortal(
     <div className="art-viewer" role="dialog" aria-modal="true" aria-label={`${photo.title}, full size, photo ${index + 1} of ${count}`} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <figure>
-        <img src={`/api/photos/${photo.id}.jpg`} alt={`${photo.title}: ${photo.prompt}`} onLoad={e => setSize({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })} />
+        <img src={sharp.src ?? undefined} alt={`${photo.title}: ${photo.prompt}`} {...sourceSize(sharp.crisp)}
+          onLoad={e => { const d = e.currentTarget.dataset; setSize(d.sourceW ? { w: Number(d.sourceW), h: Number(d.sourceH) } : { w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight }); }} />
         <figcaption>
           <span className="tag">My photos · {index + 1} of {count} · {new Date(photo.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
           <h2>{photo.title}</h2>
@@ -116,7 +120,7 @@ function PhotoViewer({ photo, index, count, file, confirming, onConfirm, onRemov
           <p className="av-brief"><span className="tag">The brief</span> {photo.prompt}</p>
           <div className="dock-row">
             {count > 1 && <button className="btn sm ghost" onClick={() => onStep(-1)} aria-label="Previous photo">←</button>}
-            <a className="btn sm" href={`/api/photos/${photo.id}.jpg`} download={file}>⤓ Download</a>
+            <a className="btn sm" {...crispDownload(`/api/photos/${photo.id}.jpg`, file)}>⤓ Download</a>
             {confirming
               ? <><button className="btn sm danger" onClick={onRemove}>Yes, remove it</button><button className="btn sm ghost" onClick={() => onConfirm(false)}>Keep it</button></>
               : <button className="btn sm ghost" onClick={() => onConfirm(true)}>Remove</button>}

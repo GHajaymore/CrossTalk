@@ -26,6 +26,14 @@ describe('topic ideas on Create', () => {
     expect(youthRole('Should national parks cap daily visitors?')).toMatch(/hiking club/);
   });
 
+  it('gives every idea hosts who know it: no catch-all roles, no near-misses', () => {
+    for (const q of all) expect(autoRoles(q)[0], q).not.toBe('Someone who deals with this every day at work');
+    expect(autoRoles('Will AI tutors make classrooms better or lonelier?')[0]).toBe('Secondary-school teacher');
+    expect(autoRoles('Should every neighbourhood allow small apartment buildings?')[0]).toBe('Architect who designs small homes');
+    expect(autoRoles('Should cities put green space ahead of new roads?')[0]).toBe('City transport planner');
+    expect(autoRoles('Should pets be welcome in more offices and shops?')[0]).toBe('Vet who runs a small practice');
+  });
+
   it('lets the Scout file news under Nature & outdoors', () => {
     expect(SCOUT_CATS.nature).toBe('Nature & outdoors');
   });
