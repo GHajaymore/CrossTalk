@@ -14,8 +14,10 @@ export function usePictureSize(ref: RefObject<HTMLElement>, on = true) {
       if (!box) return;
       const ai = box.querySelector<HTMLImageElement>('img.pic-in');
       const el = ai && ai.complete && ai.naturalWidth ? ai : box.querySelector<HTMLCanvasElement | HTMLImageElement>('canvas, img');
-      const w = el instanceof HTMLCanvasElement ? el.width : el?.naturalWidth ?? 0;
-      const h = el instanceof HTMLCanvasElement ? el.height : el?.naturalHeight ?? 0;
+      // A crisper copy is enlarged on this device: its own pixels are what count for printing.
+      const own = el instanceof HTMLImageElement && el.dataset.sourceW ? { w: Number(el.dataset.sourceW), h: Number(el.dataset.sourceH) } : null;
+      const w = own?.w ?? (el instanceof HTMLCanvasElement ? el.width : el?.naturalWidth ?? 0);
+      const h = own?.h ?? (el instanceof HTMLCanvasElement ? el.height : el?.naturalHeight ?? 0);
       if (w && h && `${w}x${h}` !== last) { last = `${w}x${h}`; setSize({ w, h }); }
     };
     look();

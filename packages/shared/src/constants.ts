@@ -9,73 +9,90 @@ export const PRESETS = [
 ] as const;
 
 /**
- * Topic ideas on Create, by theme. Every one is a real two-sided question: reasonable people land on
- * both sides, nothing names a real person, nothing leans on a side, and each suits any audience.
- * The five sample episodes (PRESETS) sit in their themes.
+ * Topic ideas on Create, by theme. Written the way a debate organiser sets a motion: one concrete
+ * yes/no question with a real trade-off, where reasonable people land on both sides and each side has
+ * a strong case. Short enough to read at a glance, nothing names a real person, nothing leans on a
+ * side, and each suits any audience. The five sample episodes (PRESETS) sit in their themes.
  */
 export const TOPIC_IDEAS = {
   work: { label: 'Work & money', icon: '💼', questions: [
     PRESETS[2], PRESETS[0],
     'Should every job ad show the salary?',
-    'Is working from home better for careers in the long run?',
+    'Should bosses be able to require days in the office?',
+    'Should work email be off-limits after hours?',
+    'Should unpaid internships be banned?',
     'Should tipping be replaced by higher menu prices?',
     'Is a side hustle worth the extra hours?',
   ] },
   tech: { label: 'Tech & AI', icon: '🤖', questions: [
+    'Should phones be banned for the whole school day?',
+    'Should under-16s be kept off social media?',
+    'Should AI-made images have to carry a label?',
     'Will AI tutors make classrooms better or lonelier?',
-    'Should phones be put away for the whole school day?',
-    'Is it worth paying for privacy online?',
     'Are self-driving cars ready for busy city streets?',
-    'Are smart homes making life easier or more fragile?',
-    'Should everyone learn to code?',
+    'Should you own the data your apps collect about you?',
+    'Is paying for privacy online worth it?',
+    'Should everyone still learn to code?',
   ] },
   nature: { label: 'Nature & outdoors', icon: '🏔️', questions: [
     'Should popular hiking trails need a permit?',
     'Should the busiest mountains limit how many climbers go up each season?',
-    'Should wild places stay out of phone signal?',
     'Should national parks cap daily visitors?',
-    'Should more places bring back wolves and beavers?',
-    'Is it better to explore close to home than to fly somewhere wild?',
+    'Should wild places stay out of phone signal?',
+    'Should drones be banned in national parks?',
+    'Should more places bring back wolves?',
+    'Should busy beaches charge an entry fee to protect them?',
+    'Is flying somewhere wild worth the carbon?',
   ] },
   sports: { label: 'Sports & fitness', icon: '⚽', questions: [
     PRESETS[4],
     'Should video review decide every close call?',
     'Should kids\' sports keep score?',
     'Should esports count as sports?',
-    'Is running a marathon good for most people\'s health?',
+    'Should golf courses give water back in a drought?',
+    'Should new stadiums be built with public money?',
     'Should the Olympics stay in a few permanent host cities?',
+    'Is running a marathon good for most people\'s health?',
   ] },
   city: { label: 'Cities & society', icon: '🏙️', questions: [
     PRESETS[1],
     'Should public transport be free?',
-    'Is a city centre or a suburb the better place to raise a family?',
+    'Should cities swap parking spaces for trees?',
     'Should every neighbourhood allow small apartment buildings?',
-    'Should cities trade parking spaces for trees?',
+    'Should holiday rentals be capped in busy cities?',
+    'Should tourists pay a daily fee in crowded cities?',
     'Is a quieter city worth fewer late-night venues?',
+    'Is a city or a suburb better for raising a family?',
   ] },
   food: { label: 'Food & culture', icon: '🍜', questions: [
     PRESETS[3],
     'Should menus show the climate footprint of each dish?',
-    'Is cooking at home worth the time for busy people?',
-    'Should museums let visitors touch more of the collection?',
+    'Should school lunches go meat-free one day a week?',
+    'Should lab-grown meat be sold in supermarkets?',
+    'Should junk food ads be kept off daytime TV?',
+    'Should museums return objects to the countries they came from?',
     'Is streaming good or bad for new music?',
-    'Should libraries open every day of the week?',
+    'Is cooking at home worth the time for busy people?',
   ] },
   science: { label: 'Science & health', icon: '🔬', questions: [
     'Should we spend more exploring the ocean than space?',
     'Should schools start later so teenagers can sleep more?',
+    'Should daylight saving time be scrapped?',
+    'Should nuclear power be part of every clean-energy plan?',
+    'Should we bring back extinct animals if we can?',
+    'Should we try to cool the planet by dimming sunlight?',
+    'Should cities put green space ahead of new roads?',
     'Is it worth trying to live to 120?',
-    'Are standing desks worth it?',
-    'Should cities add green space for mental health before new roads?',
-    'Is a daily step goal good advice for everyone?',
   ] },
   life: { label: 'Everyday life', icon: '🏡', questions: [
     'Is it better to rent or to buy a home?',
+    'Should adult children pay rent to live at home?',
+    'Is a big wedding worth the money?',
     'Should more people take a gap year?',
-    'Are group chats making friendships closer or shallower?',
-    'Should pets be welcome in more offices and shops?',
-    'Is a tidy home worth the effort?',
     'Should grandparents help raise the grandkids?',
+    'Are group chats making friendships closer or shallower?',
+    'Is it rude to keep your phone on the table at dinner?',
+    'Should pets be welcome in more offices and shops?',
   ] },
 } as const;
 export type TopicTheme = keyof typeof TOPIC_IDEAS;

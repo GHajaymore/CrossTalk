@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { irisArtCached, paintIris, rememberIrisArt, type EngineInput, type EngineStyle } from '../lib/irisEngine';
 import { pictureUrl, usePolledImage } from '../lib/usePolledImage';
+import { sourceSize, useCrisp } from '../lib/crisp';
 
 export type EngineArt = EngineInput;
 /** The styles her own engine paints on its own (no AI photo behind them). */
@@ -15,6 +16,9 @@ export const engineStyleOf = (style: string): EngineStyle | null => (style === '
 export function IrisPicture({ conversationId, version, fallback, alt, className = '', engine }: { conversationId: string; version: number; fallback: string; alt: string; className?: string; engine?: EngineArt }) {
   // The AI image for her style (a photograph, a painting, a dreamscape or a sketch) fades in over what she paints here.
   const p = usePolledImage(conversationId ? pictureUrl(conversationId, version, engine?.style ?? 'picture') : null);
+  // The AI picture, enlarged and sharpened here so it stays crisp when shown large.
+  const sharp = useCrisp(p.src);
+  const shown = !!p.src && sharp.ready;
   const cached = engine ? irisArtCached(engine) : null;
   const [painting, setPainting] = useState(!!engine && !cached);
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -33,13 +37,13 @@ export function IrisPicture({ conversationId, version, fallback, alt, className 
     return () => stop.abort();
   }, [engine?.seed, engine?.brief, engine?.sketch, engine?.style]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const base = !engine ? <img className={className} src={fallback} alt={p.src ? '' : alt} aria-hidden={p.src ? true : undefined} />
-    : cached ? <img className={className} src={cached} alt={p.src ? '' : alt} aria-hidden={p.src ? true : undefined} />
-    : <canvas ref={canvas} className={`${className} engine-art`} role="img" aria-label={p.src ? undefined : alt} aria-hidden={p.src ? true : undefined} />;
+  const base = !engine ? <img className={className} src={fallback} alt={shown ? '' : alt} aria-hidden={shown ? true : undefined} />
+    : cached ? <img className={className} src={cached} alt={shown ? '' : alt} aria-hidden={shown ? true : undefined} />
+    : <canvas ref={canvas} className={`${className} engine-art`} role="img" aria-label={shown ? undefined : alt} aria-hidden={shown ? true : undefined} />;
   return (
     <span className="iris-picture">
       {base}
-      {p.src && <img className={`${className} pic-in`} src={p.src} alt={alt} />}
+      {shown && <img className={`${className} pic-in`} src={sharp.src!} alt={alt} {...sourceSize(sharp.crisp)} />}
       {(painting || (!engine && p.state === 'loading')) && <span className="tag painting-now">Iris is painting…</span>}
     </span>
   );

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { photoThemesFor } from '@crosstalk/shared';
+import { sourceSize, useCrisp } from '../lib/crisp';
 import { printSizeLine } from '../lib/printSize';
 
 /**
@@ -22,6 +23,8 @@ export function PhotoOfTheDay({ onKept }: { onKept?: () => void }) {
   // Let go of a photo only when a new one replaces it (or the page closes), not when it's kept.
   const url = img?.url;
   useEffect(() => () => { if (url) URL.revokeObjectURL(url); }, [url]);
+  // Shown and saved crisp: enlarged and sharpened here (the size line still uses the photo's own pixels).
+  const sharp = useCrisp(url);
 
   const pick = (title: string, text: string) => { setPicked(title); setPrompt(text); };
   const go = async () => {
@@ -71,10 +74,11 @@ export function PhotoOfTheDay({ onKept }: { onKept?: () => void }) {
       {error && <p className="hint" role="alert">✕ {error}</p>}
       {img && (
         <figure className="try-out">
-          <img src={img.url} alt={`AI photo: ${prompt}`} onLoad={e => setSize({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })} />
+          <img src={sharp.src ?? img.url} alt={`AI photo: ${prompt}`} {...sourceSize(sharp.crisp)}
+            onLoad={e => { const d = e.currentTarget.dataset; setSize(d.sourceW ? { w: Number(d.sourceW), h: Number(d.sourceH) } : { w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight }); }} />
           {size && <p className="hint print-size">🖨 {printSizeLine(size)}</p>}
           <div className="dock-row">
-            <a className="btn sm" href={img.url} download={img.name}>⤓ Download</a>
+            <a className="btn sm" href={sharp.src ?? img.url} download={img.name}>⤓ Download</a>
             {onKept && img.token && (img.kept === 'yes'
               ? <span className="hint" role="status">✓ Kept in My photos, below.</span>
               : <button className="btn sm ghost" disabled={img.kept === 'saving'} onClick={keep}>☆ Keep in My photos</button>)}

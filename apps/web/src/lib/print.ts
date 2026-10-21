@@ -4,6 +4,7 @@
 import { ARTIST, artworkSvg, episodeLabel, PAINT_STYLE_INFO, paintStyleOf, type ConversationView } from '@crosstalk/shared';
 import { loadImage, SAY, TAG, UI, wrap } from './poster';
 import { bestArt } from './irisArt';
+import { crispCanvas } from './crisp';
 
 /** Paper sizes people actually print at, portrait, in inches. */
 export const PAPERS = {
@@ -87,7 +88,7 @@ export async function makePrint(v: ConversationView, paper: PaperKey = 'a4', art
   // The painting, with a fine keyline, like a window mat.
   // Ink is drawn straight onto the paper; a painted piece gets a shadow and a keyline, like a window mat.
   if (art !== 'ink') { ctx.fillStyle = 'rgba(30,28,26,0.12)'; ctx.fillRect(M + px(14), top + px(18), artW, h); }
-  ctx.drawImage(img, M, top, artW, h);
+  ctx.drawImage(painted ? crispCanvas(painted, artW, h) : img, M, top, artW, h);
   if (art !== 'ink') { ctx.strokeStyle = INK; ctx.lineWidth = px(3) || 1; ctx.strokeRect(M - px(24), top - px(24), artW + px(48), h + px(48)); }
 
   let y = top + h + px(260);
@@ -163,7 +164,8 @@ export async function makePhotoPrint(p: { src: string; title: string }, paper: P
   const block = h + px(220) + title.length * px(130);
   const top = Math.max(px(260), Math.round((H - px(200) - block) / 2));
   ctx.fillStyle = 'rgba(30,28,26,0.12)'; ctx.fillRect(M + px(14), top + px(18), artW, h);
-  ctx.drawImage(img, M, top, artW, h);
+  // Enlarged with sharpened edges, so the print isn't soft (no detail is invented: the label stays honest).
+  ctx.drawImage(crispCanvas(img, artW, h), M, top);
   let y = top + h + px(220);
   ctx.textAlign = 'center'; ctx.fillStyle = INK; ctx.font = `italic 600 ${px(110)}px ${SAY}`;
   for (const l of title) { ctx.fillText(l, W / 2, y); y += px(130); }

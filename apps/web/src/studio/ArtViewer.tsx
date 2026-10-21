@@ -4,6 +4,7 @@ import { ARTIST } from '@crosstalk/shared';
 import { irisArtCached } from '../lib/irisEngine';
 import { pictureUrl } from '../lib/usePolledImage';
 import { usePictureSize } from '../lib/usePictureSize';
+import { crispUrl } from '../lib/crisp';
 import { printSizeLine } from '../lib/printSize';
 import { IrisPicture, type EngineArt } from './IrisPicture';
 
@@ -74,6 +75,8 @@ export async function downloadArt(art: ViewedArt) {
     if (r.status === 200 && (r.headers.get('content-type') ?? '').startsWith('image/')) href = URL.createObjectURL(await r.blob());
   } catch { /* offline: use hers */ }
   href ??= art.engine ? irisArtCached(art.engine) : null;
+  // Saved crisp: enlarged and sharpened here, so it holds up full screen and in print.
+  if (href) href = (await crispUrl(href))?.url ?? href;
   // Still being painted: her line art, so the button always gives something.
   if (href) save(href, `${file}.jpg`); else save(art.src, `${file}.svg`);
 }

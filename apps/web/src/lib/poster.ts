@@ -2,6 +2,7 @@
 import { ARTIST, artworkSvg, episodeLabel, hasCrux, hostSubtitle, mindChange, MODES, NOTICE, SCOUT_NOTICE, VERDICTS, type ConversationView } from '@crosstalk/shared';
 import { pointOf } from '../studio/DebateMap';
 import { bestArt } from './irisArt';
+import { crispCanvas } from './crisp';
 
 const W = 1080, H = 1350, PAD = 72;
 // The studio tokens, as plain colours (a canvas can't read CSS variables).
@@ -58,7 +59,7 @@ export async function makePoster(v: ConversationView): Promise<Blob> {
   const painted = await bestArt(v).then(u => (u ? loadImage(u) : null)).catch(() => null);
   if (painted) {
     const h = Math.min(ART_MAX, Math.round(W * painted.height / painted.width));
-    ctx.drawImage(painted, 0, ART_TOP, W, h);
+    ctx.drawImage(crispCanvas(painted, W, h), 0, ART_TOP);
     artBottom = ART_TOP + h;
     if (painted.src.startsWith('blob:')) URL.revokeObjectURL(painted.src);
   } else if (art?.sketchSvg) {
